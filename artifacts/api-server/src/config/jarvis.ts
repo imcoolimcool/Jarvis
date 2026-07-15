@@ -5,9 +5,15 @@
 export const jarvisConfig = {
   /**
    * LLM model used for conversation (via NVIDIA NIM).
-   * Options: "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct-hf", "mistralai/mistral-7b-instruct-v0.3"
+   * Options: "gpt-oss-20b", "meta/llama-3.3-70b-instruct", "mistralai/mistral-7b-instruct-v0.3"
    */
   llmModel: "gpt-oss-20b",
+
+  /**
+   * NVIDIA NVCF function ID for the hosted Whisper-large-v3 Riva model.
+   * Found on build.nvidia.com/openai/whisper-large-v3 → Try API.
+   */
+  whisperFunctionId: "b702f636-f60c-4a3d-a6f4-f3568c13bd7d",
 
   /**
    * ElevenLabs voice ID.
