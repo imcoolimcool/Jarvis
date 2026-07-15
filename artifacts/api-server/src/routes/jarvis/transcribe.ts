@@ -5,7 +5,7 @@ import OpenAI, { toFile } from "openai";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
+const NVIDIA_BASE_URL = "https://ai.api.nvidia.com/v1";
 
 function getWhisperClient(): OpenAI {
   const apiKey = process.env["OPENAI_WHISPER_API_KEY"];

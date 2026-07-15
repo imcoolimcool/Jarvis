@@ -7,7 +7,7 @@ export const jarvisConfig = {
    * LLM model used for conversation (via NVIDIA NIM).
    * Options: "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct-hf", "mistralai/mistral-7b-instruct-v0.3"
    */
-  llmModel: "meta/llama-3.3-70b-instruct",
+  llmModel: "gpt-oss-20b",
 
   /**
    * ElevenLabs voice ID.
