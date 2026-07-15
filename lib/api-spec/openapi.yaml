@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: jarvis
+    description: Jarvis voice assistant operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,100 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /jarvis/transcribe:
+    post:
+      operationId: transcribeAudio
+      tags: [jarvis]
+      summary: Transcribe audio to text using Whisper
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/TranscribeInput"
+      responses:
+        "200":
+          description: Transcript
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscribeOutput"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /jarvis/chat:
+    post:
+      operationId: sendMessage
+      tags: [jarvis]
+      summary: Send a message to Jarvis LLM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatInput"
+      responses:
+        "200":
+          description: Jarvis response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatOutput"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /jarvis/speak:
+    post:
+      operationId: synthesizeSpeech
+      tags: [jarvis]
+      summary: Convert text to speech via ElevenLabs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpeakInput"
+      responses:
+        "200":
+          description: Base64-encoded audio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpeakOutput"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +130,86 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    TranscribeInput:
+      type: object
+      properties:
+        audio:
+          type: string
+          format: binary
+          description: Audio file (webm, mp4, wav, etc.)
+      required:
+        - audio
+
+    TranscribeOutput:
+      type: object
+      properties:
+        transcript:
+          type: string
+          description: Transcribed text from the audio
+      required:
+        - transcript
+
+    ChatMessage:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+      required:
+        - role
+        - content
+
+    ChatInput:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+          description: Conversation history (prior turns)
+        userMessage:
+          type: string
+          description: The new user message to send
+      required:
+        - userMessage
+
+    ChatOutput:
+      type: object
+      properties:
+        response:
+          type: string
+          description: Jarvis's text response
+      required:
+        - response
+
+    SpeakInput:
+      type: object
+      properties:
+        text:
+          type: string
+          description: Text to synthesize
+      required:
+        - text
+
+    SpeakOutput:
+      type: object
+      properties:
+        audio:
+          type: string
+          description: Base64-encoded MP3 audio data
+        contentType:
+          type: string
+          description: MIME type of the audio (audio/mpeg)
+      required:
+        - audio
+        - contentType

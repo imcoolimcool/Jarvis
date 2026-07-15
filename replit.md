@@ -1,36 +1,58 @@
-# [Project name]
+# Jarvis Voice Assistant
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A polished voice AI assistant prototype. Speak → Jarvis transcribes → thinks → speaks back. Built with OpenAI Whisper (STT), OpenAI GPT-4o (LLM), and ElevenLabs (TTS).
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/jarvis run dev` — run the frontend (port auto-assigned)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Frontend: React + Vite, Tailwind CSS, Framer Motion, Orbitron/Inter/Space Mono fonts
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
+- STT: OpenAI Whisper (`whisper-1`)
+- LLM: OpenAI GPT-4o
+- TTS: ElevenLabs (`eleven_multilingual_v2`)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/jarvis/` — React frontend (the Jarvis UI)
+- `artifacts/api-server/src/routes/jarvis/` — backend route handlers
+  - `transcribe.ts` — Whisper STT endpoint
+  - `chat.ts` — GPT-4o conversation endpoint
+  - `speak.ts` — ElevenLabs TTS endpoint
+- `artifacts/api-server/src/config/jarvis.ts` — **edit this to change model, voice, or system prompt**
+- `lib/api-spec/openapi.yaml` — single source of truth for API contracts
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- API keys are never exposed to the frontend — all AI calls go through the Express backend
+- Three separate env vars for Whisper vs LLM keys (user may have different rate limits/billing)
+- TTS audio is returned as base64 JSON (not a binary stream) for simplicity and caching friendliness
+- Conversation history is held client-side in React state (no DB needed for v1)
+- Multipart audio upload uses multer with memory storage — no temp files on disk
 
-## Product
+## Customization
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Edit `artifacts/api-server/src/config/jarvis.ts` to change:
+- `llmModel` — GPT model (e.g. `"gpt-4o-mini"` for lower cost)
+- `ttsVoiceId` — ElevenLabs voice ID (browse at elevenlabs.io/voice-library)
+- `ttsModel` — ElevenLabs model
+- `systemPrompt` — Jarvis personality and behavior
+
+## Required secrets
+
+- `OPENAI_WHISPER_API_KEY` — OpenAI key with Whisper access
+- `OPENAI_LLM_API_KEY` — OpenAI key with GPT-4o access
+- `ELEVENLABS_API_KEY` — ElevenLabs API key
 
 ## User preferences
 
@@ -38,8 +60,6 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- After any change to `lib/api-spec/openapi.yaml`, run codegen before building the frontend
+- The api-zod tsconfig includes `"lib": ["esnext", "dom"]` — needed for `File`/`Blob` types in the generated Whisper input schema
+- MediaRecorder uses `audio/webm;codecs=opus` as the primary MIME type (Safari fallback: `audio/webm`)
