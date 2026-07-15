@@ -4,10 +4,10 @@
  */
 export const jarvisConfig = {
   /**
-   * OpenAI model used for conversation.
-   * Options: "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"
+   * LLM model used for conversation (via NVIDIA NIM).
+   * Options: "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct-hf", "mistralai/mistral-7b-instruct-v0.3"
    */
-  llmModel: "gpt-4o",
+  llmModel: "meta/llama-3.3-70b-instruct",
 
   /**
    * ElevenLabs voice ID.

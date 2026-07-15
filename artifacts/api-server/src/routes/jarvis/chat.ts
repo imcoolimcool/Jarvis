@@ -4,12 +4,14 @@ import { jarvisConfig } from "../../config/jarvis";
 
 const router = Router();
 
+const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
+
 function getLLMClient(): OpenAI {
   const apiKey = process.env["OPENAI_LLM_API_KEY"];
   if (!apiKey) {
     throw new Error("OPENAI_LLM_API_KEY environment variable is not set");
   }
-  return new OpenAI({ apiKey });
+  return new OpenAI({ apiKey, baseURL: NVIDIA_BASE_URL });
 }
 
 interface ChatMessage {

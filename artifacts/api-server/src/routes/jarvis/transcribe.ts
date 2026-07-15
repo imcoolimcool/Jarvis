@@ -5,12 +5,14 @@ import OpenAI, { toFile } from "openai";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
+const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
+
 function getWhisperClient(): OpenAI {
   const apiKey = process.env["OPENAI_WHISPER_API_KEY"];
   if (!apiKey) {
     throw new Error("OPENAI_WHISPER_API_KEY environment variable is not set");
   }
-  return new OpenAI({ apiKey });
+  return new OpenAI({ apiKey, baseURL: NVIDIA_BASE_URL });
 }
 
 router.post(
@@ -39,7 +41,7 @@ router.post(
 
       const transcription = await client.audio.transcriptions.create({
         file,
-        model: "whisper-1",
+        model: "openai/whisper-large-v3",
       });
 
       res.json({ transcript: transcription.text });
