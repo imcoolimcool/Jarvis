@@ -81,7 +81,9 @@ function transcribeWithRiva(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const metadata = new grpc.Metadata();
+    // NVCF accepts both "function-id" and "nvcf-function-id" depending on version
     metadata.add("function-id", jarvisConfig.whisperFunctionId);
+    metadata.add("nvcf-function-id", jarvisConfig.whisperFunctionId);
     metadata.add("authorization", `Bearer ${apiKey}`);
 
     const request = {
@@ -126,18 +128,30 @@ router.post("/transcribe", upload.single("audio"), async (req, res) => {
   try {
     const mimeType = req.file.mimetype || "audio/webm";
 
-    req.log.info(
-      { mimeType, size: req.file.size },
-      "Converting audio to FLAC for Riva",
-    );
+    req.log.info({ mimeType, size: req.file.size }, "Converting audio to FLAC for Riva");
     const flacBuffer = await convertToFlac(req.file.buffer, mimeType);
 
-    req.log.info(
-      { flacBytes: flacBuffer.length },
-      "Sending to NVIDIA Riva via gRPC",
-    );
     const client = buildRivaClient();
-    const transcript = await transcribeWithRiva(client, flacBuffer, apiKey);
+
+    // Try the Whisper key first; if permission denied, fall back to LLM key
+    let transcript: string;
+    try {
+      req.log.info({ flacBytes: flacBuffer.length, keyVar: "OPENAI_WHISPER_API_KEY" }, "Sending to NVIDIA Riva via gRPC");
+      transcript = await transcribeWithRiva(client, flacBuffer, apiKey);
+    } catch (firstErr: any) {
+      if (firstErr?.code === 7 /* PERMISSION_DENIED */) {
+        const llmKey = process.env["OPENAI_LLM_API_KEY"];
+        if (llmKey && llmKey !== apiKey) {
+          req.log.warn("Whisper key PERMISSION_DENIED — retrying with LLM key");
+          transcript = await transcribeWithRiva(client, flacBuffer, llmKey);
+        } else {
+          req.log.error("Both keys are the same or LLM key missing — cannot retry");
+          throw firstErr;
+        }
+      } else {
+        throw firstErr;
+      }
+    }
 
     req.log.info({ transcript }, "Transcription complete");
     res.json({ transcript });
