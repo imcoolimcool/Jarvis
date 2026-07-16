@@ -6,23 +6,27 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, ImagePlus, X } from 'lucide-react';
 
 type Theme = 'dark' | 'light';
+
+interface AttachedImage {
+  base64: string;
+  mimeType: string;
+  preview: string; // object URL for display
+}
 
 function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
     try { return (localStorage.getItem('jarvis-theme') as Theme) || 'dark'; }
     catch { return 'dark'; }
   });
-
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove('dark', 'light');
     root.classList.add(theme);
     try { localStorage.setItem('jarvis-theme', theme); } catch { /* noop */ }
   }, [theme]);
-
   return { theme, toggle: () => setTheme(t => t === 'dark' ? 'light' : 'dark') };
 }
 
@@ -35,12 +39,15 @@ export default function Home() {
   const [sidebarRefreshTick, setSidebarRefreshTick] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<AttachedImage | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   const { theme, toggle: toggleTheme } = useTheme();
 
   const messagesRef = useRef<ChatMessage[]>([]);
   const activeConvIdRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { startRecording, stopRecording } = useAudioRecorder();
   const { toast } = useToast();
@@ -49,10 +56,12 @@ export default function Home() {
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { activeConvIdRef.current = activeConversationId; }, [activeConversationId]);
+  useEffect(() => { if (isChatMode) setTimeout(() => inputRef.current?.focus(), 50); }, [isChatMode]);
 
+  // Revoke object URL on cleanup
   useEffect(() => {
-    if (isChatMode) setTimeout(() => inputRef.current?.focus(), 50);
-  }, [isChatMode]);
+    return () => { if (attachedImage) URL.revokeObjectURL(attachedImage.preview); };
+  }, [attachedImage]);
 
   const handleError = useCallback((msg: string) => {
     toast({ variant: 'destructive', title: 'System Error', description: msg });
@@ -61,6 +70,51 @@ export default function Home() {
 
   const refreshSidebar = useCallback(() => setSidebarRefreshTick(t => t + 1), []);
 
+  /** Convert a File/Blob to { base64, mimeType, preview } */
+  const readImageFile = useCallback((file: File): Promise<AttachedImage> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        const [header, base64] = dataUrl.split(',');
+        const mimeType = header.match(/:(.*?);/)?.[1] ?? file.type;
+        const preview = URL.createObjectURL(file);
+        resolve({ base64, mimeType, preview });
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast({ title: 'Only images are supported' }); return; }
+    try {
+      if (attachedImage) URL.revokeObjectURL(attachedImage.preview);
+      setAttachedImage(await readImageFile(file));
+    } catch { toast({ title: 'Could not load image' }); }
+    e.target.value = '';
+  }, [attachedImage, readImageFile, toast]);
+
+  /** Handle paste events — capture images pasted from clipboard */
+  const handleInputPaste = useCallback(async (e: React.ClipboardEvent) => {
+    const imageItem = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'));
+    if (!imageItem) return;
+    e.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    try {
+      if (attachedImage) URL.revokeObjectURL(attachedImage.preview);
+      setAttachedImage(await readImageFile(file));
+    } catch { toast({ title: 'Could not load image' }); }
+  }, [attachedImage, readImageFile, toast]);
+
+  const removeAttachedImage = useCallback(() => {
+    if (attachedImage) URL.revokeObjectURL(attachedImage.preview);
+    setAttachedImage(null);
+  }, [attachedImage]);
+
   const loadConversation = useCallback(async (id: string) => {
     try {
       const res = await fetch(`/api/jarvis/conversations/${id}`);
@@ -68,6 +122,7 @@ export default function Home() {
       const data = await res.json();
       setMessages((data.messages ?? []).map((m: any) => ({ role: m.role, content: m.content })));
       setActiveConversationId(id);
+      setSuggestions([]);
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not load conversation' });
     }
@@ -76,6 +131,7 @@ export default function Home() {
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setActiveConversationId(null);
+    setSuggestions([]);
   }, []);
 
   const playTTS = useCallback((jarvisText: string, onDone: () => void) => {
@@ -87,13 +143,13 @@ export default function Home() {
             const binaryString = atob(speechData.audio);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-            const audioBlob = new Blob([bytes.buffer], { type: speechData.contentType });
-            const audioUrl = URL.createObjectURL(audioBlob);
-            const audioEl = new Audio(audioUrl);
-            activeAudioRef.current = audioEl;
-            audioEl.play();
-            audioEl.onended = () => { URL.revokeObjectURL(audioUrl); activeAudioRef.current = null; onDone(); };
-            audioEl.onerror = () => handleError("Audio playback failed");
+            const blob = new Blob([bytes.buffer], { type: speechData.contentType });
+            const url = URL.createObjectURL(blob);
+            const el = new Audio(url);
+            activeAudioRef.current = el;
+            el.play();
+            el.onended = () => { URL.revokeObjectURL(url); activeAudioRef.current = null; onDone(); };
+            el.onerror = () => handleError("Audio playback failed");
           } catch { handleError("Failed to decode audio"); }
         },
         onError: () => onDone(),
@@ -101,27 +157,36 @@ export default function Home() {
     );
   }, [synthesizeSpeech, handleError]);
 
-  const processUserText = useCallback(async (userText: string) => {
-    setMessages(prev => [...prev, { role: 'user', content: userText }]);
+  const processUserText = useCallback(async (userText: string, image?: AttachedImage | null) => {
+    // Optimistically add message (with image preview if any)
+    setMessages(prev => [...prev, { role: 'user', content: userText, imagePreview: image?.preview }]);
+    setSuggestions([]);
     setStatus('thinking');
 
     try {
+      const body: Record<string, string> = { userMessage: userText };
+      if (activeConvIdRef.current) body.conversationId = activeConvIdRef.current;
+      if (image) { body.imageBase64 = image.base64; body.imageMimeType = image.mimeType; }
+
       const res = await fetch('/api/jarvis/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userMessage: userText, conversationId: activeConvIdRef.current }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) { handleError("Intelligence module failed"); return; }
       const data = await res.json();
       const jarvisText: string = data.response;
       const convId: string = data.conversationId;
+      const newSuggestions: string[] = data.suggestions ?? [];
 
       if (!activeConvIdRef.current) setActiveConversationId(convId);
       refreshSidebar();
 
       setMessages(prev => [...prev, { role: 'assistant', content: jarvisText }]);
+      setSuggestions(newSuggestions);
       setStatus('speaking');
+
       playTTS(jarvisText, () => {
         setStatus('idle');
         if (isChatMode) setTimeout(() => inputRef.current?.focus(), 50);
@@ -146,10 +211,7 @@ export default function Home() {
 
   const handleToggleRecording = useCallback(async () => {
     if (status === 'speaking') {
-      activeAudioRef.current?.pause();
-      activeAudioRef.current = null;
-      setStatus('idle');
-      return;
+      activeAudioRef.current?.pause(); activeAudioRef.current = null; setStatus('idle'); return;
     }
     if (status === 'idle') {
       try { await startRecording(); setStatus('recording'); }
@@ -162,15 +224,21 @@ export default function Home() {
 
   const handleChatSubmit = () => {
     const text = chatInput.trim();
-    if (!text || status === 'thinking' || status === 'transcribing') return;
+    if (!text && !attachedImage) return;
+    if (status === 'thinking' || status === 'transcribing') return;
+    const img = attachedImage;
     setChatInput('');
-    processUserText(text);
+    setAttachedImage(null);
+    processUserText(text || '📎 Image', img);
   };
 
+  const handleSuggestionClick = useCallback((text: string) => {
+    setSuggestions([]);
+    processUserText(text);
+  }, [processUserText]);
+
   const handleStopSpeaking = () => {
-    activeAudioRef.current?.pause();
-    activeAudioRef.current = null;
-    setStatus('idle');
+    activeAudioRef.current?.pause(); activeAudioRef.current = null; setStatus('idle');
     if (isChatMode) setTimeout(() => inputRef.current?.focus(), 50);
   };
 
@@ -189,20 +257,19 @@ export default function Home() {
 
   const isBusy = status === 'thinking' || status === 'transcribing';
 
-  // Status label for orb panel
   const statusHint = isChatMode
     ? "Type in the chat panel"
-    : status === 'idle'        ? "Tap orb or press space"
-    : status === 'recording'   ? "Tap orb to finalize"
-    : status === 'speaking'    ? "Tap orb to interrupt"
+    : status === 'idle'         ? "Tap orb or press space"
+    : status === 'recording'    ? "Tap orb to finalize"
+    : status === 'speaking'     ? "Tap orb to interrupt"
     : status === 'transcribing' ? "Analyzing audio…"
     : "Processing query…";
 
   return (
     <div className={`${theme} min-h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden`}>
+
       {/* ── Header ───────────────────────────────── */}
       <header className="px-4 py-3 flex items-center gap-3 border-b border-border/50 bg-background/80 backdrop-blur-md relative z-10 flex-shrink-0">
-        {/* Left: hamburger (mobile) + title */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <button
             onClick={() => setMobileSidebarOpen(true)}
@@ -211,18 +278,13 @@ export default function Home() {
           >
             <Menu className="w-5 h-5" />
           </button>
-
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-[0_0_8px_currentColor] flex-shrink-0" style={{ color: 'hsl(var(--primary))' }} />
-            <h1 className="font-display font-bold tracking-[0.15em] text-base sm:text-lg glow-text truncate">
-              JARVIS
-            </h1>
+            <div className="w-2 h-2 bg-primary rounded-full animate-pulse flex-shrink-0" />
+            <h1 className="font-display font-bold tracking-[0.15em] text-base sm:text-lg glow-text truncate">JARVIS</h1>
           </div>
         </div>
 
-        {/* Right: controls */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Chat/Voice toggle */}
           <button
             onClick={() => setIsChatMode(m => !m)}
             title={isChatMode ? "Switch to voice" : "Switch to chat"}
@@ -234,25 +296,14 @@ export default function Home() {
           >
             {isChatMode
               ? <><Mic className="w-3 h-3" /><span className="hidden sm:inline">VOICE</span></>
-              : <><MessageSquare className="w-3 h-3" /><span className="hidden sm:inline">CHAT</span></>
-            }
+              : <><MessageSquare className="w-3 h-3" /><span className="hidden sm:inline">CHAT</span></>}
           </button>
-
-          {/* Theme toggle */}
-          <button
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            className="p-1.5 rounded-md border border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
-          >
+          <button onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            className="p-1.5 rounded-md border border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all">
             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
-
-          {/* Settings */}
-          <button
-            onClick={() => setSettingsOpen(true)}
-            title="Settings"
-            className="p-1.5 rounded-md border border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
-          >
+          <button onClick={() => setSettingsOpen(true)} title="Settings"
+            className="p-1.5 rounded-md border border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all">
             <Settings className="w-4 h-4" />
           </button>
         </div>
@@ -260,7 +311,6 @@ export default function Home() {
 
       {/* ── Body ─────────────────────────────────── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Sidebar */}
         <ChatSidebar
           activeId={activeConversationId}
           onSelect={loadConversation}
@@ -270,17 +320,13 @@ export default function Home() {
           onMobileClose={() => setMobileSidebarOpen(false)}
         />
 
-        {/* Main */}
         <main className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-
           {/* Orb panel — hidden on mobile in chat mode */}
           <div className={`flex-shrink-0 lg:w-72 xl:w-80 flex-col items-center justify-center p-8 border-b lg:border-b-0 lg:border-r border-border/20 relative ${
             isChatMode ? 'hidden lg:flex' : 'flex'
           }`}>
             <div className="dark:block hidden absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
-
             <Orb status={status} onClick={isChatMode ? undefined : handleToggleRecording} />
-
             <div className="mt-8 text-center space-y-2">
               <h2 className="font-display text-xl font-bold tracking-widest text-primary glow-text">
                 {status.toUpperCase()}
@@ -288,14 +334,10 @@ export default function Home() {
               <p className="font-mono text-xs text-muted-foreground tracking-wide max-w-[180px]">
                 {statusHint}
               </p>
-
               {status === 'speaking' && (
-                <button
-                  onClick={handleStopSpeaking}
-                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md border border-primary/50 text-primary hover:bg-primary/10 transition-colors font-display tracking-widest text-xs"
-                >
-                  <Square className="w-3 h-3 fill-current" />
-                  STOP
+                <button onClick={handleStopSpeaking}
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md border border-primary/50 text-primary hover:bg-primary/10 transition-colors font-display tracking-widest text-xs">
+                  <Square className="w-3 h-3 fill-current" /> STOP
                 </button>
               )}
             </div>
@@ -303,47 +345,93 @@ export default function Home() {
 
           {/* Chat area */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-card/5">
-            <ConversationFeed messages={messages} isThinking={status === 'thinking'} />
+            <ConversationFeed
+              messages={messages}
+              isThinking={status === 'thinking'}
+              suggestions={suggestions}
+              onSuggestionClick={handleSuggestionClick}
+            />
 
-            {/* Input — always visible on mobile (voice mode shows it too so you can type), 
-                only shown in chat mode on desktop */}
-            <div className={`border-t border-border/30 bg-background/90 backdrop-blur-md px-4 py-3 flex-shrink-0 ${
-              isChatMode ? 'flex' : 'hidden lg:hidden'
-            } flex-col gap-2`}>
-              <div className="flex gap-2">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleChatSubmit()}
-                  placeholder={isBusy ? "Processing…" : "Message Jarvis…"}
-                  disabled={isBusy}
-                  className="flex-1 bg-card border border-border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-40"
-                />
-                <button
-                  onClick={handleChatSubmit}
-                  disabled={isBusy || !chatInput.trim()}
-                  className="px-4 py-2.5 rounded-lg border border-primary/50 text-primary hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 font-display tracking-wider text-xs"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">SEND</span>
-                </button>
+            {/* Input bar */}
+            {isChatMode && (
+              <div className="border-t border-border/30 bg-background/90 backdrop-blur-md px-4 py-3 flex-shrink-0 space-y-2">
+
+                {/* Image preview strip */}
+                {attachedImage && (
+                  <div className="flex items-center gap-2">
+                    <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-border flex-shrink-0">
+                      <img src={attachedImage.preview} alt="Attachment" className="w-full h-full object-cover" />
+                      <button
+                        onClick={removeAttachedImage}
+                        className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-background/80 flex items-center justify-center text-foreground hover:text-red-400 transition-colors"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                    <span className="text-[10px] font-mono text-muted-foreground/60 tracking-widest">IMAGE ATTACHED</span>
+                  </div>
+                )}
+
+                {/* Input row */}
+                <div className="flex gap-2">
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+
+                  {/* Attach image button */}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isBusy}
+                    title="Attach image (or paste from clipboard)"
+                    className={`p-2.5 rounded-lg border transition-all flex-shrink-0 ${
+                      attachedImage
+                        ? 'border-primary text-primary bg-primary/10'
+                        : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
+                    } disabled:opacity-30`}
+                  >
+                    <ImagePlus className="w-4 h-4" />
+                  </button>
+
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleChatSubmit()}
+                    onPaste={handleInputPaste}
+                    placeholder={isBusy ? "Processing…" : attachedImage ? "Add a message… (or just send the image)" : "Message Jarvis…"}
+                    disabled={isBusy}
+                    className="flex-1 bg-card border border-border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-40"
+                  />
+
+                  <button
+                    onClick={handleChatSubmit}
+                    disabled={isBusy || (!chatInput.trim() && !attachedImage)}
+                    className="px-4 py-2.5 rounded-lg border border-primary/50 text-primary hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 font-display tracking-wider text-xs flex-shrink-0"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">SEND</span>
+                  </button>
+                </div>
+
+                {status === 'speaking' && (
+                  <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest text-center">
+                    JARVIS IS SPEAKING —{' '}
+                    <button onClick={handleStopSpeaking} className="text-primary hover:underline">STOP</button>
+                  </p>
+                )}
               </div>
-              {status === 'speaking' && (
-                <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest text-center">
-                  JARVIS IS SPEAKING —{' '}
-                  <button onClick={handleStopSpeaking} className="text-primary hover:underline">STOP</button>
-                </p>
-              )}
-            </div>
+            )}
           </div>
         </main>
       </div>
 
-      {/* Vignette (dark only) */}
       <div className="dark:block hidden pointer-events-none fixed inset-0 z-30 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(5,5,8,0.7)_100%)]" />
-
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );

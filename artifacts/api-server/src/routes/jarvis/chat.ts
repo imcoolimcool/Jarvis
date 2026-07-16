@@ -21,10 +21,53 @@ async function getSettings(): Promise<Record<string, string>> {
   return map;
 }
 
+/** Generate 3 short follow-up suggestion chips from the latest exchange */
+async function generateSuggestions(
+  client: OpenAI,
+  userMessage: string,
+  assistantResponse: string,
+): Promise<string[]> {
+  try {
+    const completion = await client.chat.completions.create({
+      model: jarvisConfig.llmModel,
+      messages: [
+        {
+          role: "system",
+          content:
+            'You generate exactly 3 short follow-up questions or replies (max 7 words each) that a user might naturally say next, given the conversation excerpt below. Return ONLY a valid JSON array of 3 strings — no explanation, no markdown, nothing else. Example: ["Tell me more","What about X?","How does that work?"]',
+        },
+        {
+          role: "user",
+          content: `User said: "${userMessage}"\nAssistant replied: "${assistantResponse}"`,
+        },
+      ],
+      temperature: 0.8,
+      max_tokens: 80,
+    });
+
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "[]";
+    // Extract JSON array from response (model may wrap it in markdown)
+    const match = raw.match(/\[.*\]/s);
+    if (!match) return [];
+    const parsed = JSON.parse(match[0]);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.slice(0, 3).map((s: unknown) => String(s));
+  } catch {
+    return [];
+  }
+}
+
 router.post("/chat", async (req, res) => {
-  const { userMessage, conversationId } = req.body as {
+  const {
+    userMessage,
+    conversationId,
+    imageBase64,
+    imageMimeType,
+  } = req.body as {
     userMessage: string;
     conversationId?: string;
+    imageBase64?: string;
+    imageMimeType?: string;
   };
 
   if (!userMessage || typeof userMessage !== "string") {
@@ -34,7 +77,6 @@ router.post("/chat", async (req, res) => {
 
   try {
     let convId = conversationId;
-
     if (!convId) {
       const [newConv] = await db
         .insert(conversations)
@@ -43,7 +85,6 @@ router.post("/chat", async (req, res) => {
       convId = newConv.id;
     }
 
-    // Load history and settings in parallel
     const [history, settings] = await Promise.all([
       db
         .select()
@@ -53,7 +94,6 @@ router.post("/chat", async (req, res) => {
       getSettings(),
     ]);
 
-    // Build live context (time always; weather + calendar if configured)
     const calendarUrls = [1, 2, 3, 4, 5]
       .map((n) => settings[`calendar_ics_url_${n}`])
       .filter(Boolean) as string[];
@@ -63,12 +103,28 @@ router.post("/chat", async (req, res) => {
       calendarIcsUrls: calendarUrls,
     });
 
-    // Save user message
+    // Save user message to DB (store text only; image is ephemeral)
     await db.insert(messages).values({
       conversationId: convId,
       role: "user",
       content: userMessage,
     });
+
+    // Build current user message — include image if provided
+    let currentUserContent: OpenAI.Chat.ChatCompletionContentPart[] | string;
+    if (imageBase64 && imageMimeType) {
+      currentUserContent = [
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:${imageMimeType};base64,${imageBase64}`,
+          },
+        },
+        { type: "text", text: userMessage },
+      ];
+    } else {
+      currentUserContent = userMessage;
+    }
 
     const chatMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: "system", content: jarvisConfig.systemPrompt },
@@ -77,7 +133,7 @@ router.post("/chat", async (req, res) => {
         role: m.role as "user" | "assistant",
         content: m.content,
       })),
-      { role: "user", content: userMessage },
+      { role: "user", content: currentUserContent },
     ];
 
     const client = getLLMClient();
@@ -90,28 +146,32 @@ router.post("/chat", async (req, res) => {
 
     const response = completion.choices[0]?.message?.content ?? "";
 
-    // Save assistant reply and update conversation in parallel
+    // Persist assistant reply + update conversation title; generate suggestions in parallel
     const [conv] = await db
       .select()
       .from(conversations)
       .where(eq(conversations.id, convId));
 
-    await Promise.all([
+    const [suggestions] = await Promise.all([
+      generateSuggestions(client, userMessage, response),
       db.insert(messages).values({
         conversationId: convId,
         role: "assistant",
         content: response,
       }),
-      db.update(conversations).set({
-        title:
-          conv?.title === "New Conversation"
-            ? userMessage.slice(0, 60) + (userMessage.length > 60 ? "…" : "")
-            : conv?.title,
-        updatedAt: new Date(),
-      }).where(eq(conversations.id, convId)),
+      db
+        .update(conversations)
+        .set({
+          title:
+            conv?.title === "New Conversation"
+              ? userMessage.slice(0, 60) + (userMessage.length > 60 ? "…" : "")
+              : conv?.title,
+          updatedAt: new Date(),
+        })
+        .where(eq(conversations.id, convId)),
     ]);
 
-    res.json({ response, conversationId: convId });
+    res.json({ response, conversationId: convId, suggestions });
   } catch (err) {
     req.log.error({ err }, "LLM chat request failed");
     res.status(500).json({ error: "Chat request failed. Please try again." });
