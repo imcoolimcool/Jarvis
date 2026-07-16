@@ -23,8 +23,8 @@ router.post("/speak", async (req, res) => {
     const client = getTTSClient();
 
     const response = await client.audio.speech.create({
-      model: "playai-tts",
-      voice: "Amos-PlayAI",   // deep male voice
+      model: "canopylabs/orpheus-v1-english",
+      voice: "dan",   // deep male voice
       input: text,
       response_format: "mp3",
     });
