@@ -54,9 +54,13 @@ router.post("/chat", async (req, res) => {
     ]);
 
     // Build live context (time always; weather + calendar if configured)
+    const calendarUrls = [1, 2, 3, 4, 5]
+      .map((n) => settings[`calendar_ics_url_${n}`])
+      .filter(Boolean) as string[];
+
     const liveContext = await buildLiveContext({
       weatherLocation: settings["weather_location"],
-      calendarIcsUrl: settings["calendar_ics_url"],
+      calendarIcsUrls: calendarUrls,
     });
 
     // Save user message

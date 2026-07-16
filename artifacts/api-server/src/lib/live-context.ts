@@ -108,7 +108,7 @@ function parseIcsDate(raw: string): Date | null {
 /** Build the full live context string to inject into system prompt */
 export async function buildLiveContext(opts: {
   weatherLocation?: string;
-  calendarIcsUrl?: string;
+  calendarIcsUrls?: string[];
 }): Promise<string> {
   const parts: string[] = [`Current date/time: ${getCurrentDatetime()}`];
 
@@ -117,9 +117,16 @@ export async function buildLiveContext(opts: {
     parts.push(`Weather: ${weather}`);
   }
 
-  if (opts.calendarIcsUrl) {
-    const events = await getCalendarEvents(opts.calendarIcsUrl);
-    parts.push(`Upcoming calendar events (next 7 days):\n${events}`);
+  const urls = (opts.calendarIcsUrls ?? []).filter(Boolean);
+  if (urls.length > 0) {
+    const results = await Promise.all(
+      urls.map((url, i) =>
+        getCalendarEvents(url).then(
+          (events) => `Calendar ${urls.length > 1 ? i + 1 : ""}:\n${events}`.trim(),
+        ),
+      ),
+    );
+    parts.push(`Upcoming calendar events (next 7 days):\n${results.join("\n\n")}`);
   }
 
   return `=== LIVE CONTEXT ===\n${parts.join("\n\n")}\n===================`;

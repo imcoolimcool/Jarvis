@@ -4,7 +4,14 @@ import { eq } from "drizzle-orm";
 
 const router = Router();
 
-const ALLOWED_KEYS = ["weather_location", "calendar_ics_url"] as const;
+const ALLOWED_KEYS = [
+  "weather_location",
+  "calendar_ics_url_1",
+  "calendar_ics_url_2",
+  "calendar_ics_url_3",
+  "calendar_ics_url_4",
+  "calendar_ics_url_5",
+] as const;
 type SettingKey = (typeof ALLOWED_KEYS)[number];
 
 /** GET /api/jarvis/settings — returns all settings as a key→value map */

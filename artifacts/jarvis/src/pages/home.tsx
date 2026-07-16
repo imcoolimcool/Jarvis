@@ -6,7 +6,25 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon } from 'lucide-react';
+
+type Theme = 'dark' | 'light';
+
+function useTheme() {
+  const [theme, setTheme] = useState<Theme>(() => {
+    try { return (localStorage.getItem('jarvis-theme') as Theme) || 'dark'; }
+    catch { return 'dark'; }
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove('dark', 'light');
+    root.classList.add(theme);
+    try { localStorage.setItem('jarvis-theme', theme); } catch { /* noop */ }
+  }, [theme]);
+
+  return { theme, toggle: () => setTheme(t => t === 'dark' ? 'light' : 'dark') };
+}
 
 export default function Home() {
   const [status, setStatus] = useState<AppState>('idle');
@@ -16,6 +34,9 @@ export default function Home() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [sidebarRefreshTick, setSidebarRefreshTick] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  const { theme, toggle: toggleTheme } = useTheme();
 
   const messagesRef = useRef<ChatMessage[]>([]);
   const activeConvIdRef = useRef<string | null>(null);
@@ -38,34 +59,25 @@ export default function Home() {
     setStatus('idle');
   }, [toast]);
 
-  const refreshSidebar = useCallback(() => {
-    setSidebarRefreshTick(t => t + 1);
-  }, []);
+  const refreshSidebar = useCallback(() => setSidebarRefreshTick(t => t + 1), []);
 
-  /** Load a conversation from the server and display its messages */
   const loadConversation = useCallback(async (id: string) => {
     try {
       const res = await fetch(`/api/jarvis/conversations/${id}`);
       if (!res.ok) return;
       const data = await res.json();
-      const msgs: ChatMessage[] = (data.messages ?? []).map((m: any) => ({
-        role: m.role,
-        content: m.content,
-      }));
-      setMessages(msgs);
+      setMessages((data.messages ?? []).map((m: any) => ({ role: m.role, content: m.content })));
       setActiveConversationId(id);
     } catch {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not load conversation' });
     }
   }, [toast]);
 
-  /** Start a fresh chat with no active conversation */
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setActiveConversationId(null);
   }, []);
 
-  /** Play TTS audio for a response */
   const playTTS = useCallback((jarvisText: string, onDone: () => void) => {
     synthesizeSpeech.mutate(
       { data: { text: jarvisText } },
@@ -84,12 +96,11 @@ export default function Home() {
             audioEl.onerror = () => handleError("Audio playback failed");
           } catch { handleError("Failed to decode audio"); }
         },
-        onError: () => onDone(), // TTS failed but we have the text — just go idle
+        onError: () => onDone(),
       }
     );
   }, [synthesizeSpeech, handleError]);
 
-  /** Core: send a user message to the LLM, persist to DB, play TTS */
   const processUserText = useCallback(async (userText: string) => {
     setMessages(prev => [...prev, { role: 'user', content: userText }]);
     setStatus('thinking');
@@ -98,10 +109,7 @@ export default function Home() {
       const res = await fetch('/api/jarvis/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userMessage: userText,
-          conversationId: activeConvIdRef.current,
-        }),
+        body: JSON.stringify({ userMessage: userText, conversationId: activeConvIdRef.current }),
       });
 
       if (!res.ok) { handleError("Intelligence module failed"); return; }
@@ -109,15 +117,11 @@ export default function Home() {
       const jarvisText: string = data.response;
       const convId: string = data.conversationId;
 
-      // Update conversation ID if it was just created
-      if (!activeConvIdRef.current) {
-        setActiveConversationId(convId);
-      }
+      if (!activeConvIdRef.current) setActiveConversationId(convId);
       refreshSidebar();
 
       setMessages(prev => [...prev, { role: 'assistant', content: jarvisText }]);
       setStatus('speaking');
-
       playTTS(jarvisText, () => {
         setStatus('idle');
         if (isChatMode) setTimeout(() => inputRef.current?.focus(), 50);
@@ -125,7 +129,6 @@ export default function Home() {
     } catch { handleError("Intelligence module failed"); }
   }, [handleError, refreshSidebar, playTTS, isChatMode]);
 
-  /** Voice mode: transcribe then process */
   const handleTranscribeAndProcess = async (blob: Blob, mimeType: string) => {
     try {
       setStatus('transcribing');
@@ -171,7 +174,6 @@ export default function Home() {
     if (isChatMode) setTimeout(() => inputRef.current?.focus(), 50);
   };
 
-  // Space bar shortcut (voice mode only)
   useEffect(() => {
     if (isChatMode) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -187,121 +189,160 @@ export default function Home() {
 
   const isBusy = status === 'thinking' || status === 'transcribing';
 
+  // Status label for orb panel
+  const statusHint = isChatMode
+    ? "Type in the chat panel"
+    : status === 'idle'        ? "Tap orb or press space"
+    : status === 'recording'   ? "Tap orb to finalize"
+    : status === 'speaking'    ? "Tap orb to interrupt"
+    : status === 'transcribing' ? "Analyzing audio…"
+    : "Processing query…";
+
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden selection:bg-primary/30">
-      {/* Header */}
-      <header className="p-4 flex items-center justify-between border-b border-border/50 bg-background/50 backdrop-blur-md relative z-10 shadow-[0_4px_30px_rgba(0,0,0,0.5)] flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-[0_0_10px_rgba(0,212,255,0.8)]" />
-          <h1 className="font-display font-bold tracking-[0.2em] text-lg glow-text">JARVIS ONLINE</h1>
+    <div className={`${theme} min-h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden`}>
+      {/* ── Header ───────────────────────────────── */}
+      <header className="px-4 py-3 flex items-center gap-3 border-b border-border/50 bg-background/80 backdrop-blur-md relative z-10 flex-shrink-0">
+        {/* Left: hamburger (mobile) + title */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <button
+            onClick={() => setMobileSidebarOpen(true)}
+            className="lg:hidden p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Open history"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-[0_0_8px_currentColor] flex-shrink-0" style={{ color: 'hsl(var(--primary))' }} />
+            <h1 className="font-display font-bold tracking-[0.15em] text-base sm:text-lg glow-text truncate">
+              JARVIS
+            </h1>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+
+        {/* Right: controls */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Chat/Voice toggle */}
           <button
             onClick={() => setIsChatMode(m => !m)}
-            title={isChatMode ? "Switch to voice mode" : "Switch to text chat"}
-            className={`flex items-center gap-2 px-3 py-1.5 border text-xs font-display tracking-widest transition-all ${
+            title={isChatMode ? "Switch to voice" : "Switch to chat"}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-display tracking-wider transition-all ${
               isChatMode
-                ? 'border-primary bg-primary/20 text-primary shadow-[0_0_10px_rgba(0,212,255,0.3)]'
-                : 'border-border/50 text-muted-foreground hover:border-primary/50 hover:text-primary'
+                ? 'border-primary bg-primary/15 text-primary'
+                : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
             }`}
           >
-            {isChatMode ? <><Mic className="w-3 h-3" /> VOICE</> : <><MessageSquare className="w-3 h-3" /> CHAT</>}
+            {isChatMode
+              ? <><Mic className="w-3 h-3" /><span className="hidden sm:inline">VOICE</span></>
+              : <><MessageSquare className="w-3 h-3" /><span className="hidden sm:inline">CHAT</span></>
+            }
           </button>
+
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="p-1.5 rounded-md border border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          {/* Settings */}
           <button
             onClick={() => setSettingsOpen(true)}
             title="Settings"
-            className="p-1.5 border border-border/50 text-muted-foreground hover:border-primary/50 hover:text-primary transition-all"
+            className="p-1.5 rounded-md border border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
           >
             <Settings className="w-4 h-4" />
           </button>
-          <div className="font-mono text-xs text-primary/60 tracking-widest hidden sm:block">
-            SYS_VER: 4.2.0 | UPLINK: SECURE
-          </div>
         </div>
       </header>
 
-      {/* Body: sidebar + main */}
+      {/* ── Body ─────────────────────────────────── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Sidebar — always visible in chat mode, hidden on small screens in voice mode */}
-        <div className={isChatMode ? 'flex' : 'hidden lg:flex'}>
-          <ChatSidebar
-            activeId={activeConversationId}
-            onSelect={loadConversation}
-            onNew={handleNewChat}
-            refreshTick={sidebarRefreshTick}
-          />
-        </div>
+        {/* Sidebar */}
+        <ChatSidebar
+          activeId={activeConversationId}
+          onSelect={loadConversation}
+          onNew={handleNewChat}
+          refreshTick={sidebarRefreshTick}
+          mobileOpen={mobileSidebarOpen}
+          onMobileClose={() => setMobileSidebarOpen(false)}
+        />
 
-        {/* Main area */}
+        {/* Main */}
         <main className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-          {/* Orb panel — hidden in chat mode on small screens */}
-          <div className={`flex-shrink-0 lg:w-80 xl:w-96 flex flex-col items-center justify-center p-8 border-b lg:border-b-0 lg:border-r border-border/20 relative ${isChatMode ? 'hidden lg:flex' : 'flex'}`}>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
+
+          {/* Orb panel — hidden on mobile in chat mode */}
+          <div className={`flex-shrink-0 lg:w-72 xl:w-80 flex-col items-center justify-center p-8 border-b lg:border-b-0 lg:border-r border-border/20 relative ${
+            isChatMode ? 'hidden lg:flex' : 'flex'
+          }`}>
+            <div className="dark:block hidden absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
+
             <Orb status={status} onClick={isChatMode ? undefined : handleToggleRecording} />
-            <div className="mt-12 text-center">
-              <h2 className="font-display text-2xl font-bold tracking-widest text-primary glow-text">
+
+            <div className="mt-8 text-center space-y-2">
+              <h2 className="font-display text-xl font-bold tracking-widest text-primary glow-text">
                 {status.toUpperCase()}
               </h2>
-              <p className="mt-3 font-mono text-[10px] sm:text-xs text-muted-foreground tracking-[0.2em] opacity-80 uppercase max-w-[200px]">
-                {isChatMode
-                  ? "Type in the chat panel"
-                  : status === 'idle'       ? "Tap orb or press space"
-                  : status === 'recording'  ? "Tap orb to finalize"
-                  : status === 'speaking'   ? "Tap orb to interrupt"
-                  : status === 'transcribing' ? "Analyzing audio…"
-                  : "Processing query…"}
+              <p className="font-mono text-xs text-muted-foreground tracking-wide max-w-[180px]">
+                {statusHint}
               </p>
+
               {status === 'speaking' && (
                 <button
                   onClick={handleStopSpeaking}
-                  className="mt-6 inline-flex items-center gap-2 px-5 py-2 border border-primary/50 text-primary hover:bg-primary/10 transition-colors font-display tracking-widest text-xs relative overflow-hidden group"
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md border border-primary/50 text-primary hover:bg-primary/10 transition-colors font-display tracking-widest text-xs"
                 >
-                  <div className="absolute inset-0 bg-primary/20 translate-y-[100%] group-hover:translate-y-0 transition-transform" />
-                  <Square className="w-3 h-3 fill-current relative z-10" />
-                  <span className="relative z-10">TERMINATE</span>
+                  <Square className="w-3 h-3 fill-current" />
+                  STOP
                 </button>
               )}
             </div>
           </div>
 
-          {/* Conversation + chat input */}
-          <div className="flex-1 bg-card/10 flex flex-col relative border-l border-white/5 min-h-0">
-            <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(0,212,255,0.02)_1px,transparent_1px)] bg-[length:100%_4px]" />
+          {/* Chat area */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-card/5">
             <ConversationFeed messages={messages} isThinking={status === 'thinking'} />
 
-            {/* Chat text input */}
-            {isChatMode && (
-              <div className="relative z-10 border-t border-border/30 bg-background/80 backdrop-blur-md p-4 flex-shrink-0">
-                <div className="flex gap-2">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleChatSubmit()}
-                    placeholder={isBusy ? "Processing…" : "Type a message and press Enter"}
-                    disabled={isBusy}
-                    className="flex-1 bg-card/50 border border-border/50 text-foreground placeholder:text-muted-foreground font-mono text-sm px-4 py-2.5 outline-none focus:border-primary/60 focus:shadow-[0_0_10px_rgba(0,212,255,0.15)] transition-all disabled:opacity-40"
-                  />
-                  <button
-                    onClick={handleChatSubmit}
-                    disabled={isBusy || !chatInput.trim()}
-                    className="px-4 py-2.5 border border-primary/50 text-primary hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-display tracking-widest text-xs flex items-center gap-2"
-                  >
-                    <Send className="w-3 h-3" />
-                    SEND
-                  </button>
-                </div>
-                <p className="mt-1.5 text-[10px] font-mono text-muted-foreground/40 tracking-widest">
-                  {status === 'speaking' ? "JARVIS IS RESPONDING — AUDIO PLAYING" : "ENTER ↵ TO TRANSMIT"}
-                </p>
+            {/* Input — always visible on mobile (voice mode shows it too so you can type), 
+                only shown in chat mode on desktop */}
+            <div className={`border-t border-border/30 bg-background/90 backdrop-blur-md px-4 py-3 flex-shrink-0 ${
+              isChatMode ? 'flex' : 'hidden lg:hidden'
+            } flex-col gap-2`}>
+              <div className="flex gap-2">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleChatSubmit()}
+                  placeholder={isBusy ? "Processing…" : "Message Jarvis…"}
+                  disabled={isBusy}
+                  className="flex-1 bg-card border border-border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-40"
+                />
+                <button
+                  onClick={handleChatSubmit}
+                  disabled={isBusy || !chatInput.trim()}
+                  className="px-4 py-2.5 rounded-lg border border-primary/50 text-primary hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 font-display tracking-wider text-xs"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">SEND</span>
+                </button>
               </div>
-            )}
+              {status === 'speaking' && (
+                <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest text-center">
+                  JARVIS IS SPEAKING —{' '}
+                  <button onClick={handleStopSpeaking} className="text-primary hover:underline">STOP</button>
+                </p>
+              )}
+            </div>
           </div>
         </main>
       </div>
 
-      <div className="pointer-events-none fixed inset-0 z-50 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(5,5,8,0.9)_100%)] mix-blend-multiply" />
+      {/* Vignette (dark only) */}
+      <div className="dark:block hidden pointer-events-none fixed inset-0 z-30 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(5,5,8,0.7)_100%)]" />
 
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>

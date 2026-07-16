@@ -50,45 +50,32 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* ── Dark theme (default) ────────────────────────── */
 :root, .dark {
   --button-outline: rgba(0, 212, 255, 0.2);
   --badge-outline: rgba(0, 212, 255, 0.1);
-
   --opaque-button-border-intensity: 0;
-
   --elevate-1: rgba(0, 212, 255, 0.05);
   --elevate-2: rgba(0, 212, 255, 0.1);
 
-  /* Deep Space Black */
   --background: 240 20% 3%;
-  /* Cyan tinted text */
   --foreground: 190 80% 85%;
-
-  /* Darker UI elements */
   --card: 240 20% 5%;
   --card-foreground: 190 80% 85%;
   --card-border: 190 100% 50% / 0.1;
-
   --popover: 240 20% 5%;
   --popover-foreground: 190 80% 85%;
   --popover-border: 190 100% 50% / 0.1;
-
-  /* Electric Cyan */
   --primary: 190 100% 50%;
   --primary-foreground: 240 20% 3%;
-  
   --secondary: 240 20% 10%;
   --secondary-foreground: 190 100% 70%;
-  
   --muted: 240 20% 8%;
   --muted-foreground: 190 50% 50%;
-
   --accent: 190 100% 50% / 0.15;
   --accent-foreground: 190 100% 50%;
-
   --destructive: 0 100% 50%;
   --destructive-foreground: 0 0% 100%;
-
   --border: 190 100% 50% / 0.15;
   --input: 190 100% 50% / 0.15;
   --ring: 190 100% 50%;
@@ -96,40 +83,62 @@
   --app-font-sans: 'Inter', sans-serif;
   --app-font-display: 'Orbitron', sans-serif;
   --app-font-mono: 'Space Mono', monospace;
-  
   --radius: 0.5rem;
 }
 
+/* ── Light theme ─────────────────────────────────── */
+.light {
+  --button-outline: rgba(0, 120, 150, 0.2);
+  --badge-outline: rgba(0, 120, 150, 0.1);
+  --opaque-button-border-intensity: 0;
+  --elevate-1: rgba(0, 120, 150, 0.04);
+  --elevate-2: rgba(0, 120, 150, 0.08);
+
+  --background: 210 20% 96%;
+  --foreground: 220 25% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 25% 15%;
+  --card-border: 190 60% 40% / 0.15;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 25% 15%;
+  --popover-border: 190 60% 40% / 0.15;
+  --primary: 190 80% 32%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 15% 90%;
+  --secondary-foreground: 220 25% 30%;
+  --muted: 220 15% 91%;
+  --muted-foreground: 220 12% 48%;
+  --accent: 190 60% 32% / 0.1;
+  --accent-foreground: 190 80% 28%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 15% 82%;
+  --input: 220 15% 82%;
+  --ring: 190 80% 32%;
+}
+
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    /* Subtle scanline overlay on body */
-    background-image: 
+  }
+
+  /* Scanline grid only in dark mode */
+  .dark body {
+    background-image:
       linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
       linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
     background-size: 2px 2px;
   }
 }
 
-/* Scrollbar styling for that sci-fi feel */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: hsl(var(--background));
-}
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.3);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.6);
-}
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--primary) / 0.25); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.5); }
 
-.glow-text {
-  text-shadow: 0 0 10px hsl(var(--primary) / 0.5);
-}
+/* Glow only in dark mode */
+.dark .glow-text { text-shadow: 0 0 10px hsl(var(--primary) / 0.5); }
+.light .glow-text { text-shadow: none; }

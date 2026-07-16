@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, X } from 'lucide-react';
 
 export interface ConversationSummary {
   id: string;
@@ -13,12 +13,15 @@ interface ChatSidebarProps {
   activeId: string | null;
   onSelect: (id: string) => void;
   onNew: () => void;
-  refreshTick: number; // increment to force a refresh
+  refreshTick: number;
+  /** Mobile: whether the sidebar drawer is open */
+  mobileOpen?: boolean;
+  /** Mobile: callback to close the drawer */
+  onMobileClose?: () => void;
 }
 
-export function ChatSidebar({ activeId, onSelect, onNew, refreshTick }: ChatSidebarProps) {
+export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen, onMobileClose }: ChatSidebarProps) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [collapsed, setCollapsed] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -30,7 +33,7 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick }: ChatSide
 
   useEffect(() => { load(); }, [load, refreshTick]);
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const handleDelete = async (e: React.MouseEvent | React.KeyboardEvent, id: string) => {
     e.stopPropagation();
     setDeleting(id);
     try {
@@ -42,85 +45,118 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick }: ChatSide
     }
   };
 
-  return (
-    <div className={`flex flex-col border-r border-border/30 bg-background/60 backdrop-blur-md transition-all duration-300 relative flex-shrink-0 ${collapsed ? 'w-10' : 'w-60'}`}>
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(c => !c)}
-        className="absolute -right-3 top-6 z-20 w-6 h-6 rounded-full border border-border/50 bg-background flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
-      >
-        {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
-      </button>
+  const handleSelect = (id: string) => {
+    onSelect(id);
+    onMobileClose?.();
+  };
 
-      <AnimatePresence>
-        {!collapsed && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col flex-1 min-h-0 overflow-hidden"
+  const handleNew = () => {
+    onNew();
+    onMobileClose?.();
+  };
+
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="p-3 border-b border-border/30 flex-shrink-0 flex items-center gap-2">
+        <button
+          onClick={handleNew}
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-primary/40 text-primary hover:bg-primary/10 transition-colors font-display tracking-widest text-[10px] group rounded-md"
+        >
+          <Plus className="w-3 h-3 group-hover:rotate-90 transition-transform" />
+          NEW CHAT
+        </button>
+        {/* Close button visible only on mobile */}
+        {onMobileClose && (
+          <button
+            onClick={onMobileClose}
+            className="lg:hidden p-2 text-muted-foreground hover:text-foreground transition-colors"
           >
-            {/* Header */}
-            <div className="p-3 border-b border-border/30 flex-shrink-0">
-              <button
-                onClick={onNew}
-                className="w-full flex items-center gap-2 px-3 py-2 border border-primary/40 text-primary hover:bg-primary/10 transition-colors font-display tracking-widest text-[10px] group"
-              >
-                <Plus className="w-3 h-3 group-hover:rotate-90 transition-transform" />
-                NEW CHAT
-              </button>
-            </div>
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
 
-            {/* List */}
-            <div className="flex-1 overflow-y-auto py-2 space-y-0.5 px-2">
-              {conversations.length === 0 && (
-                <p className="text-center text-[10px] text-muted-foreground/40 font-mono tracking-widest mt-6 px-2">
-                  NO SESSIONS
-                </p>
-              )}
-              {conversations.map(conv => (
-                <motion.div
-                  key={conv.id}
-                  layout
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  onClick={() => onSelect(conv.id)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && onSelect(conv.id)}
-                  className={`w-full text-left px-3 py-2.5 flex items-start gap-2 group transition-all text-[11px] font-mono relative cursor-pointer ${
-                    activeId === conv.id
-                      ? 'bg-primary/15 border-l-2 border-primary text-primary'
-                      : 'text-muted-foreground hover:bg-card/50 hover:text-foreground border-l-2 border-transparent'
-                  }`}
-                >
-                  <MessageSquare className="w-3 h-3 mt-0.5 flex-shrink-0 opacity-60" />
-                  <span className="flex-1 leading-tight line-clamp-2 break-words pr-4">
-                    {conv.title}
-                  </span>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => handleDelete(e, conv.id)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleDelete(e as any, conv.id)}
-                    aria-disabled={deleting === conv.id}
-                    className="absolute right-2 top-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-400 aria-disabled:opacity-30 cursor-pointer"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </span>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Footer label */}
-            <div className="p-3 border-t border-border/20 flex-shrink-0">
-              <p className="text-[9px] font-mono text-muted-foreground/30 tracking-widest text-center">
-                MEMORY ACTIVE
-              </p>
-            </div>
+      {/* List */}
+      <div className="flex-1 overflow-y-auto py-2 space-y-0.5 px-2">
+        {conversations.length === 0 && (
+          <p className="text-center text-[10px] text-muted-foreground/40 font-mono tracking-widest mt-6 px-2">
+            NO SESSIONS
+          </p>
+        )}
+        {conversations.map(conv => (
+          <motion.div
+            key={conv.id}
+            layout
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            onClick={() => handleSelect(conv.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && handleSelect(conv.id)}
+            className={`w-full text-left px-3 py-2.5 flex items-start gap-2 group transition-all text-[11px] font-mono relative cursor-pointer rounded-md ${
+              activeId === conv.id
+                ? 'bg-primary/15 border-l-2 border-primary text-primary'
+                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-2 border-transparent'
+            }`}
+          >
+            <MessageSquare className="w-3 h-3 mt-0.5 flex-shrink-0 opacity-60" />
+            <span className="flex-1 leading-tight line-clamp-2 break-words pr-5">
+              {conv.title}
+            </span>
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => handleDelete(e, conv.id)}
+              onKeyDown={(e) => e.key === 'Enter' && handleDelete(e, conv.id)}
+              aria-disabled={deleting === conv.id}
+              className="absolute right-2 top-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/60 hover:text-red-400 aria-disabled:opacity-30 cursor-pointer"
+            >
+              <Trash2 className="w-3 h-3" />
+            </span>
           </motion.div>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="p-3 border-t border-border/20 flex-shrink-0">
+        <p className="text-[9px] font-mono text-muted-foreground/30 tracking-widest text-center">
+          MEMORY ACTIVE
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar — always visible alongside content */}
+      <div className="hidden lg:flex flex-col w-60 border-r border-border/30 bg-background/60 backdrop-blur-md flex-shrink-0">
+        <SidebarContent />
+      </div>
+
+      {/* Mobile drawer — overlay */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onMobileClose}
+              className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="lg:hidden fixed left-0 top-0 h-full w-72 z-50 bg-background border-r border-border/50 shadow-2xl"
+            >
+              <SidebarContent />
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
