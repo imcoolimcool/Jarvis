@@ -4,8 +4,9 @@ import { useSynthesizeSpeech } from '@workspace/api-client-react';
 import { Orb, AppState } from '@/components/orb';
 import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
+import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings } from 'lucide-react';
 
 export default function Home() {
   const [status, setStatus] = useState<AppState>('idle');
@@ -14,6 +15,7 @@ export default function Home() {
   const [chatInput, setChatInput] = useState('');
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [sidebarRefreshTick, setSidebarRefreshTick] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const messagesRef = useRef<ChatMessage[]>([]);
   const activeConvIdRef = useRef<string | null>(null);
@@ -205,6 +207,13 @@ export default function Home() {
           >
             {isChatMode ? <><Mic className="w-3 h-3" /> VOICE</> : <><MessageSquare className="w-3 h-3" /> CHAT</>}
           </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            title="Settings"
+            className="p-1.5 border border-border/50 text-muted-foreground hover:border-primary/50 hover:text-primary transition-all"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
           <div className="font-mono text-xs text-primary/60 tracking-widest hidden sm:block">
             SYS_VER: 4.2.0 | UPLINK: SECURE
           </div>
@@ -293,6 +302,8 @@ export default function Home() {
       </div>
 
       <div className="pointer-events-none fixed inset-0 z-50 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(5,5,8,0.9)_100%)] mix-blend-multiply" />
+
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
