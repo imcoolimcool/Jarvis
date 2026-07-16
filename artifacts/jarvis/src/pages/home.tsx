@@ -258,7 +258,7 @@ export default function Home() {
           {/* Conversation + chat input */}
           <div className="flex-1 bg-card/10 flex flex-col relative border-l border-white/5 min-h-0">
             <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(0,212,255,0.02)_1px,transparent_1px)] bg-[length:100%_4px]" />
-            <ConversationFeed messages={messages} />
+            <ConversationFeed messages={messages} isThinking={status === 'thinking'} />
 
             {/* Chat text input */}
             {isChatMode && (

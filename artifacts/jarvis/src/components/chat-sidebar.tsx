@@ -79,13 +79,16 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick }: ChatSide
                 </p>
               )}
               {conversations.map(conv => (
-                <motion.button
+                <motion.div
                   key={conv.id}
                   layout
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   onClick={() => onSelect(conv.id)}
-                  className={`w-full text-left px-3 py-2.5 flex items-start gap-2 group transition-all text-[11px] font-mono relative ${
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && onSelect(conv.id)}
+                  className={`w-full text-left px-3 py-2.5 flex items-start gap-2 group transition-all text-[11px] font-mono relative cursor-pointer ${
                     activeId === conv.id
                       ? 'bg-primary/15 border-l-2 border-primary text-primary'
                       : 'text-muted-foreground hover:bg-card/50 hover:text-foreground border-l-2 border-transparent'
@@ -95,14 +98,17 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick }: ChatSide
                   <span className="flex-1 leading-tight line-clamp-2 break-words pr-4">
                     {conv.title}
                   </span>
-                  <button
+                  <span
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => handleDelete(e, conv.id)}
-                    disabled={deleting === conv.id}
-                    className="absolute right-2 top-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-400 disabled:opacity-30"
+                    onKeyDown={(e) => e.key === 'Enter' && handleDelete(e as any, conv.id)}
+                    aria-disabled={deleting === conv.id}
+                    className="absolute right-2 top-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-400 aria-disabled:opacity-30 cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" />
-                  </button>
-                </motion.button>
+                  </span>
+                </motion.div>
               ))}
             </div>
 
