@@ -7,7 +7,7 @@ export const jarvisConfig = {
    * LLM model used for conversation (via NVIDIA NIM).
    * Options: "gpt-oss-20b", "meta/llama-3.3-70b-instruct", "mistralai/mistral-7b-instruct-v0.3"
    */
-  llmModel: "gpt-oss-20b",
+  llmModel: "openai/gpt-oss-20b",
 
   /**
    * NVIDIA NVCF function ID for the hosted Whisper-large-v3 Riva model.
