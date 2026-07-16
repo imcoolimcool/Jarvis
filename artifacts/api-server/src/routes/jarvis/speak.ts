@@ -1,15 +1,14 @@
 import { Router } from "express";
-import { ElevenLabsClient } from "elevenlabs";
-import { jarvisConfig } from "../../config/jarvis";
+import OpenAI from "openai";
 
 const router = Router();
 
-function getTTSClient(): ElevenLabsClient {
-  const apiKey = process.env["ELEVENLABS_API_KEY"];
+function getTTSClient(): OpenAI {
+  const apiKey = process.env["DEAPI_API_KEY"];
   if (!apiKey) {
-    throw new Error("ELEVENLABS_API_KEY environment variable is not set");
+    throw new Error("DEAPI_API_KEY environment variable is not set");
   }
-  return new ElevenLabsClient({ apiKey });
+  return new OpenAI({ apiKey, baseURL: "https://oai.deapi.ai/v1" });
 }
 
 router.post("/speak", async (req, res) => {
@@ -23,26 +22,19 @@ router.post("/speak", async (req, res) => {
   try {
     const client = getTTSClient();
 
-    const audioStream = await client.textToSpeech.convert(
-      jarvisConfig.ttsVoiceId,
-      {
-        text,
-        model_id: jarvisConfig.ttsModel,
-        output_format: "mp3_44100_128",
-      },
-    );
+    const response = await client.audio.speech.create({
+      model: "tts-1",
+      voice: "onyx",  // deep male voice — closest to Jarvis
+      input: text,
+      response_format: "mp3",
+    });
 
-    // Collect stream chunks into a single buffer
-    const chunks: Buffer[] = [];
-    for await (const chunk of audioStream) {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    }
-    const audioBuffer = Buffer.concat(chunks);
-    const audioBase64 = audioBuffer.toString("base64");
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const audioBase64 = buffer.toString("base64");
 
     res.json({ audio: audioBase64, contentType: "audio/mpeg" });
   } catch (err) {
-    req.log.error({ err }, "ElevenLabs TTS failed");
+    req.log.error({ err }, "deAPI TTS failed");
     res.status(500).json({ error: "Speech synthesis failed. Please try again." });
   }
 });
