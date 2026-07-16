@@ -24,7 +24,7 @@ router.post("/speak", async (req, res) => {
 
     const response = await client.audio.speech.create({
       model: "canopylabs/orpheus-v1-english",
-      voice: "dan",   // deep male voice
+      voice: "daniel",   // deep male voice
       input: text,
       response_format: "mp3",
     });
