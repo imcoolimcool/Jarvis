@@ -10,12 +10,12 @@ import { randomUUID } from "crypto";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
+const NVIDIA_ASR_BASE_URL = "https://ai.api.nvidia.com/v1";
 
 function getWhisperClient(): OpenAI {
   const apiKey = process.env["OPENAI_WHISPER_API_KEY"];
   if (!apiKey) throw new Error("OPENAI_WHISPER_API_KEY is not set");
-  return new OpenAI({ apiKey, baseURL: NVIDIA_BASE_URL });
+  return new OpenAI({ apiKey, baseURL: NVIDIA_ASR_BASE_URL });
 }
 
 /** Convert any browser audio (webm/opus, wav, ogg) to 16 kHz mono FLAC via ffmpeg. */

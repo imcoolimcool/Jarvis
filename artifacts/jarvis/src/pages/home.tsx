@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useAudioRecorder } from '@/hooks/use-audio-recorder';
+import { useSpeechRecognition, isSpeechRecognitionSupported } from '@/hooks/use-speech-recognition';
 import { useSynthesizeSpeech } from '@workspace/api-client-react';
 import { Orb, AppState } from '@/components/orb';
 import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
@@ -49,7 +49,17 @@ export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { startRecording, stopRecording } = useAudioRecorder();
+  const { start: startListening, stop: stopListening } = useSpeechRecognition({
+    onTranscript: (text) => {
+      setStatus('thinking');
+      processUserText(text);
+    },
+    onError: (msg) => handleError(msg),
+    onEnd: () => {
+      // Only reset to idle if we're still in recording state (no transcript came through)
+      setStatus(prev => prev === 'recording' ? 'idle' : prev);
+    },
+  });
   const { toast } = useToast();
   const synthesizeSpeech = useSynthesizeSpeech();
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -194,33 +204,22 @@ export default function Home() {
     } catch { handleError("Intelligence module failed"); }
   }, [handleError, refreshSidebar, playTTS, isChatMode]);
 
-  const handleTranscribeAndProcess = async (blob: Blob, mimeType: string) => {
-    try {
-      setStatus('transcribing');
-      const fileExt = mimeType.includes('mp4') ? 'mp4' : 'webm';
-      const file = new File([blob], `recording.${fileExt}`, { type: mimeType });
-      const formData = new FormData();
-      formData.append('audio', file);
-      const res = await fetch('/api/jarvis/transcribe', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error("Transcription failed");
-      const { transcript } = await res.json();
-      if (!transcript?.trim()) { setStatus('idle'); return; }
-      await processUserText(transcript);
-    } catch { handleError("Processing failed"); }
-  };
-
-  const handleToggleRecording = useCallback(async () => {
+  const handleToggleRecording = useCallback(() => {
     if (status === 'speaking') {
       activeAudioRef.current?.pause(); activeAudioRef.current = null; setStatus('idle'); return;
     }
     if (status === 'idle') {
-      try { await startRecording(); setStatus('recording'); }
-      catch { handleError("Microphone access denied"); }
+      if (!isSpeechRecognitionSupported()) {
+        handleError("Voice mode requires Chrome or Edge browser.");
+        return;
+      }
+      setStatus('recording');
+      startListening();
     } else if (status === 'recording') {
-      try { const { blob, mimeType } = await stopRecording(); handleTranscribeAndProcess(blob, mimeType); }
-      catch { handleError("Failed to stop recording"); }
+      stopListening();
+      // onEnd callback resets to idle if no transcript came through
     }
-  }, [status, startRecording, stopRecording, handleError]);
+  }, [status, startListening, stopListening, handleError]);
 
   const handleChatSubmit = () => {
     const text = chatInput.trim();

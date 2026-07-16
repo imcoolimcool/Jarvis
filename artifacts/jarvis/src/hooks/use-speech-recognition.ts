@@ -1,0 +1,74 @@
+import { useRef, useCallback } from 'react';
+
+// Extend window for webkit prefix
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
+
+export function isSpeechRecognitionSupported(): boolean {
+  return !!(
+    typeof window !== 'undefined' &&
+    (window.SpeechRecognition || window.webkitSpeechRecognition)
+  );
+}
+
+interface UseSpeechRecognitionOptions {
+  onTranscript: (text: string) => void;
+  onError: (msg: string) => void;
+  onEnd: () => void;
+}
+
+export function useSpeechRecognition({
+  onTranscript,
+  onError,
+  onEnd,
+}: UseSpeechRecognitionOptions) {
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  const start = useCallback(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      onError('Speech recognition is not supported in this browser. Try Chrome or Edge.');
+      return;
+    }
+
+    const recognition = new SR();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0]?.[0]?.transcript?.trim() ?? '';
+      if (transcript) onTranscript(transcript);
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      if (event.error === 'no-speech') {
+        onEnd(); // silence — just reset, not an error
+      } else if (event.error === 'not-allowed') {
+        onError('Microphone access denied. Please allow microphone in your browser settings.');
+      } else {
+        onError(`Microphone error: ${event.error}`);
+      }
+    };
+
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      onEnd();
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }, [onTranscript, onError, onEnd]);
+
+  const stop = useCallback(() => {
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+  }, []);
+
+  return { start, stop };
+}
