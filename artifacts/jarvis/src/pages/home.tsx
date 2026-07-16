@@ -163,13 +163,42 @@ export default function Home() {
           } catch { handleError("Failed to decode audio"); }
         },
         onError: () => {
-          // ElevenLabs unavailable — fall back to browser TTS
-          const utterance = new SpeechSynthesisUtterance(jarvisText);
-          utterance.rate = 1;
-          utterance.pitch = 0.9;
-          utterance.onend = onDone;
-          utterance.onerror = onDone;
-          window.speechSynthesis.speak(utterance);
+          // Fall back to browser TTS with the best available deep male voice
+          const speak = (voices: SpeechSynthesisVoice[]) => {
+            const utterance = new SpeechSynthesisUtterance(jarvisText);
+            // Preference order: deep English male voices
+            const preferred = [
+              'Google UK English Male',
+              'Microsoft David - English (United States)',
+              'Microsoft Mark - English (United States)',
+              'Microsoft George - English (United Kingdom)',
+              'Daniel (Enhanced)',
+              'Daniel',
+              'Fred',
+            ];
+            const pick =
+              preferred.map(n => voices.find(v => v.name === n)).find(Boolean) ??
+              voices.find(v => /en[-_]/i.test(v.lang) && /male|david|mark|george|daniel|fred|james|arthur/i.test(v.name)) ??
+              voices.find(v => /en[-_]/i.test(v.lang)) ??
+              null;
+            if (pick) utterance.voice = pick;
+            utterance.rate = 0.95;
+            utterance.pitch = 0.75;  // lower = deeper
+            utterance.volume = 1;
+            utterance.onend = onDone;
+            utterance.onerror = onDone;
+            window.speechSynthesis.speak(utterance);
+          };
+
+          const voices = window.speechSynthesis.getVoices();
+          if (voices.length > 0) {
+            speak(voices);
+          } else {
+            // Voices load async on first call
+            window.speechSynthesis.onvoiceschanged = () => {
+              speak(window.speechSynthesis.getVoices());
+            };
+          }
         },
       }
     );
