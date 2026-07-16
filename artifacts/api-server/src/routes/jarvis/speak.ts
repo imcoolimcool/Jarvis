@@ -26,13 +26,13 @@ router.post("/speak", async (req, res) => {
       model: "canopylabs/orpheus-v1-english",
       voice: "daniel",   // deep male voice
       input: text,
-      response_format: "mp3",
+      response_format: "wav",
     });
 
     const buffer = Buffer.from(await response.arrayBuffer());
     const audioBase64 = buffer.toString("base64");
 
-    res.json({ audio: audioBase64, contentType: "audio/mpeg" });
+    res.json({ audio: audioBase64, contentType: "audio/wav" });
   } catch (err) {
     req.log.error({ err }, "Groq TTS failed");
     res.status(500).json({ error: "Speech synthesis failed. Please try again." });
