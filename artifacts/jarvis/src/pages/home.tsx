@@ -162,7 +162,15 @@ export default function Home() {
             el.onerror = () => handleError("Audio playback failed");
           } catch { handleError("Failed to decode audio"); }
         },
-        onError: () => onDone(),
+        onError: () => {
+          // ElevenLabs unavailable — fall back to browser TTS
+          const utterance = new SpeechSynthesisUtterance(jarvisText);
+          utterance.rate = 1;
+          utterance.pitch = 0.9;
+          utterance.onend = onDone;
+          utterance.onerror = onDone;
+          window.speechSynthesis.speak(utterance);
+        },
       }
     );
   }, [synthesizeSpeech, handleError]);
