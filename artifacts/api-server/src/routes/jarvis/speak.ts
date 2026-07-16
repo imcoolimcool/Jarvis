@@ -4,11 +4,11 @@ import OpenAI from "openai";
 const router = Router();
 
 function getTTSClient(): OpenAI {
-  const apiKey = process.env["DEAPI_API_KEY"];
+  const apiKey = process.env["GROQ_API_KEY"];
   if (!apiKey) {
-    throw new Error("DEAPI_API_KEY environment variable is not set");
+    throw new Error("GROQ_API_KEY environment variable is not set");
   }
-  return new OpenAI({ apiKey, baseURL: "https://oai.deapi.ai/v1" });
+  return new OpenAI({ apiKey, baseURL: "https://api.groq.com/openai/v1" });
 }
 
 router.post("/speak", async (req, res) => {
@@ -23,8 +23,8 @@ router.post("/speak", async (req, res) => {
     const client = getTTSClient();
 
     const response = await client.audio.speech.create({
-      model: "tts-1",
-      voice: "onyx",  // deep male voice — closest to Jarvis
+      model: "playai-tts",
+      voice: "Amos-PlayAI",   // deep male voice
       input: text,
       response_format: "mp3",
     });
@@ -34,7 +34,7 @@ router.post("/speak", async (req, res) => {
 
     res.json({ audio: audioBase64, contentType: "audio/mpeg" });
   } catch (err) {
-    req.log.error({ err }, "deAPI TTS failed");
+    req.log.error({ err }, "Groq TTS failed");
     res.status(500).json({ error: "Speech synthesis failed. Please try again." });
   }
 });
