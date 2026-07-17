@@ -50,9 +50,31 @@ Edit `artifacts/api-server/src/config/jarvis.ts` to change:
 
 ## Required secrets
 
-- `OPENAI_WHISPER_API_KEY` — OpenAI key with Whisper access
-- `OPENAI_LLM_API_KEY` — OpenAI key with GPT-4o access
-- `ELEVENLABS_API_KEY` — ElevenLabs API key
+- `OPENAI_WHISPER_API_KEY` — NVIDIA build.nvidia.com API key for Whisper STT
+- `OPENAI_LLM_API_KEY` — NVIDIA build.nvidia.com API key for the LLM
+- `ELEVENLABS_API_KEY` — ElevenLabs API key for TTS
+
+These are set as Replit Secrets (never committed). Add them via the Secrets panel before starting the server.
+
+## First-time setup
+
+```bash
+# 1. Install all workspace dependencies
+pnpm install
+
+# 2. Apply the database schema (idempotent — safe to re-run)
+pnpm --filter db push
+```
+
+The post-merge script (`scripts/post-merge.sh`) runs both steps automatically after any task merge. For local/fresh setup, run them manually once before starting the workflows.
+
+## NVIDIA API configuration
+
+This project uses NVIDIA's hosted NIM endpoints (OpenAI-compatible):
+- **STT base URL**: `https://ai.api.nvidia.com/v1` — model `openai/whisper-large-v3`
+- **LLM base URL**: `https://integrate.api.nvidia.com/v1` — model configurable in `artifacts/api-server/src/config/jarvis.ts`
+
+Both base URLs are hardcoded in the respective route handlers (`transcribe.ts`, `chat.ts`). The active LLM model is `openai/gpt-oss-20b`.
 
 ## User preferences
 
