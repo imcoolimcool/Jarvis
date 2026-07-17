@@ -339,43 +339,43 @@ export default function Home() {
 
           {/* ── VOICE MODE ── */}
           {!isChatMode && (
-            <div className="flex-1 flex flex-col items-center justify-center relative p-8">
+            <div className="flex-1 flex flex-col min-h-0 relative">
               <div className="dark:block hidden absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
 
-              <Orb status={status} onClick={handleToggleRecording} />
-
-              <div className="mt-8 text-center space-y-2">
-                <h2 className="font-display text-xl font-bold tracking-widest text-primary glow-text">
-                  {status.toUpperCase()}
-                </h2>
-                <p className="font-mono text-xs text-muted-foreground tracking-wide">
-                  {statusHint}
-                </p>
-                {status === 'speaking' && (
-                  <button onClick={handleStopSpeaking}
-                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md border border-primary/50 text-primary hover:bg-primary/10 transition-colors font-display tracking-widest text-xs">
-                    <Square className="w-3 h-3 fill-current" /> STOP
-                  </button>
-                )}
-              </div>
-
-              {/* Subtitle strip */}
-              {subtitle && (subtitle.user || subtitle.jarvis) && (
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 space-y-2">
-                  {subtitle.user && (
-                    <p className="text-center font-mono text-sm text-muted-foreground/70 leading-snug">
-                      <span className="text-[10px] tracking-widest text-muted-foreground/40 block mb-0.5">YOU</span>
-                      {subtitle.user}
-                    </p>
-                  )}
-                  {subtitle.jarvis && (
-                    <p className="text-center font-mono text-sm text-primary/80 leading-snug">
-                      <span className="text-[10px] tracking-widest text-primary/40 block mb-0.5">JARVIS</span>
-                      {subtitle.jarvis}
-                    </p>
+              {/* Orb + status — centred in the available space above subtitles */}
+              <div className="flex-1 flex flex-col items-center justify-center p-8">
+                <Orb status={status} onClick={handleToggleRecording} />
+                <div className="mt-8 text-center space-y-2">
+                  <h2 className="font-display text-xl font-bold tracking-widest text-primary glow-text">
+                    {status.toUpperCase()}
+                  </h2>
+                  <p className="font-mono text-xs text-muted-foreground tracking-wide">
+                    {statusHint}
+                  </p>
+                  {status === 'speaking' && (
+                    <button onClick={handleStopSpeaking}
+                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md border border-primary/50 text-primary hover:bg-primary/10 transition-colors font-display tracking-widest text-xs">
+                      <Square className="w-3 h-3 fill-current" /> STOP
+                    </button>
                   )}
                 </div>
-              )}
+              </div>
+
+              {/* Subtitle strip — pinned to bottom, never overlaps orb */}
+              <div className="flex-shrink-0 px-6 pb-8 pt-4 space-y-2 max-w-2xl w-full mx-auto min-h-[5rem]">
+                {subtitle?.user && (
+                  <p className="text-center font-mono text-sm text-muted-foreground/70 leading-snug">
+                    <span className="text-[10px] tracking-widest text-muted-foreground/40 block mb-0.5">YOU</span>
+                    {subtitle.user}
+                  </p>
+                )}
+                {subtitle?.jarvis && (
+                  <p className="text-center font-mono text-sm text-primary/80 leading-snug">
+                    <span className="text-[10px] tracking-widest text-primary/40 block mb-0.5">JARVIS</span>
+                    {subtitle.jarvis}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
