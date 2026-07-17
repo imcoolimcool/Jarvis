@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface Settings {
   weather_location: string;
@@ -36,6 +37,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
+  const { toast } = useToast();
   const [form, setForm] = useState<Settings>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -74,6 +76,12 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         fetchGmailStatus();
         window.removeEventListener('message', onMessage);
         popup?.close();
+        toast({
+          title: 'Gmail linked',
+          description: 'Jarvis now has access to your inbox.',
+          className: 'border-primary/40 bg-background text-foreground font-sans [&_[data-title]]:font-display [&_[data-title]]:tracking-widest',
+          duration: 4000,
+        });
       }
     };
     window.addEventListener('message', onMessage);
