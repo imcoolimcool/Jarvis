@@ -11,6 +11,8 @@ const SCOPES = [
 ].join(" ");
 
 function getRedirectUri(): string {
+  // Prefer an explicit override (stable across dev domain rotations and deploys)
+  if (process.env["GOOGLE_REDIRECT_URI"]) return process.env["GOOGLE_REDIRECT_URI"];
   const domain = process.env["REPLIT_DEV_DOMAIN"] ?? process.env["REPLIT_DOMAINS"] ?? "localhost:8080";
   return `https://${domain}/api/jarvis/gmail/callback`;
 }
