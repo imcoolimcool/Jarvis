@@ -8,6 +8,54 @@ import { db, conversations, messages, jarvisSettings, userMemories } from "@work
 import { eq, asc } from "drizzle-orm";
 import { buildLiveContext } from "../../lib/live-context";
 
+/** Personality modifiers appended to the base system prompt. */
+const PERSONALITY_MODIFIERS: Record<string, string> = {
+  balanced: "",
+  talkative:
+    "You are a little more conversational and expressive. Use a warm tone, occasionally elaborate when it adds color, and feel free to ask a follow-up question if it feels natural. Still keep voice replies under 4 sentences.",
+  helpful:
+    "You are maximally helpful and proactive. Anticipate what the user might need next, offer concrete suggestions, and explain your reasoning clearly. Voice replies stay concise but thorough.",
+  concise:
+    "You are extremely concise. Answer in the fewest words possible. One sentence is usually enough. Never add filler, never ask follow-up questions unless absolutely necessary.",
+  terse:
+    "You are terse and task-focused. Reply like a command-line assistant: minimal words, no pleasantries, no explanations unless the user asks. For voice mode, one short sentence or phrase.",
+};
+
+function getPersonalityModifier(personality: string): string {
+  return PERSONALITY_MODIFIERS[personality] ?? PERSONALITY_MODIFIERS["balanced"];
+}
+
+async function getWebSearchResults(query: string): Promise<string | null> {
+  const apiKey = process.env["TAVILY_API_KEY"] ?? process.env["WEB_SEARCH_API_KEY"];
+  if (!apiKey) return null;
+  try {
+    const res = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: apiKey,
+        query,
+        search_depth: "basic",
+        include_answer: true,
+        max_results: 5,
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      answer?: string;
+      results?: { title: string; url: string; content: string }[];
+    };
+    if (!data.results || data.results.length === 0) return null;
+    const sources = data.results
+      .map((r) => `- ${r.title} (${r.url})\n${r.content.slice(0, 200)}`)
+      .join("\n\n");
+    return `Web search results for "${query}":\n\n${data.answer ? `Summary: ${data.answer}\n\n` : ""}Sources:\n${sources}`;
+  } catch {
+    return null;
+  }
+}
+
 const router = Router();
 const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
 
@@ -255,10 +303,24 @@ router.post("/chat", async (req, res) => {
       currentUserContent = userMessage;
     }
 
+    // Personality modifier
+    const personality = settings["personality"] ?? "balanced";
+    const personalityModifier = getPersonalityModifier(personality);
+
+    // Optional web search context
+    let webContext: string | null = null;
+    if (settings["web_search_enabled"] === "true" && jarvisConfig.llmModel.includes("gpt")) {
+      webContext = await getWebSearchResults(userMessage);
+    }
+
+    const systemParts = [jarvisConfig.systemPrompt];
+    if (personalityModifier) systemParts.push(personalityModifier);
+    if (liveContext) systemParts.push(liveContext);
+    if (memoryContext) systemParts.push(memoryContext);
+    if (webContext) systemParts.push(webContext);
+
     const chatMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: "system", content: jarvisConfig.systemPrompt },
-      { role: "system", content: liveContext },
-      ...(memoryContext ? [{ role: "system" as const, content: memoryContext }] : []),
+      { role: "system", content: systemParts.join("\n\n") },
       ...history.map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,

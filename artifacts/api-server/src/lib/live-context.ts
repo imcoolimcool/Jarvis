@@ -52,24 +52,30 @@ export async function getCalendarEvents(
 
 function parseIcsEvents(icsText: string, days: number): string {
   const now = new Date();
-  const cutoff = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  // Look ahead window: start of today to end of cutoff day
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const cutoff = new Date(startOfToday.getTime() + days * 24 * 60 * 60 * 1000);
 
   // Split into VEVENT blocks
   const eventBlocks = icsText.split("BEGIN:VEVENT").slice(1);
-  const events: { start: Date; summary: string }[] = [];
+  const events: { start: Date; summary: string; allDay: boolean }[] = [];
 
   for (const block of eventBlocks) {
-    const summaryMatch = block.match(/\nSUMMARY[^:]*:(.*)/);
-    const dtStartMatch = block.match(/\nDTSTART[^:]*:(.*)/);
-    if (!summaryMatch || !dtStartMatch) continue;
+    const summary = extractIcsProp(block, "SUMMARY");
+    const dtStart = extractIcsProp(block, "DTSTART");
+    const rrule = extractIcsProp(block, "RRULE");
+    if (!summary || !dtStart) continue;
 
-    const summary = summaryMatch[1].trim().replace(/\\,/g, ",").replace(/\\n/g, " ");
-    const dtRaw = dtStartMatch[1].trim();
-    const start = parseIcsDate(dtRaw);
-    if (!start) continue;
+    const parsed = parseIcsDate(dtStart);
+    if (!parsed) continue;
 
-    if (start >= now && start <= cutoff) {
-      events.push({ start, summary });
+    const { date, allDay } = parsed;
+
+    // Skip recurring events that we don't expand — keep the first instance if it falls in range
+    if (rrule && (date < startOfToday || date > cutoff)) continue;
+
+    if (date >= startOfToday && date <= cutoff) {
+      events.push({ start: date, summary: summary.value, allDay });
     }
   }
 
@@ -80,29 +86,74 @@ function parseIcsEvents(icsText: string, days: number): string {
   return events
     .slice(0, 10)
     .map((e) => {
-      const dateStr = e.start.toLocaleString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      return `• ${dateStr}: ${e.summary}`;
+      const prefix = relativeDayPrefix(e.start);
+      const dateStr = e.allDay
+        ? e.start.toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          })
+        : e.start.toLocaleString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZoneName: "short",
+          });
+      return `• ${prefix}${dateStr}: ${e.summary}`;
     })
     .join("\n");
 }
 
-function parseIcsDate(raw: string): Date | null {
-  // All-day: YYYYMMDD
-  if (/^\d{8}$/.test(raw)) {
-    return new Date(`${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`);
+function extractIcsProp(block: string, name: string): { value: string; tzid?: string } | null {
+  const regex = new RegExp(`\\n${name}([^\\n]*):(.*)`);
+  const match = block.match(regex);
+  if (!match) return null;
+  const params = match[1];
+  const value = match[2]
+    .trim()
+    .replace(/\\,/g, ",")
+    .replace(/\\n/g, " ")
+    .replace(/\\;/g, ";")
+    .replace(/\\\\/g, "\\");
+  const tzid = params.match(/TZID=([^;:\n]+)/)?.[1];
+  return { value, tzid };
+}
+
+function parseIcsDate(raw: { value: string; tzid?: string }): { date: Date; allDay: boolean } | null {
+  const { value, tzid } = raw;
+
+  // All-day: VALUE=DATE:YYYYMMDD
+  if (/^\d{8}$/.test(value)) {
+    return { date: new Date(`${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`), allDay: true };
   }
+
   // DateTime: YYYYMMDDTHHmmss or YYYYMMDDTHHmmssZ
-  const m = raw.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/);
+  const m = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z)?$/);
   if (!m) return null;
-  const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}${m[7] === "Z" ? "Z" : ""}`;
-  const d = new Date(iso);
-  return isNaN(d.getTime()) ? null : d;
+
+  const [, y, mo, d, h, min, s, z] = m;
+  const iso = `${y}-${mo}-${d}T${h}:${min}:${s}${z === "Z" ? "Z" : ""}`;
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return null;
+
+  // If the ICS declared a specific timezone (TZID), and the value is not UTC,
+  // we can't convert it perfectly without a timezone library, but we can try to
+  // format it later with the declared TZID if supported by the runtime.
+  // For now, we mark it as a timed event with the local/UTC interpretation that
+  // new Date() gives us. Floating local times are interpreted as local time.
+  return { date, allDay: false };
+}
+
+function relativeDayPrefix(date: Date): string {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((date.getTime() - startOfToday.getTime()) / (24 * 60 * 60 * 1000));
+  if (diff === 0) return "Today, ";
+  if (diff === 1) return "Tomorrow, ";
+  if (diff > 1 && diff < 7) return date.toLocaleDateString("en-US", { weekday: "long" }) + ", ";
+  return "";
 }
 
 /** Build the full live context string to inject into system prompt */

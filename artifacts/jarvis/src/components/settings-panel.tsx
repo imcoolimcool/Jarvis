@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut } from 'lucide-react';
+import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut, Brain, Globe, MessageSquare, Rocket, Briefcase, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Settings {
@@ -15,6 +15,8 @@ interface Settings {
   calendar_name_3: string;
   calendar_name_4: string;
   calendar_name_5: string;
+  personality: string;
+  web_search_enabled: string;
 }
 
 const EMPTY: Settings = {
@@ -29,6 +31,8 @@ const EMPTY: Settings = {
   calendar_name_3: '',
   calendar_name_4: '',
   calendar_name_5: '',
+  personality: 'balanced',
+  web_search_enabled: 'false',
 };
 
 interface SettingsPanelProps {
@@ -43,6 +47,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [saved, setSaved] = useState(false);
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; email?: string } | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [memories, setMemories] = useState<{ topic: string; value: string; updatedAt: string }[]>([]);
+  const [loadingMemories, setLoadingMemories] = useState(false);
+  const [deletingMemory, setDeletingMemory] = useState<string | null>(null);
 
   // Number of calendar slots currently shown (at least those with values, min 1)
   const [visibleSlots, setVisibleSlots] = useState(1);
@@ -53,6 +60,33 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       .then(setGmailStatus)
       .catch(() => setGmailStatus({ connected: false }));
   }, []);
+
+  const fetchMemories = useCallback(async () => {
+    setLoadingMemories(true);
+    try {
+      const res = await fetch('/api/jarvis/memories');
+      if (res.ok) setMemories(await res.json());
+    } catch {
+      setMemories([]);
+    } finally {
+      setLoadingMemories(false);
+    }
+  }, []);
+
+  const handleDeleteMemory = async (topic: string) => {
+    setDeletingMemory(topic);
+    try {
+      const res = await fetch(`/api/jarvis/memories/${encodeURIComponent(topic)}`, { method: 'DELETE' });
+      if (res.ok) {
+        setMemories(prev => prev.filter(m => m.topic !== topic));
+        toast({ title: 'Memory deleted', description: `Forgot "${topic}".` });
+      } else {
+        toast({ title: 'Could not delete memory', variant: 'destructive' });
+      }
+    } finally {
+      setDeletingMemory(null);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -67,7 +101,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       })
       .catch(() => {});
     fetchGmailStatus();
-  }, [open, fetchGmailStatus]);
+    fetchMemories();
+  }, [open, fetchGmailStatus, fetchMemories]);
 
   const handleConnectGmail = () => {
     const popup = window.open('/api/jarvis/gmail/auth', 'gmail_auth', 'width=500,height=650,left=200,top=100');
@@ -218,6 +253,60 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 )}
               </div>
 
+              {/* Personality */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-primary/70" />
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">PERSONALITY</label>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: 'balanced', label: 'Balanced', icon: MessageSquare },
+                    { value: 'talkative', label: 'Talkative', icon: Sparkles },
+                    { value: 'helpful', label: 'Helpful', icon: Briefcase },
+                    { value: 'concise', label: 'No extra words', icon: MessageSquare },
+                    { value: 'terse', label: 'Just gets it done', icon: Rocket },
+                  ].map(({ value, label, icon: Icon }) => {
+                    const active = form.personality === value;
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => setForm(f => ({ ...f, personality: value }))}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-[11px] font-mono transition-all ${
+                          active
+                            ? 'border-primary/60 bg-primary/10 text-primary'
+                            : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Web Search */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-primary/70" />
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">WEB SEARCH</label>
+                </div>
+                <div className="flex items-center justify-between p-3 border border-border/50 rounded-lg bg-card/30">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-mono text-foreground">Let Jarvis search the web</p>
+                    <p className="text-[10px] font-mono text-muted-foreground/60">Requires a Tavily API key in Secrets.</p>
+                  </div>
+                  <button
+                    onClick={() => setForm(f => ({ ...f, web_search_enabled: f.web_search_enabled === 'true' ? 'false' : 'true' }))}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${form.web_search_enabled === 'true' ? 'bg-primary' : 'bg-muted'}`}
+                    aria-label="Toggle web search"
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-background transition-transform ${form.web_search_enabled === 'true' ? 'translate-x-5' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
               {/* Weather */}
               <div className="space-y-2.5">
                 <div className="flex items-center gap-2">
@@ -234,6 +323,41 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <p className="text-[10px] font-mono text-muted-foreground/60">
                   Powered by wttr.in — free, no account needed.
                 </p>
+              </div>
+
+              {/* Memory */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-3.5 h-3.5 text-primary/70" />
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">MEMORY</label>
+                </div>
+
+                {loadingMemories ? (
+                  <p className="text-[11px] font-mono text-muted-foreground/50">Loading memories…</p>
+                ) : memories.length === 0 ? (
+                  <p className="text-[11px] font-mono text-muted-foreground/50">
+                    Jarvis hasn't learned anything about you yet. Talk to him and he'll remember facts here.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {memories.map(m => (
+                      <div key={m.topic} className="flex items-start justify-between gap-2 p-3 border border-border/50 rounded-lg bg-card/30">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-mono text-primary/70 uppercase tracking-widest">{m.topic}</p>
+                          <p className="text-[11px] font-mono text-foreground/80 leading-snug">{m.value}</p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteMemory(m.topic)}
+                          disabled={deletingMemory === m.topic}
+                          className="p-1.5 text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0 disabled:opacity-50"
+                          title="Delete this memory"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Google Calendar */}
