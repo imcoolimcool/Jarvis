@@ -152,6 +152,7 @@ export default function Home() {
     setMessages([]);
     setActiveConversationId(null);
     setSuggestions([]);
+    setSubtitle(null);
   }, []);
 
   const playTTS = useCallback((jarvisText: string, onDone: () => void) => {
