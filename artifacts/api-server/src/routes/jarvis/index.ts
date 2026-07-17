@@ -4,6 +4,7 @@ import chatRouter from "./chat";
 import speakRouter from "./speak";
 import conversationsRouter from "./conversations";
 import settingsRouter from "./settings";
+import gmailRouter from "./gmail";
 
 const router = Router();
 
@@ -12,5 +13,6 @@ router.use(settingsRouter);
 router.use(transcribeRouter);
 router.use(chatRouter);
 router.use(speakRouter);
+router.use(gmailRouter);
 
 export default router;

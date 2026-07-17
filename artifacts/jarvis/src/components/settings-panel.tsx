@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2 } from 'lucide-react';
+import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut } from 'lucide-react';
 
 interface Settings {
   weather_location: string;
@@ -39,9 +39,18 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [form, setForm] = useState<Settings>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; email?: string } | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   // Number of calendar slots currently shown (at least those with values, min 1)
   const [visibleSlots, setVisibleSlots] = useState(1);
+
+  const fetchGmailStatus = useCallback(() => {
+    fetch('/api/jarvis/gmail/status')
+      .then(r => r.json())
+      .then(setGmailStatus)
+      .catch(() => setGmailStatus({ connected: false }));
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -55,7 +64,34 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         setVisibleSlots(Math.max(1, filled.length));
       })
       .catch(() => {});
-  }, [open]);
+    fetchGmailStatus();
+  }, [open, fetchGmailStatus]);
+
+  const handleConnectGmail = () => {
+    const popup = window.open('/api/jarvis/gmail/auth', 'gmail_auth', 'width=500,height=650,left=200,top=100');
+    const onMessage = (e: MessageEvent) => {
+      if (e.data === 'gmail_connected') {
+        fetchGmailStatus();
+        window.removeEventListener('message', onMessage);
+        popup?.close();
+      }
+    };
+    window.addEventListener('message', onMessage);
+    // Fallback: poll if popup closed without postMessage
+    const poll = setInterval(() => {
+      if (popup?.closed) { clearInterval(poll); fetchGmailStatus(); window.removeEventListener('message', onMessage); }
+    }, 800);
+  };
+
+  const handleDisconnectGmail = async () => {
+    setDisconnecting(true);
+    try {
+      await fetch('/api/jarvis/gmail/disconnect', { method: 'DELETE' });
+      setGmailStatus({ connected: false });
+    } finally {
+      setDisconnecting(false);
+    }
+  };
 
   const calendarKeys = Array.from({ length: visibleSlots }, (_, i) => `calendar_ics_url_${i + 1}` as keyof Settings);
 
@@ -126,6 +162,45 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
                 <p className="text-[11px] font-mono text-muted-foreground">
                   <span className="text-primary font-semibold">Always on:</span> Jarvis always knows the current date &amp; time — no setup needed.
+                </p>
+              </div>
+
+              {/* Gmail */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5 text-primary/70" />
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">GMAIL</label>
+                </div>
+
+                {gmailStatus?.connected ? (
+                  <div className="flex items-center justify-between p-3 border border-primary/30 bg-primary/5 rounded-lg">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-mono text-primary">Connected</p>
+                        <p className="text-[10px] font-mono text-muted-foreground/60 truncate">{gmailStatus.email}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleDisconnectGmail}
+                      disabled={disconnecting}
+                      className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0 ml-2"
+                    >
+                      <LogOut className="w-3 h-3" />
+                      {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleConnectGmail}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-border/50 rounded-lg text-[11px] font-mono text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    Connect Gmail account
+                  </button>
+                )}
+                <p className="text-[10px] font-mono text-muted-foreground/50">
+                  Lets Jarvis read your unread inbox so you can ask about emails by voice.
                 </p>
               </div>
 

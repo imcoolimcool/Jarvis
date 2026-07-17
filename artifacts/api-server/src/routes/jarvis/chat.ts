@@ -166,6 +166,7 @@ router.post("/chat", async (req, res) => {
     const liveContext = await buildLiveContext({
       weatherLocation: settings["weather_location"],
       calendars: calendarEntries,
+      includeGmail: true,
     });
 
     // Save user message to DB (store text only; image is ephemeral)

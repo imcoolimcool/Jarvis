@@ -111,13 +111,19 @@ export async function buildLiveContext(opts: {
   /** @deprecated use calendars */
   calendarIcsUrls?: string[];
   calendars?: { url: string; name?: string }[];
+  includeGmail?: boolean;
 }): Promise<string> {
   const parts: string[] = [`Current date/time: ${getCurrentDatetime()}`];
 
-  if (opts.weatherLocation) {
-    const weather = await getWeather(opts.weatherLocation);
-    parts.push(`Weather: ${weather}`);
-  }
+  // Run all async sources in parallel
+  const [weatherResult, gmailResult] = await Promise.all([
+    opts.weatherLocation ? getWeather(opts.weatherLocation) : Promise.resolve(null),
+    opts.includeGmail
+      ? import("../routes/jarvis/gmail").then(m => m.getGmailContext()).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+
+  if (weatherResult) parts.push(`Weather: ${weatherResult}`);
 
   // Support both old calendarIcsUrls and new named calendars
   const calendars: { url: string; name?: string }[] = opts.calendars?.length
@@ -135,6 +141,8 @@ export async function buildLiveContext(opts: {
     );
     parts.push(`Upcoming calendar events (next 7 days):\n${results.join("\n\n")}`);
   }
+
+  if (gmailResult) parts.push(gmailResult);
 
   return `=== LIVE CONTEXT ===\n${parts.join("\n\n")}\n===================`;
 }
