@@ -155,7 +155,7 @@ export default function Home() {
     setSubtitle(null);
   }, []);
 
-  const playTTS = useCallback((jarvisText: string, onDone: () => void) => {
+  const playTTS = useCallback((jarvisText: string, onStart: () => void, onDone: () => void) => {
     synthesizeSpeech.mutate(
       { data: { text: jarvisText } },
       {
@@ -168,6 +168,7 @@ export default function Home() {
             const url = URL.createObjectURL(blob);
             const el = new Audio(url);
             activeAudioRef.current = el;
+            onStart(); // flip to 'speaking' only when audio is ready
             el.play();
             el.onended = () => { URL.revokeObjectURL(url); activeAudioRef.current = null; onDone(); };
             el.onerror = () => handleError("Audio playback failed");
@@ -206,9 +207,8 @@ export default function Home() {
 
       setMessages(prev => [...prev, { role: 'assistant', content: jarvisText }]);
       setSuggestions(newSuggestions);
-      setStatus('speaking');
 
-      playTTS(jarvisText, () => {
+      playTTS(jarvisText, () => setStatus('speaking'), () => {
         if (isChatMode) {
           setStatus('idle');
           setTimeout(() => inputRef.current?.focus(), 50);
