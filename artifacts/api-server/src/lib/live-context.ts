@@ -108,7 +108,9 @@ function parseIcsDate(raw: string): Date | null {
 /** Build the full live context string to inject into system prompt */
 export async function buildLiveContext(opts: {
   weatherLocation?: string;
+  /** @deprecated use calendars */
   calendarIcsUrls?: string[];
+  calendars?: { url: string; name?: string }[];
 }): Promise<string> {
   const parts: string[] = [`Current date/time: ${getCurrentDatetime()}`];
 
@@ -117,14 +119,19 @@ export async function buildLiveContext(opts: {
     parts.push(`Weather: ${weather}`);
   }
 
-  const urls = (opts.calendarIcsUrls ?? []).filter(Boolean);
-  if (urls.length > 0) {
+  // Support both old calendarIcsUrls and new named calendars
+  const calendars: { url: string; name?: string }[] = opts.calendars?.length
+    ? opts.calendars
+    : (opts.calendarIcsUrls ?? []).filter(Boolean).map((url) => ({ url }));
+
+  if (calendars.length > 0) {
     const results = await Promise.all(
-      urls.map((url, i) =>
-        getCalendarEvents(url).then(
-          (events) => `Calendar ${urls.length > 1 ? i + 1 : ""}:\n${events}`.trim(),
-        ),
-      ),
+      calendars.map((cal, i) => {
+        const label = cal.name || (calendars.length > 1 ? `Calendar ${i + 1}` : "Calendar");
+        return getCalendarEvents(cal.url).then(
+          (events) => `${label}:\n${events}`,
+        );
+      }),
     );
     parts.push(`Upcoming calendar events (next 7 days):\n${results.join("\n\n")}`);
   }

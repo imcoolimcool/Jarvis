@@ -9,6 +9,11 @@ interface Settings {
   calendar_ics_url_3: string;
   calendar_ics_url_4: string;
   calendar_ics_url_5: string;
+  calendar_name_1: string;
+  calendar_name_2: string;
+  calendar_name_3: string;
+  calendar_name_4: string;
+  calendar_name_5: string;
 }
 
 const EMPTY: Settings = {
@@ -18,6 +23,11 @@ const EMPTY: Settings = {
   calendar_ics_url_3: '',
   calendar_ics_url_4: '',
   calendar_ics_url_5: '',
+  calendar_name_1: '',
+  calendar_name_2: '',
+  calendar_name_3: '',
+  calendar_name_4: '',
+  calendar_name_5: '',
 };
 
 interface SettingsPanelProps {
@@ -64,15 +74,16 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     }
   };
 
-  const removeCalendar = (key: keyof Settings) => {
-    // Shift remaining values up, clear last
-    const keys = [1,2,3,4,5].map(n => `calendar_ics_url_${n}` as keyof Settings);
-    const idx = keys.indexOf(key);
+  const removeCalendar = (index: number) => {
+    // Shift remaining url+name pairs up, clear last
     const newForm = { ...form };
-    for (let i = idx; i < 4; i++) {
-      newForm[keys[i]] = newForm[keys[i + 1]];
+    for (let i = index; i < 4; i++) {
+      const n = i + 1;
+      newForm[`calendar_ics_url_${n}` as keyof Settings] = newForm[`calendar_ics_url_${n + 1}` as keyof Settings];
+      newForm[`calendar_name_${n}` as keyof Settings] = newForm[`calendar_name_${n + 1}` as keyof Settings];
     }
-    newForm[keys[4]] = '';
+    newForm['calendar_ics_url_5'] = '';
+    newForm['calendar_name_5'] = '';
     setForm(newForm);
     setVisibleSlots(v => Math.max(1, v - 1));
   };
@@ -154,41 +165,49 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 </div>
 
                 <AnimatePresence>
-                  {calendarKeys.map((key, i) => (
-                    <motion.div
-                      key={key}
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-1.5"
-                    >
-                      <div className="flex items-center gap-2">
-                        {visibleSlots > 1 && (
-                          <span className="text-[10px] font-mono text-muted-foreground/50 w-4 flex-shrink-0">
-                            {i + 1}.
-                          </span>
-                        )}
-                        <div className="flex-1 flex items-center gap-1.5">
+                  {calendarKeys.map((urlKey, i) => {
+                    const nameKey = `calendar_name_${i + 1}` as keyof Settings;
+                    return (
+                      <motion.div
+                        key={urlKey}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="space-y-1.5 border border-border/30 rounded-lg p-3 bg-card/30"
+                      >
+                        <div className="flex items-center gap-2">
+                          {visibleSlots > 1 && (
+                            <span className="text-[10px] font-mono text-muted-foreground/40 flex-shrink-0">
+                              #{i + 1}
+                            </span>
+                          )}
                           <input
-                            type="url"
-                            value={form[key]}
-                            onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                            placeholder={`Paste iCal URL${visibleSlots > 1 ? ` (calendar ${i + 1})` : ''}…`}
-                            className="flex-1 bg-card border border-border text-foreground placeholder:text-muted-foreground/50 font-mono text-xs px-3 py-2.5 rounded-lg outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all min-w-0"
+                            type="text"
+                            value={form[nameKey]}
+                            onChange={e => setForm(f => ({ ...f, [nameKey]: e.target.value }))}
+                            placeholder="Calendar name (e.g. Work, Personal)…"
+                            className="flex-1 bg-background border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-xs px-3 py-2 rounded-md outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all"
                           />
                           {visibleSlots > 1 && (
                             <button
-                              onClick={() => removeCalendar(key)}
-                              className="p-2 text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0"
+                              onClick={() => removeCalendar(i)}
+                              className="p-1.5 text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0"
                               title="Remove this calendar"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                        <input
+                          type="url"
+                          value={form[urlKey]}
+                          onChange={e => setForm(f => ({ ...f, [urlKey]: e.target.value }))}
+                          placeholder="Paste iCal URL…"
+                          className="w-full bg-background border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-xs px-3 py-2 rounded-md outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all"
+                        />
+                      </motion.div>
+                    );
+                  })}
                 </AnimatePresence>
 
                 <div className="p-3.5 border border-border/50 bg-muted/30 rounded-lg space-y-2">

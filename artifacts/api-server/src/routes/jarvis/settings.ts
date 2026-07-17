@@ -11,6 +11,11 @@ const ALLOWED_KEYS = [
   "calendar_ics_url_3",
   "calendar_ics_url_4",
   "calendar_ics_url_5",
+  "calendar_name_1",
+  "calendar_name_2",
+  "calendar_name_3",
+  "calendar_name_4",
+  "calendar_name_5",
 ] as const;
 type SettingKey = (typeof ALLOWED_KEYS)[number];
 

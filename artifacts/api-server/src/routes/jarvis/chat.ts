@@ -156,13 +156,16 @@ router.post("/chat", async (req, res) => {
       buildMemoryContext(),
     ]);
 
-    const calendarUrls = [1, 2, 3, 4, 5]
-      .map((n) => settings[`calendar_ics_url_${n}`])
-      .filter(Boolean) as string[];
+    const calendarEntries = [1, 2, 3, 4, 5]
+      .map((n) => ({
+        url: settings[`calendar_ics_url_${n}`],
+        name: settings[`calendar_name_${n}`] || undefined,
+      }))
+      .filter((c) => c.url) as { url: string; name?: string }[];
 
     const liveContext = await buildLiveContext({
       weatherLocation: settings["weather_location"],
-      calendarIcsUrls: calendarUrls,
+      calendars: calendarEntries,
     });
 
     // Save user message to DB (store text only; image is ephemeral)
