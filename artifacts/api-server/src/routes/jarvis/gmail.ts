@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, gmailTokens } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { logger } from "../../lib/logger";
 
 const router = Router();
 
@@ -28,9 +29,19 @@ function getClientSecret(): string {
 
 /** GET /api/jarvis/gmail/auth — start OAuth flow */
 router.get("/gmail/auth", (_req, res) => {
+  const clientId = getClientId();
+  const redirectUri = getRedirectUri();
+
+  // Diagnostic log — shows length and last 4 chars so we can verify the exact value
+  const last4 = clientId.slice(-4);
+  logger.info(
+    { clientIdLength: clientId.length, clientIdSuffix: last4, redirectUri },
+    "Redirecting to Google OAuth",
+  );
+
   const params = new URLSearchParams({
-    client_id: getClientId(),
-    redirect_uri: getRedirectUri(),
+    client_id: clientId,
+    redirect_uri: redirectUri,
     response_type: "code",
     scope: SCOPES,
     access_type: "offline",
