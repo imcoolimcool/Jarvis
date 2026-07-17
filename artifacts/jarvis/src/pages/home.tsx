@@ -41,6 +41,7 @@ export default function Home() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [attachedImage, setAttachedImage] = useState<AttachedImage | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [subtitle, setSubtitle] = useState<{ user: string; jarvis: string } | null>(null);
 
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -66,6 +67,15 @@ export default function Home() {
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { activeConvIdRef.current = activeConversationId; }, [activeConversationId]);
+
+  // Keep subtitle in sync with latest exchange
+  useEffect(() => {
+    const lastUser = [...messages].reverse().find(m => m.role === 'user');
+    const lastJarvis = [...messages].reverse().find(m => m.role === 'assistant');
+    if (lastUser || lastJarvis) {
+      setSubtitle({ user: lastUser?.content ?? '', jarvis: lastJarvis?.content ?? '' });
+    }
+  }, [messages]);
   useEffect(() => { if (isChatMode) setTimeout(() => inputRef.current?.focus(), 50); }, [isChatMode]);
 
   // Revoke object URL on cleanup
@@ -198,11 +208,17 @@ export default function Home() {
       setStatus('speaking');
 
       playTTS(jarvisText, () => {
-        setStatus('idle');
-        if (isChatMode) setTimeout(() => inputRef.current?.focus(), 50);
+        if (isChatMode) {
+          setStatus('idle');
+          setTimeout(() => inputRef.current?.focus(), 50);
+        } else {
+          // Auto-restart listening after Jarvis finishes speaking
+          setStatus('recording');
+          startListening();
+        }
       });
     } catch { handleError("Intelligence module failed"); }
-  }, [handleError, refreshSidebar, playTTS, isChatMode]);
+  }, [handleError, refreshSidebar, playTTS, isChatMode, startListening]);
 
   const handleToggleRecording = useCallback(() => {
     if (status === 'speaking') {
@@ -319,114 +335,124 @@ export default function Home() {
           onMobileClose={() => setMobileSidebarOpen(false)}
         />
 
-        <main className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-          {/* Orb panel — hidden on mobile in chat mode */}
-          <div className={`flex-shrink-0 lg:w-72 xl:w-80 flex-col items-center justify-center p-8 border-b lg:border-b-0 lg:border-r border-border/20 relative ${
-            isChatMode ? 'hidden lg:flex' : 'flex'
-          }`}>
-            <div className="dark:block hidden absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
-            <Orb status={status} onClick={isChatMode ? undefined : handleToggleRecording} />
-            <div className="mt-8 text-center space-y-2">
-              <h2 className="font-display text-xl font-bold tracking-widest text-primary glow-text">
-                {status.toUpperCase()}
-              </h2>
-              <p className="font-mono text-xs text-muted-foreground tracking-wide max-w-[180px]">
-                {statusHint}
-              </p>
-              {status === 'speaking' && (
-                <button onClick={handleStopSpeaking}
-                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md border border-primary/50 text-primary hover:bg-primary/10 transition-colors font-display tracking-widest text-xs">
-                  <Square className="w-3 h-3 fill-current" /> STOP
-                </button>
-              )}
-            </div>
-          </div>
+        <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
 
-          {/* Chat area */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-card/5">
-            <ConversationFeed
-              messages={messages}
-              isThinking={status === 'thinking'}
-              suggestions={suggestions}
-              onSuggestionClick={handleSuggestionClick}
-            />
+          {/* ── VOICE MODE ── */}
+          {!isChatMode && (
+            <div className="flex-1 flex flex-col items-center justify-center relative p-8">
+              <div className="dark:block hidden absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
 
-            {/* Input bar */}
-            {isChatMode && (
-              <div className="border-t border-border/30 bg-background/90 backdrop-blur-md px-4 py-3 flex-shrink-0 space-y-2">
+              <Orb status={status} onClick={handleToggleRecording} />
 
-                {/* Image preview strip */}
-                {attachedImage && (
-                  <div className="flex items-center gap-2">
-                    <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-border flex-shrink-0">
-                      <img src={attachedImage.preview} alt="Attachment" className="w-full h-full object-cover" />
-                      <button
-                        onClick={removeAttachedImage}
-                        className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-background/80 flex items-center justify-center text-foreground hover:text-red-400 transition-colors"
-                      >
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                    <span className="text-[10px] font-mono text-muted-foreground/60 tracking-widest">IMAGE ATTACHED</span>
-                  </div>
-                )}
-
-                {/* Input row */}
-                <div className="flex gap-2">
-                  {/* Hidden file input */}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileSelect}
-                  />
-
-                  {/* Attach image button */}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isBusy}
-                    title="Attach image (or paste from clipboard)"
-                    className={`p-2.5 rounded-lg border transition-all flex-shrink-0 ${
-                      attachedImage
-                        ? 'border-primary text-primary bg-primary/10'
-                        : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
-                    } disabled:opacity-30`}
-                  >
-                    <ImagePlus className="w-4 h-4" />
-                  </button>
-
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleChatSubmit()}
-                    onPaste={handleInputPaste}
-                    placeholder={isBusy ? "Processing…" : attachedImage ? "Add a message… (or just send the image)" : "Message Jarvis…"}
-                    disabled={isBusy}
-                    className="flex-1 bg-card border border-border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-40"
-                  />
-
-                  <button
-                    onClick={handleChatSubmit}
-                    disabled={isBusy || (!chatInput.trim() && !attachedImage)}
-                    className="px-4 py-2.5 rounded-lg border border-primary/50 text-primary hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 font-display tracking-wider text-xs flex-shrink-0"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">SEND</span>
-                  </button>
-                </div>
-
+              <div className="mt-8 text-center space-y-2">
+                <h2 className="font-display text-xl font-bold tracking-widest text-primary glow-text">
+                  {status.toUpperCase()}
+                </h2>
+                <p className="font-mono text-xs text-muted-foreground tracking-wide">
+                  {statusHint}
+                </p>
                 {status === 'speaking' && (
-                  <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest text-center">
-                    JARVIS IS SPEAKING —{' '}
-                    <button onClick={handleStopSpeaking} className="text-primary hover:underline">STOP</button>
-                  </p>
+                  <button onClick={handleStopSpeaking}
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md border border-primary/50 text-primary hover:bg-primary/10 transition-colors font-display tracking-widest text-xs">
+                    <Square className="w-3 h-3 fill-current" /> STOP
+                  </button>
                 )}
               </div>
-            )}
-          </div>
+
+              {/* Subtitle strip */}
+              {subtitle && (subtitle.user || subtitle.jarvis) && (
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 space-y-2">
+                  {subtitle.user && (
+                    <p className="text-center font-mono text-sm text-muted-foreground/70 leading-snug">
+                      <span className="text-[10px] tracking-widest text-muted-foreground/40 block mb-0.5">YOU</span>
+                      {subtitle.user}
+                    </p>
+                  )}
+                  {subtitle.jarvis && (
+                    <p className="text-center font-mono text-sm text-primary/80 leading-snug">
+                      <span className="text-[10px] tracking-widest text-primary/40 block mb-0.5">JARVIS</span>
+                      {subtitle.jarvis}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── CHAT MODE ── */}
+          {isChatMode && (
+            <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+              {/* Orb panel */}
+              <div className="hidden lg:flex flex-shrink-0 lg:w-72 xl:w-80 flex-col items-center justify-center p-8 border-r border-border/20 relative">
+                <div className="dark:block hidden absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
+                <Orb status={status} />
+                <div className="mt-8 text-center space-y-2">
+                  <h2 className="font-display text-xl font-bold tracking-widest text-primary glow-text">
+                    {status.toUpperCase()}
+                  </h2>
+                  <p className="font-mono text-xs text-muted-foreground tracking-wide max-w-[180px]">
+                    {statusHint}
+                  </p>
+                </div>
+              </div>
+
+              {/* Chat area */}
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-card/5">
+                <ConversationFeed
+                  messages={messages}
+                  isThinking={status === 'thinking'}
+                  suggestions={suggestions}
+                  onSuggestionClick={handleSuggestionClick}
+                />
+
+                {/* Input bar */}
+                <div className="border-t border-border/30 bg-background/90 backdrop-blur-md px-4 py-3 flex-shrink-0 space-y-2">
+                  {attachedImage && (
+                    <div className="flex items-center gap-2">
+                      <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-border flex-shrink-0">
+                        <img src={attachedImage.preview} alt="Attachment" className="w-full h-full object-cover" />
+                        <button onClick={removeAttachedImage}
+                          className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-background/80 flex items-center justify-center text-foreground hover:text-red-400 transition-colors">
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                      <span className="text-[10px] font-mono text-muted-foreground/60 tracking-widest">IMAGE ATTACHED</span>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+                    <button onClick={() => fileInputRef.current?.click()} disabled={isBusy}
+                      title="Attach image (or paste from clipboard)"
+                      className={`p-2.5 rounded-lg border transition-all flex-shrink-0 ${
+                        attachedImage ? 'border-primary text-primary bg-primary/10' : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
+                      } disabled:opacity-30`}>
+                      <ImagePlus className="w-4 h-4" />
+                    </button>
+                    <input ref={inputRef} type="text" value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleChatSubmit()}
+                      onPaste={handleInputPaste}
+                      placeholder={isBusy ? "Processing…" : attachedImage ? "Add a message…" : "Message Jarvis…"}
+                      disabled={isBusy}
+                      className="flex-1 bg-card border border-border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-40"
+                    />
+                    <button onClick={handleChatSubmit} disabled={isBusy || (!chatInput.trim() && !attachedImage)}
+                      className="px-4 py-2.5 rounded-lg border border-primary/50 text-primary hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 font-display tracking-wider text-xs flex-shrink-0">
+                      <Send className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">SEND</span>
+                    </button>
+                  </div>
+                  {status === 'speaking' && (
+                    <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest text-center">
+                      JARVIS IS SPEAKING —{' '}
+                      <button onClick={handleStopSpeaking} className="text-primary hover:underline">STOP</button>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
         </main>
       </div>
 

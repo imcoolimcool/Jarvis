@@ -1,15 +1,10 @@
 import { Router } from "express";
-import OpenAI from "openai";
 
 const router = Router();
 
-function getTTSClient(): OpenAI {
-  const apiKey = process.env["GROQ_API_KEY"];
-  if (!apiKey) {
-    throw new Error("GROQ_API_KEY environment variable is not set");
-  }
-  return new OpenAI({ apiKey, baseURL: "https://api.groq.com/openai/v1" });
-}
+// George — British male voice on ElevenLabs
+const ELEVENLABS_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb";
+const ELEVENLABS_MODEL    = "eleven_multilingual_v2";
 
 router.post("/speak", async (req, res) => {
   const { text } = req.body as { text: string };
@@ -19,22 +14,43 @@ router.post("/speak", async (req, res) => {
     return;
   }
 
-  try {
-    const client = getTTSClient();
+  const apiKey = process.env["ELEVENLABS_API_KEY"];
+  if (!apiKey) {
+    res.status(500).json({ error: "ELEVENLABS_API_KEY is not set" });
+    return;
+  }
 
-    const response = await client.audio.speech.create({
-      model: "canopylabs/orpheus-v1-english",
-      voice: "daniel",   // deep male voice
-      input: text,
-      response_format: "wav",
-    });
+  try {
+    const response = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json",
+          "Accept": "audio/mpeg",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: ELEVENLABS_MODEL,
+          voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      req.log.error({ status: response.status, errText }, "ElevenLabs TTS failed");
+      res.status(500).json({ error: "Speech synthesis failed. Please try again." });
+      return;
+    }
 
     const buffer = Buffer.from(await response.arrayBuffer());
     const audioBase64 = buffer.toString("base64");
 
-    res.json({ audio: audioBase64, contentType: "audio/wav" });
+    res.json({ audio: audioBase64, contentType: "audio/mpeg" });
   } catch (err) {
-    req.log.error({ err }, "Groq TTS failed");
+    req.log.error({ err }, "ElevenLabs TTS failed");
     res.status(500).json({ error: "Speech synthesis failed. Please try again." });
   }
 });
