@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { Mic, Square } from 'lucide-react';
 
 export type AppState = 'idle' | 'recording' | 'transcribing' | 'thinking' | 'speaking';
 
@@ -8,23 +9,29 @@ interface OrbProps {
 }
 
 export function Orb({ status, onClick }: OrbProps) {
+  const isBusy = status === 'thinking' || status === 'transcribing';
+
   return (
-    <div 
-      className="relative flex items-center justify-center w-[300px] h-[300px] cursor-pointer group"
+    <div
+      className="relative flex items-center justify-center w-[280px] h-[280px] sm:w-[300px] sm:h-[300px] cursor-pointer group select-none"
       onClick={onClick}
+      aria-label={status}
     >
+      {/* Deep ambient glow — always present, breathing slowly */}
       <motion.div
-        className="absolute inset-0 rounded-full bg-primary/20 blur-[60px] pointer-events-none"
+        className="absolute inset-0 rounded-full bg-primary/20 blur-[72px] pointer-events-none"
         animate={{
-          scale: status === 'recording' || status === 'speaking' ? [1, 1.2, 1] : 1,
-          opacity: status === 'idle' ? 0.3 : 0.8,
+          scale: status === 'recording' || status === 'speaking' ? [1, 1.25, 1] : [1, 1.05, 1],
+          opacity: status === 'idle' ? [0.25, 0.4, 0.25] : [0.6, 0.9, 0.6],
         }}
         transition={{
           repeat: Infinity,
-          duration: status === 'speaking' ? 0.5 : 2,
+          duration: status === 'recording' ? 1.2 : status === 'speaking' ? 0.9 : 4,
+          ease: 'easeInOut',
         }}
       />
 
+      {/* Outer status rings */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <AnimatePresence>
           {status === 'recording' && (
@@ -34,13 +41,13 @@ export function Orb({ status, onClick }: OrbProps) {
                   key={`ring-${i}`}
                   className="absolute w-full h-full rounded-full border border-primary/60"
                   initial={{ scale: 0.8, opacity: 1 }}
-                  animate={{ scale: 2, opacity: 0 }}
+                  animate={{ scale: 2.2, opacity: 0 }}
                   exit={{ opacity: 0 }}
                   transition={{
                     repeat: Infinity,
-                    duration: 2,
-                    delay: i * 0.6,
-                    ease: "easeOut"
+                    duration: 2.4,
+                    delay: i * 0.8,
+                    ease: 'easeOut',
                   }}
                 />
               ))}
@@ -48,60 +55,114 @@ export function Orb({ status, onClick }: OrbProps) {
           )}
 
           {status === 'transcribing' && (
-            <motion.div
-              className="absolute w-full h-full rounded-full border-t-[3px] border-r-[3px] border-primary border-dashed"
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-            />
+            <>
+              <motion.div
+                className="absolute w-full h-full rounded-full border-t-[3px] border-r-[3px] border-primary border-dashed"
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
+              />
+              <motion.div
+                className="absolute w-[78%] h-[78%] rounded-full border-b-[2px] border-l-[2px] border-primary/50 border-dashed"
+                animate={{ rotate: -360 }}
+                transition={{ repeat: Infinity, duration: 5, ease: 'linear' }}
+              />
+            </>
           )}
 
           {status === 'thinking' && (
             <>
-              <motion.div
-                className="absolute w-full h-full rounded-full border-2 border-primary/50"
-                animate={{ rotateX: 360, rotateY: 180 }}
-                transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
-                style={{ transformStyle: 'preserve-3d' }}
-              />
-              <motion.div
-                className="absolute w-[80%] h-[80%] rounded-full border-2 border-primary/80 border-dashed"
-                animate={{ rotateY: 360, rotateX: 180 }}
-                transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
-                style={{ transformStyle: 'preserve-3d' }}
-              />
-              <motion.div
-                className="absolute w-[60%] h-[60%] rounded-full border-2 border-primary/30"
-                animate={{ rotateZ: 360 }}
-                transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-              />
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={`think-${i}`}
+                  className="absolute rounded-full border border-primary/60"
+                  style={{ width: `${70 + i * 18}%`, height: `${70 + i * 18}%` }}
+                  animate={{ rotate: i % 2 === 0 ? 360 : -360, opacity: [0.2, 0.6, 0.2] }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 2.5 + i * 0.6,
+                    ease: 'linear',
+                  }}
+                />
+              ))}
             </>
           )}
-          
+
           {status === 'speaking' && (
-             <motion.div
-                className="absolute w-full h-full rounded-full border-[6px] border-primary/40"
-                animate={{
-                   scale: [1, 1.15, 0.95, 1.2, 1],
-                   opacity: [0.5, 1, 0.4, 0.9, 0.5]
-                }}
-                transition={{ repeat: Infinity, duration: 0.8, ease: "easeInOut" }}
-             />
+            <>
+              {[1, 2, 3, 4].map((i) => (
+                <motion.div
+                  key={`wave-${i}`}
+                  className="absolute rounded-full border border-primary/40"
+                  initial={{ scale: 0.7, opacity: 0.6 }}
+                  animate={{
+                    scale: [0.7, 1.0 + i * 0.12, 1.2 + i * 0.08],
+                    opacity: [0.6, 0.35, 0],
+                  }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 1.2,
+                    delay: i * 0.15,
+                    ease: 'easeOut',
+                  }}
+                  style={{ width: '100%', height: '100%' }}
+                />
+              ))}
+            </>
           )}
         </AnimatePresence>
       </div>
 
+      {/* Core sphere with liquid light */}
       <motion.div
-        className="relative z-10 w-[200px] h-[200px] rounded-full bg-gradient-to-br from-primary/30 to-background border border-primary/60 backdrop-blur-md flex items-center justify-center overflow-hidden transition-shadow duration-300 group-hover:border-primary"
+        className="relative z-10 w-[180px] h-[180px] sm:w-[200px] sm:h-[200px] rounded-full bg-gradient-to-br from-primary/40 via-primary/10 to-background border border-primary/60 backdrop-blur-md flex items-center justify-center overflow-hidden transition-shadow duration-300 group-hover:border-primary/90"
         animate={{
-          scale: status === 'recording' ? 0.95 : 1,
-          boxShadow: status === 'recording' 
-            ? 'inset 0 0 60px rgba(0, 212, 255, 0.8)' 
-            : 'inset 0 0 30px rgba(0, 212, 255, 0.4)'
+          scale: status === 'recording' ? 0.94 : 1,
+          boxShadow: isBusy
+            ? 'inset 0 0 50px rgba(0, 212, 255, 0.6), 0 0 40px rgba(0, 212, 255, 0.15)'
+            : status === 'recording'
+              ? 'inset 0 0 70px rgba(0, 212, 255, 0.9), 0 0 50px rgba(0, 212, 255, 0.25)'
+              : 'inset 0 0 30px rgba(0, 212, 255, 0.4), 0 0 20px rgba(0, 212, 255, 0.1)',
         }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.35 }}
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.4)_0%,transparent_60%)]" />
-        <div className="absolute inset-0 opacity-20 bg-[linear-gradient(rgba(0,212,255,0.8)_1px,transparent_1px)] bg-[length:100%_4px]" />
+        {/* Inner radial sheen */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(0,212,255,0.55)_0%,transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(0,120,255,0.25)_0%,transparent_50%)]" />
+
+        {/* Slow drifting liquid highlight */}
+        <motion.div
+          className="absolute inset-[-40%] opacity-30 bg-[conic-gradient(from_0deg,transparent_0deg,rgba(0,212,255,0.5)_60deg,transparent_120deg,rgba(0,180,255,0.35)_180deg,transparent_240deg,rgba(0,212,255,0.5)_300deg,transparent_360deg)]"
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 12, ease: 'linear' }}
+        />
+
+        {/* Subtle scanline */}
+        <div className="absolute inset-0 opacity-[0.12] bg-[linear-gradient(rgba(0,212,255,0.9)_1px,transparent_1px)] bg-[length:100%_3px]" />
+
+        {/* Icon */}
+        <AnimatePresence mode="wait">
+          {status === 'recording' ? (
+            <motion.div
+              key="stop"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="relative z-20 text-primary/80"
+            >
+              <Square className="w-8 h-8 fill-current" />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="mic"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="relative z-20 text-primary/70 group-hover:text-primary transition-colors"
+            >
+              <Mic className="w-8 h-8" />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

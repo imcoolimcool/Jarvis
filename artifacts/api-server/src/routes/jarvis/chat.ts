@@ -1,5 +1,8 @@
 import { Router } from "express";
 import OpenAI from "openai";
+import { fileTypeFromBuffer } from "file-type";
+import { extractRawText } from "mammoth";
+import { PDFParse } from "pdf-parse";
 import { jarvisConfig } from "../../config/jarvis";
 import { db, conversations, messages, jarvisSettings, userMemories } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
@@ -82,10 +85,9 @@ async function buildMemoryContext(): Promise<string | null> {
   return `## What you remember about the user\n${lines}`;
 }
 
-/** Generate 3 short follow-up suggestion chips from the latest exchange */
+/** Generate 3 short follow-up suggestion chips from the assistant's last response */
 async function generateSuggestions(
   client: OpenAI,
-  userMessage: string,
   assistantResponse: string,
 ): Promise<string[]> {
   try {
@@ -95,11 +97,11 @@ async function generateSuggestions(
         {
           role: "system",
           content:
-            'You generate exactly 3 short follow-up questions or replies (max 7 words each) that a user might naturally say next, given the conversation excerpt below. Return ONLY a valid JSON array of 3 strings — no explanation, no markdown, nothing else. Example: ["Tell me more","What about X?","How does that work?"]',
+            'You generate exactly 3 short follow-up questions or replies (max 7 words each) that a user might naturally say next, based on the assistant\'s last response. Return ONLY a valid JSON array of 3 strings — no explanation, no markdown, nothing else. Example: ["Tell me more","What about X?","How does that work?"]',
         },
         {
           role: "user",
-          content: `User said: "${userMessage}"\nAssistant replied: "${assistantResponse}"`,
+          content: `Assistant said: "${assistantResponse.slice(0, 800)}"`,
         },
       ],
       temperature: 0.8,
@@ -118,17 +120,66 @@ async function generateSuggestions(
   }
 }
 
+/** Extract plain text from common document formats. */
+async function extractFileText(
+  buffer: Buffer,
+  mimeType: string,
+): Promise<{ text: string; mimeType: string; isImage: boolean }> {
+  if (mimeType.startsWith("image/")) {
+    return { text: "", mimeType, isImage: true };
+  }
+
+  if (mimeType === "application/pdf" || mimeType.includes("pdf")) {
+    try {
+      const parser = new PDFParse({ data: buffer });
+      const parsed = await parser.getText();
+      await parser.destroy();
+      return { text: parsed.text ?? "", mimeType, isImage: false };
+    } catch {
+      return { text: "[Could not read PDF contents]", mimeType, isImage: false };
+    }
+  }
+
+  if (
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    mimeType.includes("officedocument") ||
+    mimeType === "application/msword"
+  ) {
+    try {
+      const parsed = await extractRawText({ buffer });
+      return { text: parsed.value ?? "", mimeType, isImage: false };
+    } catch {
+      return { text: "[Could not read Word document contents]", mimeType, isImage: false };
+    }
+  }
+
+  // Plain text / code / markdown
+  if (
+    mimeType.startsWith("text/") ||
+    mimeType === "application/json" ||
+    mimeType === "application/javascript" ||
+    mimeType === "application/typescript" ||
+    mimeType.includes("xml") ||
+    mimeType.includes("yaml")
+  ) {
+    return { text: buffer.toString("utf-8"), mimeType, isImage: false };
+  }
+
+  return { text: "[Unsupported file type]", mimeType, isImage: false };
+}
+
 router.post("/chat", async (req, res) => {
   const {
     userMessage,
     conversationId,
-    imageBase64,
-    imageMimeType,
+    fileBase64,
+    fileMimeType,
   } = req.body as {
     userMessage: string;
     conversationId?: string;
-    imageBase64?: string;
-    imageMimeType?: string;
+    fileBase64?: string;
+    fileMimeType?: string;
   };
 
   if (!userMessage || typeof userMessage !== "string") {
@@ -169,25 +220,37 @@ router.post("/chat", async (req, res) => {
       includeGmail: true,
     });
 
-    // Save user message to DB (store text only; image is ephemeral)
+    // Save user message to DB (store text only; file is ephemeral)
     await db.insert(messages).values({
       conversationId: convId,
       role: "user",
       content: userMessage,
     });
 
-    // Build current user message — include image if provided
+    // Build current user message — include image or document content if provided
     let currentUserContent: OpenAI.Chat.ChatCompletionContentPart[] | string;
-    if (imageBase64 && imageMimeType) {
-      currentUserContent = [
-        {
-          type: "image_url",
-          image_url: {
-            url: `data:${imageMimeType};base64,${imageBase64}`,
+    if (fileBase64 && fileMimeType) {
+      const buffer = Buffer.from(fileBase64, "base64");
+      const extracted = await extractFileText(buffer, fileMimeType);
+
+      if (extracted.isImage) {
+        currentUserContent = [
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${fileMimeType};base64,${fileBase64}`,
+            },
           },
-        },
-        { type: "text", text: userMessage },
-      ];
+          { type: "text", text: userMessage },
+        ];
+      } else {
+        const fileDescription = extracted.text
+          ? `Attached file content:\n\n${extracted.text.slice(0, 12000)}`
+          : "[The user attached a file, but no text could be extracted.]";
+        currentUserContent = [
+          { type: "text", text: `${userMessage}\n\n${fileDescription}` },
+        ];
+      }
     } else {
       currentUserContent = userMessage;
     }
@@ -220,7 +283,8 @@ router.post("/chat", async (req, res) => {
       .where(eq(conversations.id, convId));
 
     const [suggestions] = await Promise.all([
-      generateSuggestions(client, userMessage, response),
+      // Suggestions should flow from the assistant's response, not the user's input
+      generateSuggestions(client, response),
       db.insert(messages).values({
         conversationId: convId,
         role: "assistant",

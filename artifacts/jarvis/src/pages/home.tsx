@@ -6,14 +6,15 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, ImagePlus, X } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, ImagePlus, X } from 'lucide-react';
 
 type Theme = 'dark' | 'light';
 
-interface AttachedImage {
+interface AttachedFile {
   base64: string;
   mimeType: string;
-  preview: string; // object URL for display
+  fileName: string;
+  preview?: string; // object URL for images
 }
 
 function useTheme() {
@@ -39,7 +40,7 @@ export default function Home() {
   const [sidebarRefreshTick, setSidebarRefreshTick] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [attachedImage, setAttachedImage] = useState<AttachedImage | null>(null);
+  const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [subtitle, setSubtitle] = useState<{ user: string; jarvis: string } | null>(null);
 
@@ -80,26 +81,26 @@ export default function Home() {
 
   // Revoke object URL on cleanup
   useEffect(() => {
-    return () => { if (attachedImage) URL.revokeObjectURL(attachedImage.preview); };
-  }, [attachedImage]);
+    return () => { if (attachedFile?.preview) URL.revokeObjectURL(attachedFile.preview); };
+  }, [attachedFile]);
 
   const handleError = useCallback((msg: string) => {
-    toast({ variant: 'destructive', title: 'System Error', description: msg });
+    toast({ variant: 'destructive', title: 'Something went wrong', description: msg });
     setStatus('idle');
   }, [toast]);
 
   const refreshSidebar = useCallback(() => setSidebarRefreshTick(t => t + 1), []);
 
-  /** Convert a File/Blob to { base64, mimeType, preview } */
-  const readImageFile = useCallback((file: File): Promise<AttachedImage> => {
+  /** Convert a File to base64 + metadata */
+  const readFile = useCallback((file: File): Promise<AttachedFile> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
         const dataUrl = reader.result as string;
         const [header, base64] = dataUrl.split(',');
         const mimeType = header.match(/:(.*?);/)?.[1] ?? file.type;
-        const preview = URL.createObjectURL(file);
-        resolve({ base64, mimeType, preview });
+        const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
+        resolve({ base64, mimeType, fileName: file.name, preview });
       };
       reader.onerror = reject;
       reader.readAsDataURL(file);
@@ -109,13 +110,14 @@ export default function Home() {
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) { toast({ title: 'Only images are supported' }); return; }
+    const maxSize = 20 * 1024 * 1024; // 20 MB
+    if (file.size > maxSize) { toast({ title: 'File too large', description: 'Max 20 MB' }); return; }
     try {
-      if (attachedImage) URL.revokeObjectURL(attachedImage.preview);
-      setAttachedImage(await readImageFile(file));
-    } catch { toast({ title: 'Could not load image' }); }
+      if (attachedFile?.preview) URL.revokeObjectURL(attachedFile.preview);
+      setAttachedFile(await readFile(file));
+    } catch { toast({ title: 'Could not read file' }); }
     e.target.value = '';
-  }, [attachedImage, readImageFile, toast]);
+  }, [attachedFile, readFile, toast]);
 
   /** Handle paste events — capture images pasted from clipboard */
   const handleInputPaste = useCallback(async (e: React.ClipboardEvent) => {
@@ -125,15 +127,15 @@ export default function Home() {
     const file = imageItem.getAsFile();
     if (!file) return;
     try {
-      if (attachedImage) URL.revokeObjectURL(attachedImage.preview);
-      setAttachedImage(await readImageFile(file));
+      if (attachedFile?.preview) URL.revokeObjectURL(attachedFile.preview);
+      setAttachedFile(await readFile(file));
     } catch { toast({ title: 'Could not load image' }); }
-  }, [attachedImage, readImageFile, toast]);
+  }, [attachedFile, readFile, toast]);
 
-  const removeAttachedImage = useCallback(() => {
-    if (attachedImage) URL.revokeObjectURL(attachedImage.preview);
-    setAttachedImage(null);
-  }, [attachedImage]);
+  const removeAttachedFile = useCallback(() => {
+    if (attachedFile?.preview) URL.revokeObjectURL(attachedFile.preview);
+    setAttachedFile(null);
+  }, [attachedFile]);
 
   const loadConversation = useCallback(async (id: string) => {
     try {
@@ -179,16 +181,16 @@ export default function Home() {
     );
   }, [synthesizeSpeech, handleError]);
 
-  const processUserText = useCallback(async (userText: string, image?: AttachedImage | null) => {
-    // Optimistically add message (with image preview if any)
-    setMessages(prev => [...prev, { role: 'user', content: userText, imagePreview: image?.preview }]);
+  const processUserText = useCallback(async (userText: string, file?: AttachedFile | null) => {
+    // Optimistically add message (with file preview if any)
+    setMessages(prev => [...prev, { role: 'user', content: userText, file: file ?? undefined }]);
     setSuggestions([]);
     setStatus('thinking');
 
     try {
       const body: Record<string, string> = { userMessage: userText };
       if (activeConvIdRef.current) body.conversationId = activeConvIdRef.current;
-      if (image) { body.imageBase64 = image.base64; body.imageMimeType = image.mimeType; }
+      if (file) { body.fileBase64 = file.base64; body.fileMimeType = file.mimeType; }
 
       const res = await fetch('/api/jarvis/chat', {
         method: 'POST',
@@ -196,7 +198,7 @@ export default function Home() {
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) { handleError("Intelligence module failed"); return; }
+      if (!res.ok) { handleError("Jarvis hit a snag — try again."); return; }
       const data = await res.json();
       const jarvisText: string = data.response;
       const convId: string = data.conversationId;
@@ -218,7 +220,7 @@ export default function Home() {
           startListening();
         }
       });
-    } catch { handleError("Intelligence module failed"); }
+    } catch { handleError("Jarvis hit a snag — try again."); }
   }, [handleError, refreshSidebar, playTTS, isChatMode, startListening]);
 
   const handleToggleRecording = useCallback(() => {
@@ -240,18 +242,42 @@ export default function Home() {
 
   const handleChatSubmit = () => {
     const text = chatInput.trim();
-    if (!text && !attachedImage) return;
+    if (!text && !attachedFile) return;
     if (status === 'thinking' || status === 'transcribing') return;
-    const img = attachedImage;
+    const file = attachedFile;
     setChatInput('');
-    setAttachedImage(null);
-    processUserText(text || '📎 Image', img);
+    setAttachedFile(null);
+    processUserText(text || `📎 ${file?.fileName ?? 'File'}`, file);
   };
 
   const handleSuggestionClick = useCallback((text: string) => {
     setSuggestions([]);
     processUserText(text);
   }, [processUserText]);
+
+  const [chatRecording, setChatRecording] = useState(false);
+  const { start: startChatRecording, stop: stopChatRecording } = useSpeechRecognition({
+    onTranscript: (text) => {
+      setChatInput(prev => prev ? `${prev} ${text}` : text);
+      setChatRecording(false);
+    },
+    onError: (msg) => { toast({ title: 'Voice input failed', description: msg }); setChatRecording(false); },
+    onEnd: () => setChatRecording(false),
+  });
+
+  const handleChatMicToggle = () => {
+    if (chatRecording) {
+      stopChatRecording();
+      setChatRecording(false);
+    } else {
+      if (!isSpeechRecognitionSupported()) {
+        toast({ title: 'Voice input not supported', description: 'Try Chrome or Edge.' });
+        return;
+      }
+      setChatRecording(true);
+      startChatRecording();
+    }
+  };
 
   const handleStopSpeaking = () => {
     activeAudioRef.current?.pause(); activeAudioRef.current = null; setStatus('idle');
@@ -273,13 +299,21 @@ export default function Home() {
 
   const isBusy = status === 'thinking' || status === 'transcribing';
 
+  const statusLabels: Record<AppState, string> = {
+    idle: 'Ready',
+    recording: 'Listening',
+    transcribing: 'Transcribing',
+    thinking: 'Thinking',
+    speaking: 'Speaking',
+  };
+
   const statusHint = isChatMode
     ? "Type in the chat panel"
-    : status === 'idle'         ? "Tap orb or press space"
-    : status === 'recording'    ? "Tap orb to finalize"
+    : status === 'idle'         ? "Tap orb or press space to talk"
+    : status === 'recording'    ? "Tap orb when you're done"
     : status === 'speaking'     ? "Tap orb to interrupt"
-    : status === 'transcribing' ? "Analyzing audio…"
-    : "Processing query…";
+    : status === 'transcribing' ? "Converting speech to text…"
+    : "Processing your request…";
 
   return (
     <div className={`${theme} min-h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden`}>
@@ -348,7 +382,7 @@ export default function Home() {
                 <Orb status={status} onClick={handleToggleRecording} />
                 <div className="mt-8 text-center space-y-2">
                   <h2 className="font-display text-xl font-bold tracking-widest text-primary glow-text">
-                    {status.toUpperCase()}
+                    {statusLabels[status]}
                   </h2>
                   <p className="font-mono text-xs text-muted-foreground tracking-wide">
                     {statusHint}
@@ -389,7 +423,7 @@ export default function Home() {
                 <Orb status={status} />
                 <div className="mt-8 text-center space-y-2">
                   <h2 className="font-display text-xl font-bold tracking-widest text-primary glow-text">
-                    {status.toUpperCase()}
+                    {statusLabels[status]}
                   </h2>
                   <p className="font-mono text-xs text-muted-foreground tracking-wide max-w-[180px]">
                     {statusHint}
@@ -408,36 +442,52 @@ export default function Home() {
 
                 {/* Input bar */}
                 <div className="border-t border-border/30 bg-background/90 backdrop-blur-md px-4 py-3 flex-shrink-0 space-y-2">
-                  {attachedImage && (
+                  {attachedFile && (
                     <div className="flex items-center gap-2">
-                      <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-border flex-shrink-0">
-                        <img src={attachedImage.preview} alt="Attachment" className="w-full h-full object-cover" />
-                        <button onClick={removeAttachedImage}
+                      <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-border flex-shrink-0 flex items-center justify-center bg-card/40">
+                        {attachedFile.preview ? (
+                          <img src={attachedFile.preview} alt="Attachment" className="w-full h-full object-cover" />
+                        ) : (
+                          <FileText className="w-5 h-5 text-muted-foreground/60" />
+                        )}
+                        <button onClick={removeAttachedFile}
                           className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-background/80 flex items-center justify-center text-foreground hover:text-red-400 transition-colors">
                           <X className="w-2.5 h-2.5" />
                         </button>
                       </div>
-                      <span className="text-[10px] font-mono text-muted-foreground/60 tracking-widest">IMAGE ATTACHED</span>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-mono text-foreground/80 tracking-widest truncate">{attachedFile.fileName}</p>
+                        <p className="text-[9px] font-mono text-muted-foreground/50 tracking-widest">FILE ATTACHED</p>
+                      </div>
                     </div>
                   )}
                   <div className="flex gap-2">
-                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+                    <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
                     <button onClick={() => fileInputRef.current?.click()} disabled={isBusy}
-                      title="Attach image (or paste from clipboard)"
+                      title="Attach a file or image (or paste from clipboard)"
                       className={`p-2.5 rounded-lg border transition-all flex-shrink-0 ${
-                        attachedImage ? 'border-primary text-primary bg-primary/10' : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
+                        attachedFile ? 'border-primary text-primary bg-primary/10' : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
                       } disabled:opacity-30`}>
-                      <ImagePlus className="w-4 h-4" />
+                      <Paperclip className="w-4 h-4" />
                     </button>
                     <input ref={inputRef} type="text" value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleChatSubmit()}
                       onPaste={handleInputPaste}
-                      placeholder={isBusy ? "Processing…" : attachedImage ? "Add a message…" : "Message Jarvis…"}
+                      placeholder={isBusy ? "Processing…" : attachedFile ? "Add a message…" : "Message Jarvis…"}
                       disabled={isBusy}
                       className="flex-1 bg-card border border-border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-40"
                     />
-                    <button onClick={handleChatSubmit} disabled={isBusy || (!chatInput.trim() && !attachedImage)}
+                    <button onClick={handleChatMicToggle} disabled={isBusy}
+                      title={chatRecording ? 'Stop recording' : 'Voice input'}
+                      className={`p-2.5 rounded-lg border transition-all flex-shrink-0 ${
+                        chatRecording
+                          ? 'border-red-400/60 text-red-400 bg-red-400/10 animate-pulse'
+                          : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
+                      } disabled:opacity-30`}>
+                      <Mic className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleChatSubmit} disabled={isBusy || (!chatInput.trim() && !attachedFile)}
                       className="px-4 py-2.5 rounded-lg border border-primary/50 text-primary hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 font-display tracking-wider text-xs flex-shrink-0">
                       <Send className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">SEND</span>

@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FileText } from 'lucide-react';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
-  imagePreview?: string; // local object URL shown in the bubble
+  file?: { preview?: string; fileName?: string };
 }
 
 interface ConversationFeedProps {
@@ -90,14 +91,21 @@ export function ConversationFeed({
                 {isUser ? 'YOU' : 'JARVIS'}
               </span>
 
-              {/* Image preview (user attachments) */}
-              {msg.imagePreview && (
-                <div className={`rounded-2xl overflow-hidden border border-border max-w-[240px] ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}>
-                  <img
-                    src={msg.imagePreview}
-                    alt="Attached"
-                    className="block w-full object-cover max-h-48"
-                  />
+              {/* File preview (user attachments) */}
+              {msg.file && (
+                <div className={`flex items-center gap-2.5 p-2.5 rounded-2xl border border-border bg-card max-w-[260px] ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}>
+                  {msg.file.preview ? (
+                    <img
+                      src={msg.file.preview}
+                      alt="Attached"
+                      className="w-10 h-10 rounded-lg object-cover border border-border/50 flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg border border-border/50 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-4 h-4 text-muted-foreground/70" />
+                    </div>
+                  )}
+                  <span className="text-[10px] font-mono text-muted-foreground/70 truncate">{msg.file.fileName ?? 'Attached file'}</span>
                 </div>
               )}
 
