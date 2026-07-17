@@ -207,9 +207,15 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                     Connect Gmail account
                   </button>
                 )}
-                <p className="text-[10px] font-mono text-muted-foreground/50">
-                  Lets Jarvis read your unread inbox so you can ask about emails by voice.
-                </p>
+                {gmailStatus?.connected ? (
+                  <p className="text-[10px] font-mono text-primary/50 tracking-wide">
+                    ↳ monitoring inbox as {gmailStatus.email}
+                  </p>
+                ) : (
+                  <p className="text-[10px] font-mono text-muted-foreground/50">
+                    Lets Jarvis read your unread inbox so you can ask about emails by voice.
+                  </p>
+                )}
               </div>
 
               {/* Weather */}
