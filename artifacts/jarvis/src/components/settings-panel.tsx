@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut, Brain, Globe, MessageSquare, Rocket, Briefcase, Sparkles } from 'lucide-react';
+import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut, Brain, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Settings {
@@ -15,7 +15,6 @@ interface Settings {
   calendar_name_3: string;
   calendar_name_4: string;
   calendar_name_5: string;
-  personality: string;
   web_search_enabled: string;
 }
 
@@ -31,7 +30,6 @@ const EMPTY: Settings = {
   calendar_name_3: '',
   calendar_name_4: '',
   calendar_name_5: '',
-  personality: 'balanced',
   web_search_enabled: 'false',
 };
 
@@ -251,39 +249,6 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                     Lets Jarvis read your unread inbox so you can ask about emails by voice.
                   </p>
                 )}
-              </div>
-
-              {/* Personality */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-primary/70" />
-                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">PERSONALITY</label>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: 'balanced', label: 'Balanced', icon: MessageSquare },
-                    { value: 'talkative', label: 'Talkative', icon: Sparkles },
-                    { value: 'helpful', label: 'Helpful', icon: Briefcase },
-                    { value: 'concise', label: 'No extra words', icon: MessageSquare },
-                    { value: 'terse', label: 'Just gets it done', icon: Rocket },
-                  ].map(({ value, label, icon: Icon }) => {
-                    const active = form.personality === value;
-                    return (
-                      <button
-                        key={value}
-                        onClick={() => setForm(f => ({ ...f, personality: value }))}
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-[11px] font-mono transition-all ${
-                          active
-                            ? 'border-primary/60 bg-primary/10 text-primary'
-                            : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
 
               {/* Web Search */}

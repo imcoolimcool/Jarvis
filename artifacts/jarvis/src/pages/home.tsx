@@ -6,7 +6,7 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, ImagePlus, X } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, ImagePlus, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap } from 'lucide-react';
 
 type Theme = 'dark' | 'light';
 
@@ -43,6 +43,8 @@ export default function Home() {
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [subtitle, setSubtitle] = useState<{ user: string; jarvis: string } | null>(null);
+  const [personality, setPersonality] = useState('balanced');
+  const [personalityMenuOpen, setPersonalityMenuOpen] = useState(false);
 
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -83,6 +85,30 @@ export default function Home() {
   useEffect(() => {
     return () => { if (attachedFile?.preview) URL.revokeObjectURL(attachedFile.preview); };
   }, [attachedFile]);
+
+  // Load personality from settings
+  useEffect(() => {
+    fetch('/api/jarvis/settings')
+      .then(r => r.json())
+      .then(data => {
+        if (data.personality) setPersonality(data.personality);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSetPersonality = async (value: string) => {
+    setPersonality(value);
+    setPersonalityMenuOpen(false);
+    try {
+      await fetch('/api/jarvis/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ personality: value }),
+      });
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not save personality' });
+    }
+  };
 
   const handleError = useCallback((msg: string) => {
     toast({ variant: 'destructive', title: 'Something went wrong', description: msg });
@@ -331,6 +357,56 @@ export default function Home() {
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-2 h-2 bg-primary rounded-full animate-pulse flex-shrink-0" />
             <h1 className="font-display font-bold tracking-[0.15em] text-base sm:text-lg glow-text truncate">JARVIS</h1>
+          </div>
+        </div>
+
+        {/* Personality selector — centered in header */}
+        <div className="absolute left-1/2 -translate-x-1/2">
+          <div className="relative">
+            <button
+              onClick={() => setPersonalityMenuOpen(o => !o)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/50 bg-card/50 text-[11px] font-display tracking-wider text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
+              aria-label="Change personality"
+            >
+              {personality === 'balanced' && <MessageCircle className="w-3 h-3" />}
+              {personality === 'talkative' && <Sparkles className="w-3 h-3" />}
+              {personality === 'helpful' && <Briefcase className="w-3 h-3" />}
+              {personality === 'concise' && <Zap className="w-3 h-3" />}
+              <span className="hidden sm:inline">
+                {personality === 'balanced' && 'Balanced'}
+                {personality === 'talkative' && 'Talkative'}
+                {personality === 'helpful' && 'Helpful'}
+                {personality === 'concise' && 'Just gets it done'}
+              </span>
+              <ChevronDown className={`w-3 h-3 transition-transform ${personalityMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {personalityMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setPersonalityMenuOpen(false)} />
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 min-w-[10rem] p-1 rounded-xl border border-border/50 bg-card shadow-xl overflow-hidden">
+                  {[
+                    { value: 'balanced', label: 'Balanced', icon: MessageCircle },
+                    { value: 'talkative', label: 'Talkative', icon: Sparkles },
+                    { value: 'helpful', label: 'Helpful', icon: Briefcase },
+                    { value: 'concise', label: 'Just gets it done', icon: Zap },
+                  ].map(({ value, label, icon: Icon }) => (
+                    <button
+                      key={value}
+                      onClick={() => handleSetPersonality(value)}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-display tracking-wider transition-colors ${
+                        personality === value
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
