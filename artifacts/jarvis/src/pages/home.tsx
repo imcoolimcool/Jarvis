@@ -136,8 +136,8 @@ export default function Home() {
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const maxSize = 20 * 1024 * 1024; // 20 MB
-    if (file.size > maxSize) { toast({ title: 'File too large', description: 'Max 20 MB' }); return; }
+    const maxSize = 1024 * 1024 * 1024; // 1 GB
+    if (file.size > maxSize) { toast({ title: 'File too large', description: 'Max 1 GB' }); return; }
     try {
       if (attachedFile?.preview) URL.revokeObjectURL(attachedFile.preview);
       setAttachedFile(await readFile(file));
