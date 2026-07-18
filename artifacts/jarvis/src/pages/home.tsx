@@ -340,10 +340,20 @@ export default function Home() {
       setStatus('recording');
       startListening();
     } else if (status === 'recording') {
+      // Stop whichever recognizer is active — could be the orb-tap session
+      // (useSpeechRecognition) or the wake-word session (useWakeWord in command mode).
       stopListening();
-      // onEnd callback resets to wake if no transcript came through
+      stopWakeWord();
+      // Return to wake-word listening; useWakeWord.stop() clears activeRef so
+      // onend won't auto-restart — we have to restart manually here.
+      if (!isChatMode) {
+        setStatus('wake');
+        startWakeWord();
+      } else {
+        setStatus('idle');
+      }
     }
-  }, [status, startListening, stopListening, stopWakeWord, handleError]);
+  }, [status, isChatMode, startListening, stopListening, stopWakeWord, startWakeWord, handleError]);
 
   const handleChatSubmit = () => {
     const text = chatInput.trim();
