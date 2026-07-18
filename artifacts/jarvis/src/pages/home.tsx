@@ -55,20 +55,38 @@ export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Tracks whether the current recording session was triggered by the wake word.
+  // Used to allow one fast-retry if Chrome aborts before capturing any audio.
+  const wakeTriggeredRef = useRef(false);
+  const listenStartTimeRef = useRef<number>(0);
+
   const { start: startListening, stop: stopListening } = useSpeechRecognition({
     onTranscript: (text) => {
+      wakeTriggeredRef.current = false;
       setStatus('thinking');
       processUserText(text);
     },
     onError: (msg) => handleError(msg),
     onEnd: () => {
-      // Only reset to wake if we're still in recording state (no transcript came through)
       setStatus(prev => {
         if (prev === 'recording') {
           if (!isChatMode) {
+            // If this was a wake-word triggered session that aborted very fast
+            // (Chrome audio pipeline still settling), retry once before giving up.
+            const elapsed = Date.now() - listenStartTimeRef.current;
+            if (wakeTriggeredRef.current && elapsed < 400) {
+              // Retry after a short pause — don't restart wake word yet
+              setTimeout(() => {
+                listenStartTimeRef.current = Date.now();
+                startListening();
+              }, 150);
+              return 'recording'; // keep status; don't flash back to wake
+            }
+            wakeTriggeredRef.current = false;
             startWakeWord();
             return 'wake';
           }
+          wakeTriggeredRef.current = false;
           return 'idle';
         }
         return prev;
@@ -80,16 +98,20 @@ export default function Home() {
     onWake: () => {
       if (isChatMode) return;
       playWakeSound();
-      stopWakeWord();
-      // Keep status as 'wake' during the delay — if we set 'recording' now and
-      // the new recognizer fails fast (mic still busy), onEnd sees 'recording'
-      // and restarts the wake-word listener while the timeout is still pending,
-      // creating an infinite flicker loop. Only transition to 'recording' once
-      // we actually hand the mic to the speech recognizer.
+      // Don't call stopWakeWord() here — useWakeWord stops its recognizer internally
+      // when the wake word fires. We wait for onReleased (the recognizer's actual
+      // onend event) before handing the mic to startListening(), so Chrome never
+      // sees two concurrent recognizers contending for the mic.
+    },
+    onReleased: () => {
+      // The wake-word recognizer's onend has fired — Chrome's audio pipeline is
+      // released. A short settle delay prevents immediate aborts on some systems.
+      wakeTriggeredRef.current = true;
       setTimeout(() => {
+        listenStartTimeRef.current = Date.now();
         setStatus('recording');
         startListening();
-      }, 350);
+      }, 80);
     },
     onError: (msg) => {
       // Don't show a toast for every wake-word hiccup; only reset to idle on real errors

@@ -34,17 +34,20 @@ function soundsLikeWakeWord(text: string): boolean {
 
 interface UseWakeWordOptions {
   onWake: () => void;
+  onReleased?: () => void; // fires when the recognizer's onend fires after a wake word
   onError?: (msg: string) => void;
 }
 
-export function useWakeWord({ onWake, onError }: UseWakeWordOptions) {
+export function useWakeWord({ onWake, onReleased, onError }: UseWakeWordOptions) {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const activeRef = useRef(false);
   const triggeredRef = useRef(false);
   const onWakeRef = useRef(onWake);
+  const onReleasedRef = useRef(onReleased);
   const onErrorRef = useRef(onError);
 
   onWakeRef.current = onWake;
+  onReleasedRef.current = onReleased;
   onErrorRef.current = onError;
 
   const start = useCallback(() => {
@@ -71,10 +74,12 @@ export function useWakeWord({ onWake, onError }: UseWakeWordOptions) {
         if (!transcript) continue;
         if (soundsLikeWakeWord(transcript)) {
           triggeredRef.current = true;
-          try { recognition.stop(); } catch { /* noop */ }
           activeRef.current = false;
           recognitionRef.current = null;
           onWakeRef.current();
+          // Stop AFTER clearing refs so onend knows we triggered intentionally.
+          // onend will call onReleased once the mic is truly free.
+          try { recognition.stop(); } catch { /* noop */ }
           return;
         }
       }
@@ -94,8 +99,13 @@ export function useWakeWord({ onWake, onError }: UseWakeWordOptions) {
     };
 
     recognition.onend = () => {
-      if (!triggeredRef.current && activeRef.current) {
-        // Restart if the session ended naturally while still listening
+      if (triggeredRef.current) {
+        // Wake word fired — mic is now fully released. Signal the caller so it
+        // can safely start the next recognizer without a timeout guess.
+        triggeredRef.current = false;
+        onReleasedRef.current?.();
+      } else if (activeRef.current) {
+        // Session ended naturally while still listening for wake word — restart.
         try { recognition.start(); } catch { /* noop */ }
       }
     };
