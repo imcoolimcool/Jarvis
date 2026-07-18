@@ -81,10 +81,15 @@ export default function Home() {
       if (isChatMode) return;
       playWakeSound();
       stopWakeWord();
-      setStatus('recording');
-      // Small delay so the wake-word SpeechRecognition instance fully releases
-      // the mic before we start a new one — Chrome blocks concurrent instances
-      setTimeout(() => startListening(), 350);
+      // Keep status as 'wake' during the delay — if we set 'recording' now and
+      // the new recognizer fails fast (mic still busy), onEnd sees 'recording'
+      // and restarts the wake-word listener while the timeout is still pending,
+      // creating an infinite flicker loop. Only transition to 'recording' once
+      // we actually hand the mic to the speech recognizer.
+      setTimeout(() => {
+        setStatus('recording');
+        startListening();
+      }, 350);
     },
     onError: (msg) => {
       // Don't show a toast for every wake-word hiccup; only reset to idle on real errors
