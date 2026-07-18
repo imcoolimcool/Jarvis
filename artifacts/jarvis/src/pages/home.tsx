@@ -345,7 +345,7 @@ export default function Home() {
     <div className={`${theme} min-h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden`}>
 
       {/* ── Header ───────────────────────────────── */}
-      <header className="px-4 py-3 flex items-center gap-3 border-b border-border/50 bg-background/80 backdrop-blur-md relative z-10 flex-shrink-0">
+      <header className="px-4 py-3 flex items-center gap-3 border-b border-border/50 bg-background/80 backdrop-blur-md relative z-50 flex-shrink-0">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <button
             onClick={() => setMobileSidebarOpen(true)}
