@@ -221,11 +221,13 @@ router.post("/chat", async (req, res) => {
     conversationId,
     fileBase64,
     fileMimeType,
+    webSearchEnabled,
   } = req.body as {
     userMessage: string;
     conversationId?: string;
     fileBase64?: string;
     fileMimeType?: string;
+    webSearchEnabled?: string;
   };
 
   if (!userMessage || typeof userMessage !== "string") {
@@ -307,7 +309,8 @@ router.post("/chat", async (req, res) => {
 
     // Optional web search context
     let webContext: string | null = null;
-    if (settings["web_search_enabled"] === "true" && jarvisConfig.llmModel.includes("gpt")) {
+    const shouldSearch = (webSearchEnabled === "true" || settings["web_search_enabled"] === "true") && jarvisConfig.llmModel.includes("gpt");
+    if (shouldSearch) {
       webContext = await getWebSearchResults(userMessage);
     }
 

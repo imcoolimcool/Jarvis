@@ -7,7 +7,7 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, ImagePlus, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, ImagePlus, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe } from 'lucide-react';
 
 type Theme = 'dark' | 'light';
 
@@ -46,6 +46,7 @@ export default function Home() {
   const [subtitle, setSubtitle] = useState<{ user: string; jarvis: string } | null>(null);
   const [personality, setPersonality] = useState('balanced');
   const [personalityMenuOpen, setPersonalityMenuOpen] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -78,6 +79,7 @@ export default function Home() {
   const { start: startWakeWord, stop: stopWakeWord, reset: resetWakeWord } = useWakeWord({
     onWake: () => {
       if (isChatMode) return;
+      playWakeSound();
       stopWakeWord();
       setStatus('recording');
       startListening();
@@ -110,12 +112,13 @@ export default function Home() {
     return () => { if (attachedFile?.preview) URL.revokeObjectURL(attachedFile.preview); };
   }, [attachedFile]);
 
-  // Load personality from settings
+  // Load personality and web search from settings
   useEffect(() => {
     fetch('/api/jarvis/settings')
       .then(r => r.json())
       .then(data => {
         if (data.personality) setPersonality(data.personality);
+        setWebSearchEnabled(data.web_search_enabled === 'true');
       })
       .catch(() => {});
   }, []);
@@ -148,6 +151,37 @@ export default function Home() {
       toast({ variant: 'destructive', title: 'Could not save personality' });
     }
   };
+
+  const handleToggleWebSearch = async () => {
+    const next = !webSearchEnabled;
+    setWebSearchEnabled(next);
+    try {
+      await fetch('/api/jarvis/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ web_search_enabled: next ? 'true' : 'false' }),
+      });
+    } catch {
+      toast({ variant: 'destructive', title: 'Could not save web search setting' });
+    }
+  };
+
+  const playWakeSound = useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    } catch { /* audio not supported */ }
+  }, []);
 
   const handleError = useCallback((msg: string) => {
     toast({ variant: 'destructive', title: 'Something went wrong', description: msg });
@@ -256,6 +290,7 @@ export default function Home() {
       const body: Record<string, string> = { userMessage: userText };
       if (activeConvIdRef.current) body.conversationId = activeConvIdRef.current;
       if (file) { body.fileBase64 = file.base64; body.fileMimeType = file.mimeType; }
+      if (webSearchEnabled) body.webSearchEnabled = 'true';
 
       const res = await fetch('/api/jarvis/chat', {
         method: 'POST',
@@ -587,6 +622,15 @@ export default function Home() {
                         attachedFile ? 'border-primary text-primary bg-primary/10' : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
                       } disabled:opacity-30`}>
                       <Paperclip className="w-4 h-4" />
+                    </button>
+                    <button onClick={handleToggleWebSearch} disabled={isBusy}
+                      title={webSearchEnabled ? 'Web search enabled' : 'Web search disabled'}
+                      className={`p-2.5 rounded-lg border transition-all flex-shrink-0 ${
+                        webSearchEnabled
+                          ? 'border-primary text-primary bg-primary/10'
+                          : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
+                      } disabled:opacity-30`}>
+                      <Globe className="w-4 h-4" />
                     </button>
                     <input ref={inputRef} type="text" value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
