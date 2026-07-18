@@ -127,19 +127,18 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  // Wake-word lifecycle: start when in voice mode and idle, stop otherwise
+  // Wake-word lifecycle
   useEffect(() => {
-    if (isChatMode) {
-      stopWakeWord();
-      return;
-    }
+    if (isChatMode) { stopWakeWord(); return; }
+
     if (status === 'idle' || status === 'wake') {
-      if (isWakeWordSupported()) {
-        startWakeWord();
-      }
-    } else {
+      if (isWakeWordSupported()) startWakeWord(); // guard in hook prevents double-start
+    } else if (status === 'thinking' || status === 'speaking' || status === 'transcribing') {
       stopWakeWord();
     }
+    // 'recording' → leave alone. Either:
+    //   • orb-tap: stopWakeWord() already called inside handleToggleRecording
+    //   • wake-word command capture: hook must keep running to capture the command
   }, [isChatMode, status, startWakeWord, stopWakeWord]);
 
   const handleSetPersonality = async (value: string) => {
@@ -325,11 +324,19 @@ export default function Home() {
         }
       });
     } catch { handleError("Jarvis hit a snag — try again."); }
-  }, [handleError, refreshSidebar, playTTS, isChatMode, startListening]);
+  }, [handleError, refreshSidebar, playTTS, isChatMode, startWakeWord, webSearchEnabled]);
 
   const handleToggleRecording = useCallback(() => {
     if (status === 'speaking') {
-      activeAudioRef.current?.pause(); activeAudioRef.current = null; setStatus('idle'); return;
+      activeAudioRef.current?.pause();
+      activeAudioRef.current = null;
+      if (!isChatMode) {
+        setStatus('wake');
+        startWakeWord(); // call directly here — we're in a user-gesture context (iOS safe)
+      } else {
+        setStatus('idle');
+      }
+      return;
     }
     if (status === 'idle' || status === 'wake') {
       if (!isSpeechRecognitionSupported()) {
@@ -395,8 +402,15 @@ export default function Home() {
   };
 
   const handleStopSpeaking = () => {
-    activeAudioRef.current?.pause(); activeAudioRef.current = null; setStatus('idle');
-    if (isChatMode) setTimeout(() => inputRef.current?.focus(), 50);
+    activeAudioRef.current?.pause();
+    activeAudioRef.current = null;
+    if (isChatMode) {
+      setStatus('idle');
+      setTimeout(() => inputRef.current?.focus(), 50);
+    } else {
+      setStatus('wake');
+      startWakeWord(); // call directly — user-gesture context (iOS safe)
+    }
   };
 
   useEffect(() => {
