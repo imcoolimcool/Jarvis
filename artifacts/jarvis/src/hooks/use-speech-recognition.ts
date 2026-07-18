@@ -63,7 +63,19 @@ export function useSpeechRecognition({
     };
 
     recognitionRef.current = recognition;
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (err) {
+      recognitionRef.current = null;
+      // DOMException thrown synchronously (e.g. "not-allowed", "invalid-state").
+      // Treat as a recoverable end so the caller can reset state.
+      const msg = err instanceof DOMException ? err.message : String(err);
+      if (msg.toLowerCase().includes('not-allowed') || msg.toLowerCase().includes('permission')) {
+        onError('Microphone access denied. Please allow microphone in your browser settings.');
+      } else {
+        onEnd();
+      }
+    }
   }, [onTranscript, onError, onEnd]);
 
   const stop = useCallback(() => {
