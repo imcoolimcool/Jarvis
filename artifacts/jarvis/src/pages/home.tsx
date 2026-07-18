@@ -82,7 +82,9 @@ export default function Home() {
       playWakeSound();
       stopWakeWord();
       setStatus('recording');
-      startListening();
+      // Small delay so the wake-word SpeechRecognition instance fully releases
+      // the mic before we start a new one — Chrome blocks concurrent instances
+      setTimeout(() => startListening(), 350);
     },
     onError: (msg) => {
       // Don't show a toast for every wake-word hiccup; only reset to idle on real errors
