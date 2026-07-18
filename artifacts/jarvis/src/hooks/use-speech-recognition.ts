@@ -47,8 +47,8 @@ export function useSpeechRecognition({
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (event.error === 'no-speech') {
-        onEnd(); // silence — just reset, not an error
+      if (event.error === 'no-speech' || event.error === 'aborted') {
+        onEnd(); // silence or programmatic stop — not a real error
       } else if (event.error === 'not-allowed') {
         onError('Microphone access denied. Please allow microphone in your browser settings.');
       } else {

@@ -413,7 +413,7 @@ export default function Home() {
     ? "Type in the chat panel"
     : status === 'idle' || status === 'wake'
       ? "Say 'hey Jarvis' or tap orb to talk"
-    : status === 'recording'    ? "Tap orb when you're done"
+    : status === 'recording'    ? "Listening… stops automatically when you finish speaking"
     : status === 'speaking'     ? "Tap orb to interrupt"
     : status === 'transcribing' ? "Converting speech to text…"
     : "Processing your request…";
