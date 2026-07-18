@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square } from 'lucide-react';
 
-export type AppState = 'idle' | 'recording' | 'transcribing' | 'thinking' | 'speaking';
+export type AppState = 'idle' | 'wake' | 'recording' | 'transcribing' | 'thinking' | 'speaking';
 
 interface OrbProps {
   status: AppState;
@@ -10,6 +10,7 @@ interface OrbProps {
 
 export function Orb({ status, onClick }: OrbProps) {
   const isBusy = status === 'thinking' || status === 'transcribing';
+  const isListening = status === 'wake' || status === 'recording';
 
   return (
     <div
@@ -21,12 +22,12 @@ export function Orb({ status, onClick }: OrbProps) {
       <motion.div
         className="absolute inset-0 rounded-full bg-primary/20 blur-[72px] pointer-events-none"
         animate={{
-          scale: status === 'recording' || status === 'speaking' ? [1, 1.25, 1] : [1, 1.05, 1],
-          opacity: status === 'idle' ? [0.25, 0.4, 0.25] : [0.6, 0.9, 0.6],
+          scale: status === 'recording' || status === 'speaking' ? [1, 1.25, 1] : status === 'wake' ? [1, 1.08, 1] : [1, 1.05, 1],
+          opacity: status === 'idle' ? [0.25, 0.4, 0.25] : status === 'wake' ? [0.35, 0.55, 0.35] : [0.6, 0.9, 0.6],
         }}
         transition={{
           repeat: Infinity,
-          duration: status === 'recording' ? 1.2 : status === 'speaking' ? 0.9 : 4,
+          duration: status === 'recording' ? 1.2 : status === 'speaking' ? 0.9 : status === 'wake' ? 2 : 4,
           ease: 'easeInOut',
         }}
       />
@@ -34,19 +35,19 @@ export function Orb({ status, onClick }: OrbProps) {
       {/* Outer status rings */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <AnimatePresence>
-          {status === 'recording' && (
+          {(status === 'recording' || status === 'wake') && (
             <>
               {[1, 2, 3].map((i) => (
                 <motion.div
                   key={`ring-${i}`}
-                  className="absolute w-full h-full rounded-full border border-primary/60"
-                  initial={{ scale: 0.8, opacity: 1 }}
-                  animate={{ scale: 2.2, opacity: 0 }}
+                  className={`absolute w-full h-full rounded-full border ${status === 'wake' ? 'border-primary/30' : 'border-primary/60'}`}
+                  initial={{ scale: status === 'wake' ? 0.9 : 0.8, opacity: status === 'wake' ? 0.6 : 1 }}
+                  animate={{ scale: status === 'wake' ? 1.6 : 2.2, opacity: 0 }}
                   exit={{ opacity: 0 }}
                   transition={{
                     repeat: Infinity,
-                    duration: 2.4,
-                    delay: i * 0.8,
+                    duration: status === 'wake' ? 3.2 : 2.4,
+                    delay: i * (status === 'wake' ? 1.1 : 0.8),
                     ease: 'easeOut',
                   }}
                 />

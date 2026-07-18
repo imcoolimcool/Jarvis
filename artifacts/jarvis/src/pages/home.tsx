@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSpeechRecognition, isSpeechRecognitionSupported } from '@/hooks/use-speech-recognition';
+import { useWakeWord, isWakeWordSupported } from '@/hooks/use-wake-word';
 import { useSynthesizeSpeech } from '@workspace/api-client-react';
 import { Orb, AppState } from '@/components/orb';
 import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
@@ -60,8 +61,31 @@ export default function Home() {
     },
     onError: (msg) => handleError(msg),
     onEnd: () => {
-      // Only reset to idle if we're still in recording state (no transcript came through)
-      setStatus(prev => prev === 'recording' ? 'idle' : prev);
+      // Only reset to wake if we're still in recording state (no transcript came through)
+      setStatus(prev => {
+        if (prev === 'recording') {
+          if (!isChatMode) {
+            startWakeWord();
+            return 'wake';
+          }
+          return 'idle';
+        }
+        return prev;
+      });
+    },
+  });
+
+  const { start: startWakeWord, stop: stopWakeWord, reset: resetWakeWord } = useWakeWord({
+    onWake: () => {
+      if (isChatMode) return;
+      stopWakeWord();
+      setStatus('recording');
+      startListening();
+    },
+    onError: (msg) => {
+      // Don't show a toast for every wake-word hiccup; only reset to idle on real errors
+      if (msg.includes('denied')) toast({ title: 'Wake word needs mic access', description: msg });
+      setStatus('idle');
     },
   });
   const { toast } = useToast();
@@ -95,6 +119,21 @@ export default function Home() {
       })
       .catch(() => {});
   }, []);
+
+  // Wake-word lifecycle: start when in voice mode and idle, stop otherwise
+  useEffect(() => {
+    if (isChatMode) {
+      stopWakeWord();
+      return;
+    }
+    if (status === 'idle' || status === 'wake') {
+      if (isWakeWordSupported()) {
+        startWakeWord();
+      }
+    } else {
+      stopWakeWord();
+    }
+  }, [isChatMode, status, startWakeWord, stopWakeWord]);
 
   const handleSetPersonality = async (value: string) => {
     setPersonality(value);
@@ -241,9 +280,9 @@ export default function Home() {
           setStatus('idle');
           setTimeout(() => inputRef.current?.focus(), 50);
         } else {
-          // Auto-restart listening after Jarvis finishes speaking
-          setStatus('recording');
-          startListening();
+          // Go back to wake-word listening after Jarvis finishes speaking
+          setStatus('wake');
+          startWakeWord();
         }
       });
     } catch { handleError("Jarvis hit a snag — try again."); }
@@ -253,18 +292,19 @@ export default function Home() {
     if (status === 'speaking') {
       activeAudioRef.current?.pause(); activeAudioRef.current = null; setStatus('idle'); return;
     }
-    if (status === 'idle') {
+    if (status === 'idle' || status === 'wake') {
       if (!isSpeechRecognitionSupported()) {
         handleError("Voice mode requires Chrome or Edge browser.");
         return;
       }
+      stopWakeWord();
       setStatus('recording');
       startListening();
     } else if (status === 'recording') {
       stopListening();
-      // onEnd callback resets to idle if no transcript came through
+      // onEnd callback resets to wake if no transcript came through
     }
-  }, [status, startListening, stopListening, handleError]);
+  }, [status, startListening, stopListening, stopWakeWord, handleError]);
 
   const handleChatSubmit = () => {
     const text = chatInput.trim();
@@ -316,7 +356,7 @@ export default function Home() {
       if (e.code === 'Space' && e.target === document.body) {
         e.preventDefault();
         if (e.repeat) return;
-        if (status === 'idle' || status === 'recording' || status === 'speaking') handleToggleRecording();
+        if (status === 'idle' || status === 'wake' || status === 'recording' || status === 'speaking') handleToggleRecording();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -327,6 +367,7 @@ export default function Home() {
 
   const statusLabels: Record<AppState, string> = {
     idle: 'Ready',
+    wake: 'Listening for wake word',
     recording: 'Listening',
     transcribing: 'Transcribing',
     thinking: 'Thinking',
@@ -335,7 +376,8 @@ export default function Home() {
 
   const statusHint = isChatMode
     ? "Type in the chat panel"
-    : status === 'idle'         ? "Tap orb or press space to talk"
+    : status === 'idle' || status === 'wake'
+      ? "Say 'hey Jarvis' or tap orb to talk"
     : status === 'recording'    ? "Tap orb when you're done"
     : status === 'speaking'     ? "Tap orb to interrupt"
     : status === 'transcribing' ? "Converting speech to text…"
