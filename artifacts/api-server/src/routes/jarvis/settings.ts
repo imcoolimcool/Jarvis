@@ -17,7 +17,9 @@ const ALLOWED_KEYS = [
   "calendar_name_4",
   "calendar_name_5",
   "personality",
+  "custom_personality_prompt",
   "web_search_enabled",
+  "google_calendar_enabled",
 ] as const;
 type SettingKey = (typeof ALLOWED_KEYS)[number];
 

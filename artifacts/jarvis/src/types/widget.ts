@@ -8,3 +8,4 @@ export type Widget =
   | { type: 'timer'; durationSeconds: number; label?: string }
   | { type: 'alarm'; time: string; label?: string }
   | { type: 'calendar'; events: CalendarEvent[]; weekStart: string }
+  | { type: 'music'; track?: string; artist?: string; album?: string; albumArt?: string | null; playing: boolean; query?: string }

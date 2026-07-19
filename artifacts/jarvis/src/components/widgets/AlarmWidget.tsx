@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { BellRing, X } from 'lucide-react';
+import { BellRing, AlarmClock, X } from 'lucide-react';
 
 interface AlarmWidgetProps {
   time: string;   // "HH:MM" 24-h
@@ -59,8 +59,11 @@ export function AlarmWidget({ time, label, compact, onClose }: AlarmWidgetProps)
     // Above-orb compact mode
     return (
       <div className={`flex flex-col items-center gap-1 ${fired ? 'animate-pulse' : ''}`}>
-        <BellRing className={`w-5 h-5 ${fired ? 'text-yellow-400' : 'text-primary/70'}`} />
-        <span className="font-display text-lg font-bold text-primary tabular-nums">{display}</span>
+        <div className="flex items-center gap-1.5">
+          <AlarmClock className={`w-5 h-5 ${fired ? 'text-yellow-400' : 'text-primary/70'}`} />
+          {fired && <BellRing className="w-4 h-4 text-yellow-400 animate-bounce" />}
+        </div>
+        <span className="font-display text-2xl font-bold text-primary tabular-nums tracking-wider">{display}</span>
         {label && <span className="text-[10px] font-mono text-muted-foreground/50 tracking-wider uppercase">{label}</span>}
         {fired && (
           <button onClick={dismiss} className="mt-1 text-[10px] font-mono text-yellow-400 hover:text-yellow-300 border border-yellow-400/40 rounded-full px-2 py-0.5">

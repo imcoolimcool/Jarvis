@@ -62,4 +62,4 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-GOOGLE_REDIRECT_URI = "https://jarvis--kasperkal.replit.app/api/jarvis/gmail/callback"
+GOOGLE_REDIRECT_URI = "https://0529e3c5-21d8-4c34-b53c-02ddd52848d0-00-r47qjxr1sz23.picard.replit.dev/api/jarvis/gmail/callback"

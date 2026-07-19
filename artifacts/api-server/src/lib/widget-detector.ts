@@ -14,6 +14,7 @@ export type Widget =
   | { type: 'timer'; durationSeconds: number; label?: string }
   | { type: 'alarm'; time: string; label?: string }    // "HH:MM" 24-h
   | { type: 'calendar'; events: CalendarEvent[]; weekStart: string }
+  | { type: 'music'; track?: string; artist?: string; album?: string; albumArt?: string | null; playing: boolean; query?: string }
 
 export interface ForecastDay {
   date: string;           // YYYY-MM-DD
@@ -34,7 +35,7 @@ export interface CalendarEvent {
 
 // ─── Intent detection ────────────────────────────────────────────────────────
 
-type Intent = 'clock' | 'weather' | 'timer' | 'alarm' | 'calendar' | null;
+type Intent = 'clock' | 'weather' | 'timer' | 'alarm' | 'calendar' | 'music' | null;
 
 function detectIntent(msg: string): Intent {
   const t = msg.toLowerCase();
@@ -44,6 +45,7 @@ function detectIntent(msg: string): Intent {
   if (/\b(set( a)? timer|start( a)? timer|timer (for|of)|countdown|count down)\b/.test(t)) return 'timer';
   if (/\b(set( an?)? alarm|wake me up( at)?|alarm( at| for)?|remind me at)\b/.test(t)) return 'alarm';
   if (/\b(calendar|my schedule|agenda|upcoming events?|what('?s| is) (on|happening)|this week|next week|show me (my )?(events?|calendar))\b/.test(t)) return 'calendar';
+  if (/\b(play |pause|skip( track| song)?|next (track|song)|previous (track|song)|what('?s| is) playing|stop (music|playing)|music)\b/.test(t)) return 'music';
 
   return null;
 }
@@ -306,6 +308,56 @@ function parseIcsDate(value: string): { date: Date; allDay: boolean } | null {
   return { date, allDay: false };
 }
 
+// ─── Music ───────────────────────────────────────────────────────────────────
+
+function extractMusicQuery(msg: string): string | undefined {
+  // "play X", "play some X", "put on X"
+  const m = msg.match(/\b(?:play|put on)\s+(?:some\s+)?(.+?)(?:\s+(?:music|song|track|playlist))?$/i)
+    ?? msg.match(/\b(?:play)\s+(.+)/i);
+  return m?.[1]?.trim();
+}
+
+function buildMusicWidget(msg: string): Extract<Widget, { type: 'music' }> {
+  const t = msg.toLowerCase();
+  const query = extractMusicQuery(msg);
+
+  // Determine action from message
+  if (/\b(pause|stop)\b/.test(t)) return { type: 'music', playing: false };
+  if (/\bwhat('?s| is) playing\b/.test(t)) return { type: 'music', playing: true };
+
+  return { type: 'music', playing: true, query };
+}
+
+// ─── Google Calendar (via API) ───────────────────────────────────────────────
+
+async function fetchGoogleCalendarWidget(): Promise<Extract<Widget, { type: 'calendar' }> | null> {
+  try {
+    const { fetchAllGoogleCalendars } = await import("./google-calendar");
+    const events = await fetchAllGoogleCalendars();
+    if (events.length === 0) return null;
+
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+    const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+
+    // Map to CalendarEvent format
+    const calEvents: CalendarEvent[] = events.map(e => ({
+      id: e.id,
+      title: e.title,
+      start: e.start,
+      end: e.end,
+      allDay: e.allDay,
+      calendarName: e.calendarName,
+    }));
+
+    return { type: 'calendar', events: calEvents, weekStart: weekStartStr };
+  } catch {
+    return null;
+  }
+}
+
 // ─── Main export ─────────────────────────────────────────────────────────────
 
 export async function detectAndBuildWidget(
@@ -333,10 +385,20 @@ export async function detectAndBuildWidget(
     }
 
     case 'calendar': {
+      // Try Google Calendar API first (if Gmail/Calendar is connected)
+      if (settings['google_calendar_enabled'] !== 'false') {
+        const gcal = await fetchGoogleCalendarWidget();
+        if (gcal) return gcal;
+      }
+      // Fallback: iCal URLs
       const calendars: { url: string; name?: string }[] = [1, 2, 3, 4, 5]
         .map(n => ({ url: settings[`calendar_ics_url_${n}`], name: settings[`calendar_name_${n}`] || undefined }))
         .filter(c => c.url) as { url: string; name?: string }[];
       return await fetchCalendarWidget(calendars);
+    }
+
+    case 'music': {
+      return buildMusicWidget(userMessage);
     }
   }
 }

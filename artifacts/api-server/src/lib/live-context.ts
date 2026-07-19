@@ -195,5 +195,14 @@ export async function buildLiveContext(opts: {
 
   if (gmailResult) parts.push(gmailResult);
 
+  // Google Calendar via API (if connected and calendar scope granted)
+  if (calendars.length === 0) {
+    try {
+      const { getGoogleCalendarContext } = await import("./google-calendar");
+      const gcalResult = await getGoogleCalendarContext().catch(() => null);
+      if (gcalResult) parts.push(gcalResult);
+    } catch { /* google-calendar not available */ }
+  }
+
   return `=== LIVE CONTEXT ===\n${parts.join("\n\n")}\n===================`;
 }

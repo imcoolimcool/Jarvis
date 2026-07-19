@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut, Brain, Globe } from 'lucide-react';
+import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut, Brain, Globe, Music2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Settings {
@@ -16,6 +16,7 @@ interface Settings {
   calendar_name_4: string;
   calendar_name_5: string;
   web_search_enabled: string;
+  google_calendar_enabled: string;
 }
 
 const EMPTY: Settings = {
@@ -31,6 +32,7 @@ const EMPTY: Settings = {
   calendar_name_4: '',
   calendar_name_5: '',
   web_search_enabled: 'false',
+  google_calendar_enabled: 'true',
 };
 
 interface SettingsPanelProps {
@@ -44,7 +46,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [gmailStatus, setGmailStatus] = useState<{ connected: boolean; email?: string } | null>(null);
+  const [spotifyStatus, setSpotifyStatus] = useState<{ connected: boolean; displayName?: string } | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [disconnectingSpotify, setDisconnectingSpotify] = useState(false);
   const [memories, setMemories] = useState<{ topic: string; value: string; updatedAt: string }[]>([]);
   const [loadingMemories, setLoadingMemories] = useState(false);
   const [deletingMemory, setDeletingMemory] = useState<string | null>(null);
@@ -57,6 +61,13 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       .then(r => r.json())
       .then(setGmailStatus)
       .catch(() => setGmailStatus({ connected: false }));
+  }, []);
+
+  const fetchSpotifyStatus = useCallback(() => {
+    fetch('/api/jarvis/spotify/status')
+      .then(r => r.json())
+      .then(setSpotifyStatus)
+      .catch(() => setSpotifyStatus({ connected: false }));
   }, []);
 
   const fetchMemories = useCallback(async () => {
@@ -99,8 +110,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       })
       .catch(() => {});
     fetchGmailStatus();
+    fetchSpotifyStatus();
     fetchMemories();
-  }, [open, fetchGmailStatus, fetchMemories]);
+  }, [open, fetchGmailStatus, fetchSpotifyStatus, fetchMemories]);
 
   const handleConnectGmail = () => {
     const popup = window.open('/api/jarvis/gmail/auth', 'gmail_auth', 'width=500,height=650,left=200,top=100');
@@ -110,17 +122,32 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         window.removeEventListener('message', onMessage);
         popup?.close();
         toast({
-          title: 'Gmail linked',
-          description: 'Jarvis now has access to your inbox.',
-          className: 'border-primary/40 bg-background text-foreground font-sans [&_[data-title]]:font-display [&_[data-title]]:tracking-widest',
+          title: 'Gmail + Calendar linked',
+          description: 'Jarvis now has access to your inbox and calendar.',
+          className: 'border-primary/40 bg-background text-foreground font-sans',
           duration: 4000,
         });
       }
     };
     window.addEventListener('message', onMessage);
-    // Fallback: poll if popup closed without postMessage
     const poll = setInterval(() => {
       if (popup?.closed) { clearInterval(poll); fetchGmailStatus(); window.removeEventListener('message', onMessage); }
+    }, 800);
+  };
+
+  const handleConnectSpotify = () => {
+    const popup = window.open('/api/jarvis/spotify/auth', 'spotify_auth', 'width=500,height=700,left=200,top=100');
+    const onMessage = (e: MessageEvent) => {
+      if (e.data === 'spotify_connected') {
+        fetchSpotifyStatus();
+        window.removeEventListener('message', onMessage);
+        popup?.close();
+        toast({ title: 'Spotify connected', description: 'Say "play [song]" to start music.', duration: 4000 });
+      }
+    };
+    window.addEventListener('message', onMessage);
+    const poll = setInterval(() => {
+      if (popup?.closed) { clearInterval(poll); fetchSpotifyStatus(); window.removeEventListener('message', onMessage); }
     }, 800);
   };
 
@@ -131,6 +158,16 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       setGmailStatus({ connected: false });
     } finally {
       setDisconnecting(false);
+    }
+  };
+
+  const handleDisconnectSpotify = async () => {
+    setDisconnectingSpotify(true);
+    try {
+      await fetch('/api/jarvis/spotify/disconnect', { method: 'DELETE' });
+      setSpotifyStatus({ connected: false });
+    } finally {
+      setDisconnectingSpotify(false);
     }
   };
 
@@ -152,7 +189,6 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   };
 
   const removeCalendar = (index: number) => {
-    // Shift remaining url+name pairs up, clear last
     const newForm = { ...form };
     for (let i = index; i < 4; i++) {
       const n = i + 1;
@@ -206,11 +242,11 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 </p>
               </div>
 
-              {/* Gmail */}
+              {/* Gmail + Google Calendar (combined OAuth) */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Mail className="w-3.5 h-3.5 text-primary/70" />
-                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">GMAIL</label>
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">GMAIL + GOOGLE CALENDAR</label>
                 </div>
 
                 {gmailStatus?.connected ? (
@@ -237,18 +273,55 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-border/50 rounded-lg text-[11px] font-mono text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
                   >
                     <Mail className="w-3.5 h-3.5" />
-                    Connect Gmail account
+                    Connect Google account (Gmail + Calendar)
                   </button>
                 )}
-                {gmailStatus?.connected ? (
-                  <p className="text-[10px] font-mono text-primary/50 tracking-wide">
-                    ↳ monitoring inbox as {gmailStatus.email}
-                  </p>
+                <p className="text-[10px] font-mono text-muted-foreground/50">
+                  {gmailStatus?.connected
+                    ? `↳ Gmail inbox + Google Calendar synced as ${gmailStatus.email}`
+                    : 'Grants Jarvis read access to your Gmail inbox and Google Calendar.'}
+                </p>
+              </div>
+
+              {/* Spotify */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Music2 className="w-3.5 h-3.5 text-primary/70" />
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">SPOTIFY</label>
+                </div>
+
+                {spotifyStatus?.connected ? (
+                  <div className="flex items-center justify-between p-3 border border-primary/30 bg-primary/5 rounded-lg">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-mono text-primary">Connected</p>
+                        {spotifyStatus.displayName && (
+                          <p className="text-[10px] font-mono text-muted-foreground/60 truncate">{spotifyStatus.displayName}</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleDisconnectSpotify}
+                      disabled={disconnectingSpotify}
+                      className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0 ml-2"
+                    >
+                      <LogOut className="w-3 h-3" />
+                      {disconnectingSpotify ? 'Disconnecting…' : 'Disconnect'}
+                    </button>
+                  </div>
                 ) : (
-                  <p className="text-[10px] font-mono text-muted-foreground/50">
-                    Lets Jarvis read your unread inbox so you can ask about emails by voice.
-                  </p>
+                  <button
+                    onClick={handleConnectSpotify}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-green-500/30 rounded-lg text-[11px] font-mono text-green-400/80 hover:border-green-500/60 hover:text-green-400 transition-all"
+                  >
+                    <Music2 className="w-3.5 h-3.5" />
+                    Connect Spotify
+                  </button>
                 )}
+                <p className="text-[10px] font-mono text-muted-foreground/50">
+                  Say "play [song or artist]" to control Spotify. Requires an active Spotify device.
+                </p>
               </div>
 
               {/* Web Search */}
@@ -260,7 +333,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <div className="flex items-center justify-between p-3 border border-border/50 rounded-lg bg-card/30">
                   <div className="min-w-0">
                     <p className="text-[11px] font-mono text-foreground">Let Jarvis search the web</p>
-                    <p className="text-[10px] font-mono text-muted-foreground/60">Requires a Tavily API key in Secrets.</p>
+                    <p className="text-[10px] font-mono text-muted-foreground/60">Powered by Tavily.</p>
                   </div>
                   <button
                     onClick={() => setForm(f => ({ ...f, web_search_enabled: f.web_search_enabled === 'true' ? 'false' : 'true' }))}
@@ -325,22 +398,26 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 )}
               </div>
 
-              {/* Google Calendar */}
+              {/* Calendar — iCal fallback feeds */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CalendarDays className="w-3.5 h-3.5 text-primary/70" />
-                    <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">GOOGLE CALENDAR</label>
+                    <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">MANUAL CALENDAR FEEDS</label>
                   </div>
                   {visibleSlots < 5 && (
                     <button
                       onClick={() => setVisibleSlots(v => Math.min(5, v + 1))}
                       className="flex items-center gap-1 text-[10px] font-mono text-primary hover:text-primary/80 transition-colors"
                     >
-                      <Plus className="w-3 h-3" /> Add calendar
+                      <Plus className="w-3 h-3" /> Add feed
                     </button>
                   )}
                 </div>
+
+                <p className="text-[10px] font-mono text-muted-foreground/50">
+                  Optional: add iCal feed URLs as a fallback when Google Calendar is not connected.
+                </p>
 
                 <AnimatePresence>
                   {calendarKeys.map((urlKey, i) => {
@@ -363,14 +440,14 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                             type="text"
                             value={form[nameKey]}
                             onChange={e => setForm(f => ({ ...f, [nameKey]: e.target.value }))}
-                            placeholder="Calendar name (e.g. Work, Personal)…"
+                            placeholder="Feed name (e.g. Work, Personal)…"
                             className="flex-1 bg-background border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-xs px-3 py-2 rounded-md outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all"
                           />
                           {visibleSlots > 1 && (
                             <button
                               onClick={() => removeCalendar(i)}
                               className="p-1.5 text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0"
-                              title="Remove this calendar"
+                              title="Remove this feed"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -392,12 +469,11 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                   <div className="flex items-start gap-2">
                     <Info className="w-3 h-3 text-primary/50 mt-0.5 flex-shrink-0" />
                     <div className="text-[10px] font-mono text-muted-foreground leading-relaxed space-y-1">
-                      <p className="text-primary/70 font-semibold">How to get your free iCal URL</p>
+                      <p className="text-primary/70 font-semibold">How to get a Google Calendar iCal URL</p>
                       <p>1. Open <span className="text-primary/60">calendar.google.com</span></p>
-                      <p>2. Settings ⚙ → click your calendar name on the left</p>
+                      <p>2. Settings ⚙ → click your calendar name</p>
                       <p>3. Scroll to <span className="text-primary/60">"Integrate calendar"</span></p>
                       <p>4. Copy <span className="text-primary/60">"Secret address in iCal format"</span></p>
-                      <p className="text-muted-foreground/50 pt-1">No login or API key needed. Free forever. Up to 5 calendars.</p>
                     </div>
                   </div>
                 </div>

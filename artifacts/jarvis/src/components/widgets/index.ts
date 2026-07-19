@@ -5,3 +5,4 @@ export { TimerWidget } from './TimerWidget';
 export { AlarmWidget } from './AlarmWidget';
 export { CalendarWidget } from './CalendarWidget';
 export type { CalendarEvent } from './CalendarWidget';
+export { MusicWidget } from './MusicWidget';

@@ -20,7 +20,8 @@ const PERSONALITY_MODIFIERS: Record<string, string> = {
     "You are impatient and hyper-direct. No greetings, no fluff, no explanations. When the user says something casual like 'hello', reply with something like 'what do you need, I'll do it asap'. Get straight to the task and finish in as few words as possible.",
 };
 
-function getPersonalityModifier(personality: string): string {
+function getPersonalityModifier(personality: string, customPrompt?: string): string {
+  if (personality === "custom" && customPrompt) return customPrompt;
   return PERSONALITY_MODIFIERS[personality] ?? PERSONALITY_MODIFIERS["balanced"];
 }
 
@@ -309,7 +310,8 @@ router.post("/chat", async (req, res) => {
 
     // Personality modifier
     const personality = settings["personality"] ?? "balanced";
-    const personalityModifier = getPersonalityModifier(personality);
+    const customPrompt = settings["custom_personality_prompt"];
+    const personalityModifier = getPersonalityModifier(personality, customPrompt);
 
     // Optional web search context
     let webContext: string | null = null;
