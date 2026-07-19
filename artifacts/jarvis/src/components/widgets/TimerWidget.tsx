@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, RotateCcw, X } from 'lucide-react';
+import { Play, Pause, RotateCcw, X, Timer } from 'lucide-react';
 
 interface TimerWidgetProps {
   durationSeconds: number;
   label?: string;
+  compact?: boolean;
   onClose?: () => void;
 }
 
@@ -32,7 +33,7 @@ function playBeep() {
   } catch { /* noop */ }
 }
 
-export function TimerWidget({ durationSeconds, label, onClose }: TimerWidgetProps) {
+export function TimerWidget({ durationSeconds, label, compact, onClose }: TimerWidgetProps) {
   const [remaining, setRemaining] = useState(durationSeconds);
   const [running, setRunning] = useState(true);
   const [done, setDone] = useState(false);
@@ -67,6 +68,35 @@ export function TimerWidget({ durationSeconds, label, onClose }: TimerWidgetProp
   const progress = 1 - remaining / durationSeconds;
   const circumference = 2 * Math.PI * 44;
   const strokeDash = circumference * (1 - progress);
+
+  // ── Compact mode: tiny display above the orb ──────────────────────────────
+  if (compact) {
+    return (
+      <div className={`flex flex-col items-center gap-1 ${done ? 'animate-pulse' : ''}`}>
+        <div className="flex items-center gap-1.5">
+          <Timer className={`w-5 h-5 ${done ? 'text-green-400' : 'text-primary/70'}`} />
+        </div>
+        <span className={`font-display text-2xl font-bold tabular-nums tracking-wider ${done ? 'text-green-400' : 'text-primary'}`}>
+          {done ? "Done!" : formatTime(remaining)}
+        </span>
+        {label && <span className="text-[10px] font-mono text-muted-foreground/50 tracking-wider uppercase">{label}</span>}
+        <div className="flex items-center gap-2 mt-0.5">
+          {!done && (
+            <button onClick={() => setRunning(r => !r)}
+              className="text-[10px] font-mono text-muted-foreground/60 hover:text-primary transition-colors">
+              {running ? 'pause' : 'resume'}
+            </button>
+          )}
+          {onClose && (
+            <button onClick={done ? onClose : reset}
+              className={`text-[10px] font-mono transition-colors ${done ? 'text-green-400 hover:text-green-300' : 'text-muted-foreground/40 hover:text-muted-foreground'}`}>
+              {done ? 'dismiss' : 'reset'}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative mt-3 rounded-2xl border border-border/40 bg-background/60 backdrop-blur-sm p-5 shadow-lg w-full max-w-[260px]">

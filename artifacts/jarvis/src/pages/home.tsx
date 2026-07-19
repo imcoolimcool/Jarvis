@@ -351,9 +351,9 @@ export default function Home() {
           setStatus('idle');
           setTimeout(() => inputRef.current?.focus(), 50);
         } else {
-          // Go back to wake-word listening after Jarvis finishes speaking
-          setStatus('wake');
-          startWakeWord();
+          // Auto-start recording so the conversation flows naturally
+          setStatus('recording');
+          setTimeout(() => startListening(), 150);
         }
       });
     } catch { handleError("Jarvis hit a snag — try again."); }
@@ -620,10 +620,15 @@ export default function Home() {
 
               {/* Orb + status — centred in the available space above subtitles */}
               <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-0">
-                {/* Compact alarm above orb */}
-                {activeWidget?.type === 'alarm' && (
-                  <div className="mb-4">
-                    <AlarmWidget {...activeWidget} compact onClose={() => setActiveWidget(null)} />
+                {/* Compact timer / alarm above orb */}
+                {(activeWidget?.type === 'alarm' || activeWidget?.type === 'timer') && (
+                  <div className="mb-4 flex flex-col items-center">
+                    {activeWidget.type === 'alarm' && (
+                      <AlarmWidget {...activeWidget} compact onClose={() => setActiveWidget(null)} />
+                    )}
+                    {activeWidget.type === 'timer' && (
+                      <TimerWidget {...activeWidget} compact onClose={() => setActiveWidget(null)} />
+                    )}
                   </div>
                 )}
                 <Orb status={status} onClick={handleToggleRecording} />
