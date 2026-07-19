@@ -7,7 +7,9 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, ImagePlus, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe } from 'lucide-react';
+import type { Widget } from '@/types/widget';
+import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget } from '@/components/widgets';
 
 type Theme = 'dark' | 'light';
 
@@ -47,6 +49,7 @@ export default function Home() {
   const [personality, setPersonality] = useState('balanced');
   const [personalityMenuOpen, setPersonalityMenuOpen] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [activeWidget, setActiveWidget] = useState<Widget | null>(null);
 
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -257,6 +260,7 @@ export default function Home() {
     setActiveConversationId(null);
     setSuggestions([]);
     setSubtitle(null);
+    setActiveWidget(null);
   }, []);
 
   const playTTS = useCallback((jarvisText: string, onStart: () => void, onDone: () => void) => {
@@ -306,12 +310,14 @@ export default function Home() {
       const jarvisText: string = data.response;
       const convId: string = data.conversationId;
       const newSuggestions: string[] = data.suggestions ?? [];
+      const widget: Widget | null = data.widget ?? null;
 
       if (!activeConvIdRef.current) setActiveConversationId(convId);
       refreshSidebar();
 
-      setMessages(prev => [...prev, { role: 'assistant', content: jarvisText }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: jarvisText, widget: widget ?? undefined }]);
       setSuggestions(newSuggestions);
+      if (widget) setActiveWidget(widget);
 
       playTTS(jarvisText, () => setStatus('speaking'), () => {
         if (isChatMode) {
@@ -559,7 +565,13 @@ export default function Home() {
               <div className="dark:block hidden absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
 
               {/* Orb + status — centred in the available space above subtitles */}
-              <div className="flex-1 flex flex-col items-center justify-center p-8">
+              <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-0">
+                {/* Compact alarm above orb */}
+                {activeWidget?.type === 'alarm' && (
+                  <div className="mb-4">
+                    <AlarmWidget {...activeWidget} compact onClose={() => setActiveWidget(null)} />
+                  </div>
+                )}
                 <Orb status={status} onClick={handleToggleRecording} />
                 <div className="mt-8 text-center space-y-2">
                   <h2 className="font-display text-xl font-bold tracking-widest text-primary glow-text">
@@ -577,19 +589,30 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Subtitle strip — pinned to bottom, never overlaps orb */}
-              <div className="flex-shrink-0 px-6 pb-8 pt-4 space-y-2 max-w-2xl w-full mx-auto min-h-[5rem]">
-                {subtitle?.user && (
-                  <p className="text-center font-mono text-sm text-muted-foreground/70 leading-snug">
-                    <span className="text-[10px] tracking-widest text-muted-foreground/40 block mb-0.5">YOU</span>
-                    {subtitle.user}
-                  </p>
-                )}
-                {subtitle?.jarvis && (
-                  <p className="text-center font-mono text-sm text-primary/80 leading-snug">
-                    <span className="text-[10px] tracking-widest text-primary/40 block mb-0.5">JARVIS</span>
-                    {subtitle.jarvis}
-                  </p>
+              {/* Widget panel OR subtitle strip — pinned to bottom */}
+              <div className="flex-shrink-0 px-6 pb-8 pt-2 max-w-2xl w-full mx-auto">
+                {activeWidget && activeWidget.type !== 'alarm' ? (
+                  <div className="overflow-y-auto max-h-[55vh]">
+                    {activeWidget.type === 'clock'    && <ClockWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
+                    {activeWidget.type === 'weather'  && <WeatherWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
+                    {activeWidget.type === 'timer'    && <TimerWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
+                    {activeWidget.type === 'calendar' && <CalendarWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
+                  </div>
+                ) : (
+                  <div className="space-y-2 min-h-[5rem]">
+                    {subtitle?.user && (
+                      <p className="text-center font-mono text-sm text-muted-foreground/70 leading-snug">
+                        <span className="text-[10px] tracking-widest text-muted-foreground/40 block mb-0.5">YOU</span>
+                        {subtitle.user}
+                      </p>
+                    )}
+                    {subtitle?.jarvis && (
+                      <p className="text-center font-mono text-sm text-primary/80 leading-snug">
+                        <span className="text-[10px] tracking-widest text-primary/40 block mb-0.5">JARVIS</span>
+                        {subtitle.jarvis}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

@@ -7,6 +7,7 @@ import { jarvisConfig } from "../../config/jarvis";
 import { db, conversations, messages, jarvisSettings, userMemories } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { buildLiveContext } from "../../lib/live-context";
+import { detectAndBuildWidget } from "../../lib/widget-detector";
 
 /** Personality modifiers appended to the base system prompt. */
 const PERSONALITY_MODIFIERS: Record<string, string> = {
@@ -262,11 +263,14 @@ router.post("/chat", async (req, res) => {
       }))
       .filter((c) => c.url) as { url: string; name?: string }[];
 
-    const liveContext = await buildLiveContext({
-      weatherLocation: settings["weather_location"],
-      calendars: calendarEntries,
-      includeGmail: true,
-    });
+    const [liveContext, widget] = await Promise.all([
+      buildLiveContext({
+        weatherLocation: settings["weather_location"],
+        calendars: calendarEntries,
+        includeGmail: true,
+      }),
+      detectAndBuildWidget(userMessage, settings),
+    ]);
 
     // Save user message to DB (store text only; file is ephemeral)
     await db.insert(messages).values({
@@ -365,7 +369,7 @@ router.post("/chat", async (req, res) => {
         .where(eq(conversations.id, convId)),
     ]);
 
-    res.json({ response, conversationId: convId, suggestions });
+    res.json({ response, conversationId: convId, suggestions, ...(widget ? { widget } : {}) });
 
     // Fire-and-forget: extract memorable facts from this exchange
     extractAndStoreMemories(client, userMessage, response).catch(() => {});

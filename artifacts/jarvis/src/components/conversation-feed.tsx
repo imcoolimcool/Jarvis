@@ -1,11 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText } from 'lucide-react';
+import type { Widget } from '@/types/widget';
+import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget } from '@/components/widgets';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   file?: { preview?: string; fileName?: string };
+  widget?: Widget;
 }
 
 interface ConversationFeedProps {
@@ -31,22 +34,31 @@ function TypingIndicator() {
             <motion.span
               key={i}
               className="w-[3px] rounded-full bg-primary"
-              animate={{
-                height: [6, 18, 6],
-                opacity: [0.4, 0.9, 0.4],
-              }}
-              transition={{
-                duration: 0.7,
-                repeat: Infinity,
-                delay: i * 0.1,
-                ease: 'easeInOut',
-              }}
+              animate={{ height: [6, 18, 6], opacity: [0.4, 0.9, 0.4] }}
+              transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.1, ease: 'easeInOut' }}
             />
           ))}
         </div>
       </div>
     </motion.div>
   );
+}
+
+function InlineWidget({ widget }: { widget: Widget }) {
+  switch (widget.type) {
+    case 'clock':
+      return <ClockWidget timezones={widget.timezones} />;
+    case 'weather':
+      return <WeatherWidget {...widget} />;
+    case 'timer':
+      return <TimerWidget durationSeconds={widget.durationSeconds} label={widget.label} />;
+    case 'alarm':
+      return <AlarmWidget time={widget.time} label={widget.label} />;
+    case 'calendar':
+      return <CalendarWidget events={widget.events} weekStart={widget.weekStart} />;
+    default:
+      return null;
+  }
 }
 
 export function ConversationFeed({
@@ -92,7 +104,9 @@ export function ConversationFeed({
               initial={{ opacity: 0, y: 16, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.2 }}
-              className={`flex flex-col gap-1.5 max-w-[85%] ${isUser ? 'self-end items-end' : 'self-start items-start'}`}
+              className={`flex flex-col gap-1.5 ${
+                isUser ? 'max-w-[85%] self-end items-end' : 'w-full self-start items-start'
+              }`}
             >
               {/* Role label */}
               <span className="text-[10px] font-mono text-muted-foreground/50 tracking-widest px-1">
@@ -103,11 +117,7 @@ export function ConversationFeed({
               {msg.file && (
                 <div className={`flex items-center gap-2.5 p-2.5 rounded-2xl border border-border bg-card max-w-[260px] ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}>
                   {msg.file.preview ? (
-                    <img
-                      src={msg.file.preview}
-                      alt="Attached"
-                      className="w-10 h-10 rounded-lg object-cover border border-border/50 flex-shrink-0"
-                    />
+                    <img src={msg.file.preview} alt="Attached" className="w-10 h-10 rounded-lg object-cover border border-border/50 flex-shrink-0" />
                   ) : (
                     <div className="w-10 h-10 rounded-lg border border-border/50 flex items-center justify-center flex-shrink-0">
                       <FileText className="w-4 h-4 text-muted-foreground/70" />
@@ -123,10 +133,17 @@ export function ConversationFeed({
                   className={`px-4 py-3 rounded-2xl text-sm leading-relaxed font-sans ${
                     isUser
                       ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                      : 'bg-card border border-border text-foreground rounded-tl-sm shadow-sm'
+                      : 'bg-card border border-border text-foreground rounded-tl-sm shadow-sm max-w-[85%]'
                   }`}
                 >
                   {msg.content}
+                </div>
+              )}
+
+              {/* Widget — only for assistant messages */}
+              {!isUser && msg.widget && (
+                <div className="w-full max-w-xl">
+                  <InlineWidget widget={msg.widget} />
                 </div>
               )}
             </motion.div>
