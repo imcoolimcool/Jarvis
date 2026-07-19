@@ -58,6 +58,10 @@ export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Keep a ref so speech-recognition callbacks never hold stale closures.
+  const isChatModeRef = useRef(isChatMode);
+  useEffect(() => { isChatModeRef.current = isChatMode; }, [isChatMode]);
+
   const { start: startListening, stop: stopListening } = useSpeechRecognition({
     onTranscript: (text) => {
       setStatus('thinking');
@@ -66,13 +70,13 @@ export default function Home() {
     onError: (msg) => handleError(msg),
     onEnd: () => {
       // Called when the orb-tap recording session ends (no transcript came through).
+      // IMPORTANT: do NOT call startWakeWord() here — this callback fires from inside
+      // a SpeechRecognition event, and iOS WebKit blocks new SR instances from that
+      // context. Setting status to 'wake' is enough — the useEffect will call
+      // startWakeWord() after React's commit phase (safely outside the SR callback).
       setStatus(prev => {
         if (prev === 'recording') {
-          if (!isChatMode) {
-            startWakeWord();
-            return 'wake';
-          }
-          return 'idle';
+          return isChatModeRef.current ? 'idle' : 'wake';
         }
         return prev;
       });
@@ -351,7 +355,9 @@ export default function Home() {
       }
       stopWakeWord();
       setStatus('recording');
-      startListening();
+      // Delay slightly so iOS can release the wake-word audio session before
+      // the new recogniser claims it — prevents an immediate 'aborted' error.
+      setTimeout(() => startListening(), 150);
     } else if (status === 'recording') {
       // Stop whichever recognizer is active — could be the orb-tap session
       // (useSpeechRecognition) or the wake-word session (useWakeWord in command mode).

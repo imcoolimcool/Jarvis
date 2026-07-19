@@ -67,6 +67,9 @@ export function useWakeWord({ onWake, onCommand, onError }: UseWakeWordOptions) 
   onCommandRef.current = onCommand;
   onErrorRef.current = onError;
 
+  // Ref so the onend fallback can call start() without a stale closure.
+  const startRef = useRef<() => void>(() => {});
+
   const start = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -164,10 +167,19 @@ export function useWakeWord({ onWake, onCommand, onError }: UseWakeWordOptions) 
         wakeResultIndexRef.current = -1;
       }
 
-      // Restart in wake mode using the SAME recognition object.
-      // On iOS, .start() on the same instance from within onend is allowed;
-      // creating a new instance here is what gets blocked.
-      try { recognition.start(); } catch { /* noop */ }
+      // Restart in wake mode. Preferred: reuse the same instance (iOS allows .start()
+      // on the same instance from onend, but blocks new instances from SR callbacks).
+      // Fallback: if same instance refuses, escape the SR callback via setTimeout and
+      // create a fresh instance (safe outside the callback context).
+      try {
+        recognition.start();
+      } catch {
+        activeRef.current = false;
+        recognitionRef.current = null;
+        setTimeout(() => {
+          if (!activeRef.current) startRef.current();
+        }, 300);
+      }
     };
 
     recognitionRef.current = recognition;
@@ -178,6 +190,9 @@ export function useWakeWord({ onWake, onCommand, onError }: UseWakeWordOptions) 
       onErrorRef.current?.('Could not start wake-word listener.');
     }
   }, []);
+
+  // Always keep startRef pointing at start so the onend fallback can call it.
+  startRef.current = start;
 
   const stop = useCallback(() => {
     activeRef.current = false;
