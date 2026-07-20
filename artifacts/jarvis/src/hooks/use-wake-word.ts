@@ -48,9 +48,14 @@ interface UseWakeWordOptions {
    */
   onCommand: (text: string) => void;
   onError?: (msg: string) => void;
+  /**
+   * Called when the recognizer was in direct-command mode (after activateCommand)
+   * but timed out with no speech. Home can use this to revert UI back to wake state.
+   */
+  onCommandTimeout?: () => void;
 }
 
-export function useWakeWord({ onWake, onCommand, onError }: UseWakeWordOptions) {
+export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: UseWakeWordOptions) {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const activeRef = useRef(false);
 
@@ -62,10 +67,12 @@ export function useWakeWord({ onWake, onCommand, onError }: UseWakeWordOptions) 
   const onWakeRef = useRef(onWake);
   const onCommandRef = useRef(onCommand);
   const onErrorRef = useRef(onError);
+  const onCommandTimeoutRef = useRef(onCommandTimeout);
 
   onWakeRef.current = onWake;
   onCommandRef.current = onCommand;
   onErrorRef.current = onError;
+  onCommandTimeoutRef.current = onCommandTimeout;
 
   // Ref so the onend fallback can call start() without a stale closure.
   const startRef = useRef<() => void>(() => {});
@@ -165,6 +172,7 @@ export function useWakeWord({ onWake, onCommand, onError }: UseWakeWordOptions) 
         // Reset and restart in wake mode — user will need to say "hey jarvis" again.
         commandModeRef.current = false;
         wakeResultIndexRef.current = -1;
+        onCommandTimeoutRef.current?.();
       }
 
       // Restart in wake mode. Preferred: reuse the same instance (iOS allows .start()
@@ -211,5 +219,27 @@ export function useWakeWord({ onWake, onCommand, onError }: UseWakeWordOptions) 
     }
   }, [start, stop]);
 
-  return { start, stop, reset };
+  /**
+   * Skip wake-word detection for one utterance — the next thing the user says
+   * goes straight to onCommand. Safe to call while recognizer is already running
+   * (just flips commandModeRef) or when stopped (restarts in command mode).
+   * Used for auto-record: after Jarvis finishes speaking, call this so the mic
+   * stays open for the user's reply without requiring "hey Jarvis".
+   */
+  const activateCommand = useCallback(() => {
+    if (activeRef.current) {
+      // Recognizer already running — just flip into command mode.
+      commandModeRef.current = true;
+      wakeResultIndexRef.current = -1;
+    } else {
+      // Recognizer stopped — start it; then immediately override to command mode.
+      // start() is synchronous up to recognition.start(), so the override below
+      // takes effect before any speech results arrive.
+      start();
+      commandModeRef.current = true;
+      wakeResultIndexRef.current = -1;
+    }
+  }, [start]);
+
+  return { start, stop, reset, activateCommand };
 }

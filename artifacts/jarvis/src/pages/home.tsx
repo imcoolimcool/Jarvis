@@ -85,7 +85,7 @@ export default function Home() {
     },
   });
 
-  const { start: startWakeWord, stop: stopWakeWord, reset: resetWakeWord } = useWakeWord({
+  const { start: startWakeWord, stop: stopWakeWord, reset: resetWakeWord, activateCommand } = useWakeWord({
     onWake: () => {
       if (isChatMode) return;
       playWakeSound();
@@ -101,6 +101,10 @@ export default function Home() {
     onError: (msg) => {
       if (msg.includes('denied')) toast({ title: 'Wake word needs mic access', description: msg });
       setStatus('idle');
+    },
+    onCommandTimeout: () => {
+      // Direct-command mode timed out with no speech — fall back to wake-word state.
+      setStatus(prev => prev === 'recording' ? 'wake' : prev);
     },
   });
   const { toast } = useToast();
@@ -351,9 +355,11 @@ export default function Home() {
           setStatus('idle');
           setTimeout(() => inputRef.current?.focus(), 50);
         } else {
-          // Auto-start recording so the conversation flows naturally
+          // Auto-activate command capture: reuse the wake-word recognizer in
+          // direct-command mode so no second mic session is needed, "hey Jarvis"
+          // still works when Jarvis is idle, and a tap cancels cleanly.
           setStatus('recording');
-          setTimeout(() => startListening(), 150);
+          setTimeout(() => activateCommand(), 150);
         }
       });
     } catch { handleError("Jarvis hit a snag — try again."); }
