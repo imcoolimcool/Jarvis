@@ -85,7 +85,7 @@ export default function Home() {
     },
   });
 
-  const { start: startWakeWord, stop: stopWakeWord, reset: resetWakeWord, activateCommand } = useWakeWord({
+  const { start: startWakeWord, stop: stopWakeWord, reset: resetWakeWord, suppress: suppressWakeWord, unsuppress: unsuppressWakeWord, activateCommand } = useWakeWord({
     onWake: () => {
       if (isChatMode) return;
       playWakeSound();
@@ -146,14 +146,18 @@ export default function Home() {
     if (isChatMode) { stopWakeWord(); return; }
 
     if (status === 'idle' || status === 'wake') {
+      // Ensure recognizer is running and not suppressed.
       if (isWakeWordSupported()) startWakeWord(); // guard in hook prevents double-start
+      unsuppressWakeWord();
     } else if (status === 'thinking' || status === 'speaking' || status === 'transcribing') {
-      stopWakeWord();
+      // Suppress instead of stop: keeps the recognizer alive so activateCommand()
+      // only needs to flip a ref (no recognition.start()), which is iOS-safe.
+      suppressWakeWord();
     }
     // 'recording' → leave alone. Either:
     //   • orb-tap: stopWakeWord() already called inside handleToggleRecording
     //   • wake-word command capture: hook must keep running to capture the command
-  }, [isChatMode, status, startWakeWord, stopWakeWord]);
+  }, [isChatMode, status, startWakeWord, stopWakeWord, suppressWakeWord, unsuppressWakeWord]);
 
   const handleSetPersonality = async (value: string) => {
     setPersonality(value);

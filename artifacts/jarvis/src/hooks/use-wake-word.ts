@@ -63,6 +63,11 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
   const commandModeRef = useRef(false);
   // the result index at which the wake word was detected
   const wakeResultIndexRef = useRef(-1);
+  // When true, all callbacks are silenced but the recognizer keeps running.
+  // Used during TTS/thinking so we never have to restart from a non-gesture context
+  // (which iOS WebKit blocks). The recognizer auto-restarts on onend using the same
+  // instance, which iOS allows.
+  const suppressedRef = useRef(false);
 
   const onWakeRef = useRef(onWake);
   const onCommandRef = useRef(onCommand);
@@ -96,6 +101,10 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      // While suppressed (during TTS / thinking), keep the recognizer alive but
+      // ignore all results so we don't send background noise as commands.
+      if (suppressedRef.current) return;
+
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         const transcript = result?.[0]?.transcript?.trim() ?? '';
@@ -220,26 +229,45 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
   }, [start, stop]);
 
   /**
+   * Silence all wake-word callbacks without stopping the recognizer.
+   * iOS WebKit blocks recognition.start() outside a user gesture, so we must
+   * keep the recognizer alive during TTS/thinking rather than stopping and
+   * restarting it. Call this when Jarvis starts thinking or speaking.
+   */
+  const suppress = useCallback(() => {
+    suppressedRef.current = true;
+    // Also reset command mode so a stale command-mode state doesn't fire on unsuppress.
+    commandModeRef.current = false;
+    wakeResultIndexRef.current = -1;
+  }, []);
+
+  /**
+   * Re-enable callbacks on the still-running recognizer.
+   * Call this when returning to idle/wake state.
+   */
+  const unsuppress = useCallback(() => {
+    suppressedRef.current = false;
+  }, []);
+
+  /**
    * Skip wake-word detection for one utterance — the next thing the user says
-   * goes straight to onCommand. Safe to call while recognizer is already running
-   * (just flips commandModeRef) or when stopped (restarts in command mode).
-   * Used for auto-record: after Jarvis finishes speaking, call this so the mic
-   * stays open for the user's reply without requiring "hey Jarvis".
+   * goes straight to onCommand. Always safe to call: if the recognizer is running
+   * (even while suppressed), just flips refs — no recognition.start() needed,
+   * so iOS never blocks it. If the recognizer somehow stopped, falls back to start().
    */
   const activateCommand = useCallback(() => {
-    if (activeRef.current) {
-      // Recognizer already running — just flip into command mode.
-      commandModeRef.current = true;
-      wakeResultIndexRef.current = -1;
-    } else {
-      // Recognizer stopped — start it; then immediately override to command mode.
-      // start() is synchronous up to recognition.start(), so the override below
-      // takes effect before any speech results arrive.
+    suppressedRef.current = false;
+    commandModeRef.current = true;
+    wakeResultIndexRef.current = -1;
+    if (!activeRef.current) {
+      // Fallback: recognizer was fully stopped (e.g. chat mode was active).
+      // This path requires a user gesture on iOS; it won't be hit during normal
+      // voice-mode TTS flow because suppress() keeps the recognizer alive.
       start();
       commandModeRef.current = true;
       wakeResultIndexRef.current = -1;
     }
   }, [start]);
 
-  return { start, stop, reset, activateCommand };
+  return { start, stop, reset, suppress, unsuppress, activateCommand };
 }
