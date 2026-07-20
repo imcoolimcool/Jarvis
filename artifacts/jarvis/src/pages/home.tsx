@@ -106,8 +106,8 @@ export default function Home() {
       setStatus('idle');
     },
     onCommandTimeout: () => {
-      // Direct-command mode timed out with no speech — fall back to wake-word state.
-      setStatus(prev => prev === 'recording' ? 'wake' : prev);
+      // Direct-command mode timed out with no speech — fall back to idle.
+      setStatus(prev => prev === 'recording' ? 'idle' : prev);
     },
   });
   const { toast } = useToast();
@@ -418,13 +418,12 @@ export default function Home() {
       // Keyboard-typed messages get a text-only response.
       if (speak) {
         playTTS(jarvisText, () => { vibrate([20, 30, 20]); setStatus('speaking'); }, () => {
-          if (isChatMode) {
-            setStatus('idle');
-            setTimeout(() => inputRef.current?.focus(), 50);
-          } else {
-            setStatus('recording');
-            setTimeout(() => activateCommand(), 150);
-          }
+          // Always return to idle after speaking. In voice mode the wake-word
+          // useEffect will unsuppress the recognizer so "hey Jarvis" or an orb
+          // tap starts the next command. Auto-activating command mode caused
+          // the TTS echo to immediately trigger a new request.
+          setStatus('idle');
+          if (isChatMode) setTimeout(() => inputRef.current?.focus(), 50);
         });
       } else {
         setStatus('idle');
@@ -553,7 +552,7 @@ export default function Home() {
 
   const statusLabels: Record<AppState, string> = {
     idle: 'Ready',
-    wake: 'Listening for wake word',
+    wake: 'Ready',
     recording: 'Listening',
     transcribing: 'Transcribing',
     thinking: 'Thinking',
@@ -564,10 +563,10 @@ export default function Home() {
     ? "Type in the chat panel"
     : status === 'idle' || status === 'wake'
       ? "Say 'hey Jarvis' or tap orb to talk"
-    : status === 'recording'    ? "Listening… stops automatically when you finish speaking"
+    : status === 'recording'    ? "Speak now — pausing will send your message"
     : status === 'speaking'     ? "Tap orb to interrupt"
-    : status === 'transcribing' ? "Converting speech to text…"
-    : "Processing your request…";
+    : status === 'transcribing' ? "Got it…"
+    : "Thinking…";
 
   return (
     <div className={`${theme} min-h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden`}>
@@ -707,7 +706,7 @@ export default function Home() {
               <div className="dark:block hidden absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
 
               {/* Orb + status — centred in the available space above subtitles */}
-              <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-0">
+              <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 min-h-0">
                 {/* Compact timer / alarm above orb */}
                 {(activeWidget?.type === 'alarm' || activeWidget?.type === 'timer') && (
                   <div className="mb-4 flex flex-col items-center">
@@ -763,9 +762,9 @@ export default function Home() {
               </div>
 
               {/* Widget panel OR subtitle strip — pinned to bottom */}
-              <div className="flex-shrink-0 px-6 pb-8 pt-2 max-w-2xl w-full mx-auto">
-                {activeWidget && activeWidget.type !== 'alarm' ? (
-                  <div className="overflow-y-auto max-h-[55vh]">
+              <div className="flex-shrink-0 px-4 sm:px-6 pb-4 sm:pb-8 pt-2 max-w-2xl w-full mx-auto">
+                {activeWidget && activeWidget.type !== 'alarm' && activeWidget.type !== 'timer' ? (
+                  <div className="overflow-y-auto max-h-[40vh] sm:max-h-[55vh]">
                     {activeWidget.type === 'clock'    && <ClockWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                     {activeWidget.type === 'weather'  && <WeatherWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                     {activeWidget.type === 'timer'    && <TimerWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
@@ -828,6 +827,19 @@ export default function Home() {
 
               {/* Chat area */}
               <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-card/5">
+
+                {/* Mobile-only widget strip (orb panel is hidden on mobile) */}
+                {activeWidget && (
+                  <div className="lg:hidden flex-shrink-0 px-3 pt-2 pb-1 border-b border-border/20">
+                    {activeWidget.type === 'timer'    && <TimerWidget {...activeWidget} compact onClose={() => setActiveWidget(null)} />}
+                    {activeWidget.type === 'alarm'    && <AlarmWidget {...activeWidget} compact onClose={() => setActiveWidget(null)} />}
+                    {activeWidget.type === 'clock'    && <ClockWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
+                    {activeWidget.type === 'weather'  && <WeatherWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
+                    {activeWidget.type === 'calendar' && <CalendarWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
+                    {activeWidget.type === 'music'    && <MusicWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
+                  </div>
+                )}
+
                 <ConversationFeed
                   messages={messages}
                   isThinking={status === 'thinking'}

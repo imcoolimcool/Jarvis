@@ -263,9 +263,9 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
    */
   const unsuppress = useCallback(() => {
     suppressedRef.current = false;
-    // Set a 1.5 s cooldown so the recognizer doesn't immediately process
-    // any TTS-echo audio that accumulated while suppressed.
-    unsuppressCooldownRef.current = Date.now() + 1500;
+    // 800ms cooldown so TTS-echo audio (Jarvis saying "Jarvis" in a response,
+    // or mic picking up his voice) doesn't trigger a false wake/command.
+    unsuppressCooldownRef.current = Date.now() + 800;
   }, []);
 
   /**
