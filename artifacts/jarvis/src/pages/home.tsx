@@ -112,20 +112,29 @@ export default function Home() {
   });
   const { toast } = useToast();
   const synthesizeSpeech = useSynthesizeSpeech();
-  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
-  // iOS Safari requires audio.play() to be triggered synchronously from a user
-  // gesture. We pre-create and "unlock" one Audio element on first tap, then
-  // reuse it for every TTS response so the async network gap doesn't block it.
+  const activeAudioRef = useRef<{ stop: () => void } | null>(null);
+  // Audio context shared across all TTS playback. Using Web Audio API with
+  // decodeAudioData fully buffers the audio before playing — eliminates the
+  // "l...lo... ho...w..." stutter on Android Chrome.
+  const audioContextRef = useRef<AudioContext | null>(null);
+  // The unlocked Audio element is kept only for the iOS gesture unlock (the
+  // silent play that tells Safari "this origin is allowed audio").
   const iosUnlockedAudioRef = useRef<HTMLAudioElement | null>(null);
   const unlockAudioForIOS = useCallback(() => {
-    if (iosUnlockedAudioRef.current) return; // already unlocked
-    const el = new Audio();
-    // Play a silent data-URI — this gesture-unlocks the element on iOS.
-    el.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
-    el.volume = 0;
-    el.play().catch(() => {}); // ignore — only purpose is to unlock
-    el.onended = () => { el.volume = 1; }; // restore volume for real playback
-    iosUnlockedAudioRef.current = el;
+    if (!audioContextRef.current) {
+      const Ctor = window.AudioContext || (window as any).webkitAudioContext;
+      audioContextRef.current = new Ctor();
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume().catch(() => {});
+    }
+    if (!iosUnlockedAudioRef.current) {
+      const el = new Audio();
+      el.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+      el.volume = 0;
+      el.play().catch(() => {});
+      iosUnlockedAudioRef.current = el;
+    }
   }, []);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
@@ -333,21 +342,38 @@ export default function Home() {
             const blob = new Blob([bytes.buffer], { type: speechData.contentType });
             const url = URL.createObjectURL(blob);
 
-            // Reuse the pre-unlocked Audio element so iOS doesn't block play()
-            // called from this async context. Fall back to a fresh element on
-            // desktop browsers that don't have the gesture restriction.
-            const el = iosUnlockedAudioRef.current ?? new Audio();
-            // Reset any previous src/state before loading new audio
-            el.pause();
-            el.removeAttribute('src');
-            el.load();
-            el.src = url;
-            el.volume = 1;
-            activeAudioRef.current = el;
-            onStart(); // flip to 'speaking' only when audio is ready
-            el.play().catch(() => handleError("Audio playback failed"));
-            el.onended = () => { URL.revokeObjectURL(url); activeAudioRef.current = null; onDone(); };
-            el.onerror = () => { URL.revokeObjectURL(url); handleError("Audio playback failed"); };
+            // Use Web Audio API for stutter-free playback on Android.
+            // decodeAudioData fully decodes the buffer into memory before
+            // playback starts, so there's no gap/choppiness on any browser.
+            // The pre-unlocked Audio element (iosUnlockedAudioRef) is kept
+            // solely for the iOS gesture unlock at the top of this flow.
+            const ctx = audioContextRef.current;
+            if (!ctx) { handleError("Audio not ready"); URL.revokeObjectURL(url); onDone(); return; }
+
+            void ctx.resume();
+            fetch(url)
+              .then(r => r.arrayBuffer())
+              .then(buf => ctx.decodeAudioData(buf))
+              .then(decoded => {
+                URL.revokeObjectURL(url);
+                const source = ctx.createBufferSource();
+                source.buffer = decoded;
+                source.connect(ctx.destination);
+
+                // Store a stop handle so handleStopSpeaking / interruption
+                // can silence playback immediately.
+                activeAudioRef.current = {
+                  stop: () => { try { source.stop(); } catch {} },
+                } as any;
+
+                onStart();
+                source.start(0);
+                source.onended = () => {
+                  activeAudioRef.current = null;
+                  onDone();
+                };
+              })
+              .catch(() => { URL.revokeObjectURL(url); handleError("Audio playback failed"); });
           } catch { handleError("Failed to decode audio"); }
         },
         onError: () => onDone(),
@@ -411,7 +437,7 @@ export default function Home() {
     unlockAudioForIOS(); // must be called synchronously from user gesture for iOS Safari
     vibrate(30);
     if (status === 'speaking') {
-      activeAudioRef.current?.pause();
+      activeAudioRef.current?.stop?.();
       activeAudioRef.current = null;
       if (!isChatMode) {
         setStatus('wake');
@@ -499,7 +525,7 @@ export default function Home() {
   };
 
   const handleStopSpeaking = () => {
-    activeAudioRef.current?.pause();
+    activeAudioRef.current?.stop?.();
     activeAudioRef.current = null;
     if (isChatMode) {
       setStatus('idle');
