@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut, Brain, Globe, Music2 } from 'lucide-react';
+import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut, Brain, Globe, Music2, Pencil, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Settings {
@@ -52,6 +52,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [memories, setMemories] = useState<{ topic: string; value: string; updatedAt: string }[]>([]);
   const [loadingMemories, setLoadingMemories] = useState(false);
   const [deletingMemory, setDeletingMemory] = useState<string | null>(null);
+  const [editingMemory, setEditingMemory] = useState<string | null>(null); // topic being edited
+  const [editDraft, setEditDraft] = useState('');
 
   // Number of calendar slots currently shown (at least those with values, min 1)
   const [visibleSlots, setVisibleSlots] = useState(1);
@@ -94,6 +96,32 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       }
     } finally {
       setDeletingMemory(null);
+    }
+  };
+
+  const startEditMemory = (topic: string, currentValue: string) => {
+    setEditingMemory(topic);
+    setEditDraft(currentValue);
+  };
+
+  const handleSaveMemoryEdit = async (topic: string) => {
+    const value = editDraft.trim();
+    if (!value) return;
+    try {
+      const res = await fetch(`/api/jarvis/memories/${encodeURIComponent(topic)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value }),
+      });
+      if (res.ok) {
+        setMemories(prev => prev.map(m => m.topic === topic ? { ...m, value } : m));
+        toast({ title: 'Memory updated' });
+      } else {
+        toast({ title: 'Could not update memory', variant: 'destructive' });
+      }
+    } finally {
+      setEditingMemory(null);
+      setEditDraft('');
     }
   };
 
@@ -363,35 +391,79 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 </p>
               </div>
 
-              {/* Memory */}
+              {/* User Profile / Memory */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Brain className="w-3.5 h-3.5 text-primary/70" />
-                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">MEMORY</label>
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">USER PROFILE</label>
                 </div>
+                <p className="text-[10px] font-mono text-muted-foreground/50">
+                  Facts Jarvis has learned about you. Edit or delete any entry.
+                </p>
 
                 {loadingMemories ? (
-                  <p className="text-[11px] font-mono text-muted-foreground/50">Loading memories…</p>
+                  <p className="text-[11px] font-mono text-muted-foreground/50">Loading…</p>
                 ) : memories.length === 0 ? (
-                  <p className="text-[11px] font-mono text-muted-foreground/50">
-                    Jarvis hasn't learned anything about you yet. Talk to him and he'll remember facts here.
-                  </p>
+                  <div className="p-3 border border-border/30 rounded-lg bg-card/20 text-center">
+                    <Brain className="w-5 h-5 text-muted-foreground/30 mx-auto mb-1.5" />
+                    <p className="text-[11px] font-mono text-muted-foreground/50">
+                      No profile yet. Talk to Jarvis and he'll start learning about you.
+                    </p>
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     {memories.map(m => (
-                      <div key={m.topic} className="flex items-start justify-between gap-2 p-3 border border-border/50 rounded-lg bg-card/30">
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-mono text-primary/70 uppercase tracking-widest">{m.topic}</p>
-                          <p className="text-[11px] font-mono text-foreground/80 leading-snug">{m.value}</p>
+                      <div key={m.topic} className="border border-border/50 rounded-lg bg-card/30 overflow-hidden">
+                        <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-1">
+                          <p className="text-[10px] font-mono text-primary/70 uppercase tracking-widest truncate">
+                            {m.topic.replace(/_/g, ' ')}
+                          </p>
+                          <div className="flex items-center gap-0.5 flex-shrink-0">
+                            {editingMemory === m.topic ? (
+                              <button
+                                onClick={() => handleSaveMemoryEdit(m.topic)}
+                                className="p-1.5 text-primary hover:text-primary/80 transition-colors"
+                                title="Save"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => startEditMemory(m.topic, m.value)}
+                                disabled={!!deletingMemory}
+                                className="p-1.5 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+                                title="Edit"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteMemory(m.topic)}
+                              disabled={deletingMemory === m.topic || editingMemory === m.topic}
+                              className="p-1.5 text-muted-foreground hover:text-red-400 transition-colors disabled:opacity-50"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          onClick={() => handleDeleteMemory(m.topic)}
-                          disabled={deletingMemory === m.topic}
-                          className="p-1.5 text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0 disabled:opacity-50"
-                          title="Delete this memory"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {editingMemory === m.topic ? (
+                          <div className="px-3 pb-2.5">
+                            <input
+                              type="text"
+                              value={editDraft}
+                              onChange={e => setEditDraft(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleSaveMemoryEdit(m.topic);
+                                if (e.key === 'Escape') { setEditingMemory(null); setEditDraft(''); }
+                              }}
+                              autoFocus
+                              className="w-full bg-background border border-primary/40 text-foreground font-mono text-[11px] px-2.5 py-1.5 rounded-md outline-none focus:ring-1 focus:ring-primary/30"
+                            />
+                          </div>
+                        ) : (
+                          <p className="px-3 pb-2.5 text-[11px] font-mono text-foreground/80 leading-snug">{m.value}</p>
+                        )}
                       </div>
                     ))}
                   </div>

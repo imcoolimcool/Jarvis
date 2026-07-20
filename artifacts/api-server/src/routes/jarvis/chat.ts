@@ -320,8 +320,15 @@ router.post("/chat", async (req, res) => {
       webContext = await getWebSearchResults(userMessage);
     }
 
-    const systemParts = [jarvisConfig.systemPrompt];
-    if (personalityModifier) systemParts.push(personalityModifier);
+    // When personality is "custom", the user's prompt IS the entire system
+    // prompt — it fully replaces the Jarvis base instructions.
+    const basePrompt =
+      personality === "custom" && customPrompt
+        ? customPrompt
+        : jarvisConfig.systemPrompt;
+    const systemParts = [basePrompt];
+    // Only append a personality modifier for non-custom modes
+    if (personality !== "custom" && personalityModifier) systemParts.push(personalityModifier);
     if (liveContext) systemParts.push(liveContext);
     if (memoryContext) systemParts.push(memoryContext);
     if (webContext) systemParts.push(webContext);

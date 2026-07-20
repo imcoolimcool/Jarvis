@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useSpeechRecognition, isSpeechRecognitionSupported } from '@/hooks/use-speech-recognition';
 import { useWakeWord, isWakeWordSupported } from '@/hooks/use-wake-word';
 import { useSynthesizeSpeech } from '@workspace/api-client-react';
@@ -7,7 +8,7 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe, SlidersHorizontal, Music2, AlarmClock } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe, SlidersHorizontal, Music2, AlarmClock, Plus, Camera } from 'lucide-react';
 import type { Widget } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, MusicWidget } from '@/components/widgets';
 
@@ -52,6 +53,7 @@ export default function Home() {
   const [activeWidget, setActiveWidget] = useState<Widget | null>(null);
   const [customPrompt, setCustomPrompt] = useState('');
   const [customPromptOpen, setCustomPromptOpen] = useState(false);
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
 
   const { theme, toggle: toggleTheme } = useTheme();
 
@@ -59,6 +61,7 @@ export default function Home() {
   const activeConvIdRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // Keep a ref so speech-recognition callbacks never hold stale closures.
   const isChatModeRef = useRef(isChatMode);
@@ -89,7 +92,7 @@ export default function Home() {
     onWake: () => {
       if (isChatMode) return;
       playWakeSound();
-      // The recognizer stays alive — command capture happens in the same session.
+      vibrate([50, 30, 50]);
       setStatus('recording');
     },
     onCommand: (text) => {
@@ -221,6 +224,11 @@ export default function Home() {
     }
   };
 
+  /** Fire haptic vibration on mobile — silently no-ops on desktop */
+  const vibrate = useCallback((pattern: number | number[]) => {
+    try { navigator.vibrate?.(pattern); } catch { /* not supported */ }
+  }, []);
+
   const playWakeSound = useCallback(() => {
     try {
       const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
@@ -240,8 +248,9 @@ export default function Home() {
 
   const handleError = useCallback((msg: string) => {
     toast({ variant: 'destructive', title: 'Something went wrong', description: msg });
+    vibrate([100, 50, 100]);
     setStatus('idle');
-  }, [toast]);
+  }, [toast, vibrate]);
 
   const refreshSidebar = useCallback(() => setSidebarRefreshTick(t => t + 1), []);
 
@@ -346,11 +355,12 @@ export default function Home() {
     );
   }, [synthesizeSpeech, handleError, iosUnlockedAudioRef]);
 
-  const processUserText = useCallback(async (userText: string, file?: AttachedFile | null) => {
+  const processUserText = useCallback(async (userText: string, file?: AttachedFile | null, speak = true) => {
     // Optimistically add message (with file preview if any)
     setMessages(prev => [...prev, { role: 'user', content: userText, file: file ?? undefined }]);
     setSuggestions([]);
     setStatus('thinking');
+    vibrate(20);
 
     try {
       const body: Record<string, string> = { userMessage: userText };
@@ -378,23 +388,28 @@ export default function Home() {
       setSuggestions(newSuggestions);
       if (widget) setActiveWidget(widget);
 
-      playTTS(jarvisText, () => setStatus('speaking'), () => {
-        if (isChatMode) {
-          setStatus('idle');
-          setTimeout(() => inputRef.current?.focus(), 50);
-        } else {
-          // Auto-activate command capture: reuse the wake-word recognizer in
-          // direct-command mode so no second mic session is needed, "hey Jarvis"
-          // still works when Jarvis is idle, and a tap cancels cleanly.
-          setStatus('recording');
-          setTimeout(() => activateCommand(), 150);
-        }
-      });
+      // In chat mode, only speak if the request came from the mic (speak=true).
+      // Keyboard-typed messages get a text-only response.
+      if (speak) {
+        playTTS(jarvisText, () => { vibrate([20, 30, 20]); setStatus('speaking'); }, () => {
+          if (isChatMode) {
+            setStatus('idle');
+            setTimeout(() => inputRef.current?.focus(), 50);
+          } else {
+            setStatus('recording');
+            setTimeout(() => activateCommand(), 150);
+          }
+        });
+      } else {
+        setStatus('idle');
+        setTimeout(() => inputRef.current?.focus(), 50);
+      }
     } catch { handleError("Jarvis hit a snag — try again."); }
-  }, [handleError, refreshSidebar, playTTS, isChatMode, startWakeWord, webSearchEnabled]);
+  }, [handleError, refreshSidebar, playTTS, isChatMode, webSearchEnabled, activateCommand, vibrate]);
 
   const handleToggleRecording = useCallback(() => {
     unlockAudioForIOS(); // must be called synchronously from user gesture for iOS Safari
+    vibrate(30);
     if (status === 'speaking') {
       activeAudioRef.current?.pause();
       activeAudioRef.current = null;
@@ -440,19 +455,28 @@ export default function Home() {
     const file = attachedFile;
     setChatInput('');
     setAttachedFile(null);
-    processUserText(text || `📎 ${file?.fileName ?? 'File'}`, file);
+    // Keyboard submit: no TTS. Only mic-sourced messages speak in chat mode.
+    processUserText(text || `📎 ${file?.fileName ?? 'File'}`, file, false);
   };
 
   const handleSuggestionClick = useCallback((text: string) => {
     setSuggestions([]);
-    processUserText(text);
-  }, [processUserText]);
+    // Suggestions in chat mode don't speak; in voice mode they do (speak defaults to true).
+    processUserText(text, null, !isChatMode);
+  }, [processUserText, isChatMode]);
 
   const [chatRecording, setChatRecording] = useState(false);
+  // Ref so the transcript callback can call processUserText without stale closure
+  const processUserTextRef = useRef<typeof processUserText | null>(null);
+  useEffect(() => { processUserTextRef.current = processUserText; }, [processUserText]);
+
   const { start: startChatRecording, stop: stopChatRecording } = useSpeechRecognition({
     onTranscript: (text) => {
-      setChatInput(prev => prev ? `${prev} ${text}` : text);
       setChatRecording(false);
+      if (!text.trim()) return;
+      // Auto-submit mic input and speak the response (mic → TTS allowed in chat mode)
+      unlockAudioForIOS();
+      processUserTextRef.current?.(text.trim(), null, true);
     },
     onError: (msg) => { toast({ title: 'Voice input failed', description: msg }); setChatRecording(false); },
     onEnd: () => setChatRecording(false),
@@ -467,6 +491,8 @@ export default function Home() {
         toast({ title: 'Voice input not supported', description: 'Try Chrome or Edge.' });
         return;
       }
+      unlockAudioForIOS(); // gesture-unlock before mic starts
+      vibrate([30, 50, 30]);
       setChatRecording(true);
       startChatRecording();
     }
@@ -669,17 +695,43 @@ export default function Home() {
                 )}
                 <Orb status={status} onClick={handleToggleRecording} />
                 <div className="mt-8 text-center space-y-2">
-                  <h2 className="font-display text-xl font-bold tracking-widest text-primary glow-text">
-                    {statusLabels[status]}
-                  </h2>
-                  <p className="font-mono text-xs text-muted-foreground tracking-wide">
-                    {statusHint}
-                  </p>
+                  <AnimatePresence mode="wait">
+                    <motion.h2
+                      key={status}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2 }}
+                      className={`font-display text-xl font-bold tracking-widest glow-text ${
+                        status === 'recording' ? 'text-red-400' :
+                        status === 'speaking' ? 'text-green-400' :
+                        status === 'thinking' || status === 'transcribing' ? 'text-yellow-400' :
+                        'text-primary'
+                      }`}
+                    >
+                      {statusLabels[status]}
+                    </motion.h2>
+                  </AnimatePresence>
+                  <AnimatePresence mode="wait">
+                    <motion.p
+                      key={statusHint}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="font-mono text-xs text-muted-foreground tracking-wide"
+                    >
+                      {statusHint}
+                    </motion.p>
+                  </AnimatePresence>
                   {status === 'speaking' && (
-                    <button onClick={handleStopSpeaking}
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      onClick={handleStopSpeaking}
                       className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md border border-primary/50 text-primary hover:bg-primary/10 transition-colors font-display tracking-widest text-xs">
                       <Square className="w-3 h-3 fill-current" /> STOP
-                    </button>
+                    </motion.button>
                   )}
                 </div>
               </div>
@@ -779,33 +831,83 @@ export default function Home() {
                     </div>
                   )}
                   <div className="flex gap-2">
+                    {/* Hidden file inputs */}
                     <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
-                    <button onClick={() => fileInputRef.current?.click()} disabled={isBusy}
-                      title="Attach a file or image (or paste from clipboard)"
-                      className={`p-2.5 rounded-lg border transition-all flex-shrink-0 ${
-                        attachedFile ? 'border-primary text-primary bg-primary/10' : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
-                      } disabled:opacity-30`}>
-                      <Paperclip className="w-4 h-4" />
-                    </button>
-                    <button onClick={handleToggleWebSearch} disabled={isBusy}
-                      title={webSearchEnabled ? 'Web search enabled' : 'Web search disabled'}
-                      className={`p-2.5 rounded-lg border transition-all flex-shrink-0 ${
-                        webSearchEnabled
-                          ? 'border-primary text-primary bg-primary/10'
-                          : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
-                      } disabled:opacity-30`}>
-                      <Globe className="w-4 h-4" />
-                    </button>
+                    <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
+
+                    {/* + menu button */}
+                    <div className="relative flex-shrink-0">
+                      <button
+                        onClick={() => setPlusMenuOpen(o => !o)}
+                        disabled={isBusy}
+                        title="Attach, camera, or search"
+                        className={`p-2.5 rounded-lg border transition-all ${
+                          attachedFile || webSearchEnabled
+                            ? 'border-primary text-primary bg-primary/10'
+                            : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
+                        } disabled:opacity-30`}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+
+                      {plusMenuOpen && !isBusy && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setPlusMenuOpen(false)} />
+                          <div className="absolute bottom-full left-0 mb-2 z-50 w-44 p-1 rounded-xl border border-border/50 bg-card shadow-xl overflow-hidden">
+                            <button
+                              onClick={() => { setPlusMenuOpen(false); fileInputRef.current?.click(); }}
+                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono transition-colors ${
+                                attachedFile ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                              }`}
+                            >
+                              <Paperclip className="w-3.5 h-3.5 flex-shrink-0" />
+                              {attachedFile ? 'Replace file' : 'Attach file'}
+                            </button>
+                            <button
+                              onClick={() => { setPlusMenuOpen(false); cameraInputRef.current?.click(); }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            >
+                              <Camera className="w-3.5 h-3.5 flex-shrink-0" />
+                              Camera
+                            </button>
+                            <div className="h-px bg-border/30 my-1" />
+                            <button
+                              onClick={() => { setPlusMenuOpen(false); handleToggleWebSearch(); }}
+                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono transition-colors ${
+                                webSearchEnabled ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                              }`}
+                            >
+                              <Globe className="w-3.5 h-3.5 flex-shrink-0" />
+                              Web search {webSearchEnabled ? '(on)' : '(off)'}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
                     <input ref={inputRef} type="text" value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleChatSubmit()}
                       onPaste={handleInputPaste}
-                      placeholder={isBusy ? "Processing…" : attachedFile ? "Add a message…" : "Message Jarvis…"}
+                      placeholder={
+                        chatRecording ? '🎙 Listening… speak now'
+                        : isBusy ? 'Processing…'
+                        : attachedFile ? 'Add a message…'
+                        : 'Message Jarvis…'
+                      }
                       disabled={isBusy}
-                      className="flex-1 bg-card border border-border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-40"
+                      className={`flex-1 bg-card border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:ring-2 transition-all disabled:opacity-40 ${
+                        chatRecording
+                          ? 'border-red-400/60 focus:border-red-400/80 focus:ring-red-400/10 placeholder:text-red-400/60 animate-pulse'
+                          : status === 'thinking'
+                          ? 'border-yellow-400/40 focus:border-yellow-400/60 focus:ring-yellow-400/10'
+                          : status === 'speaking'
+                          ? 'border-primary/40 focus:border-primary/60 focus:ring-primary/10'
+                          : 'border-border focus:border-primary/60 focus:ring-primary/10'
+                      }`}
                     />
                     <button onClick={handleChatMicToggle} disabled={isBusy}
-                      title={chatRecording ? 'Stop recording' : 'Voice input'}
+                      title={chatRecording ? 'Stop recording' : 'Voice input — Jarvis will speak back'}
                       className={`p-2.5 rounded-lg border transition-all flex-shrink-0 ${
                         chatRecording
                           ? 'border-red-400/60 text-red-400 bg-red-400/10 animate-pulse'
@@ -819,12 +921,26 @@ export default function Home() {
                       <span className="hidden sm:inline">SEND</span>
                     </button>
                   </div>
-                  {status === 'speaking' && (
-                    <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest text-center">
-                      JARVIS IS SPEAKING —{' '}
-                      <button onClick={handleStopSpeaking} className="text-primary hover:underline">STOP</button>
-                    </p>
-                  )}
+
+                  {/* Status bar below input */}
+                  <div className="min-h-[16px]">
+                    {chatRecording && (
+                      <p className="text-[10px] font-mono text-red-400/70 tracking-widest text-center animate-pulse">
+                        ● LISTENING — tap mic to cancel · Jarvis will speak when done
+                      </p>
+                    )}
+                    {status === 'thinking' && !chatRecording && (
+                      <p className="text-[10px] font-mono text-yellow-400/60 tracking-widest text-center animate-pulse">
+                        ◆ THINKING…
+                      </p>
+                    )}
+                    {status === 'speaking' && (
+                      <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest text-center">
+                        JARVIS IS SPEAKING —{' '}
+                        <button onClick={handleStopSpeaking} className="text-primary hover:underline">STOP</button>
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

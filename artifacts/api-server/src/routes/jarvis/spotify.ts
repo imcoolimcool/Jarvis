@@ -243,75 +243,143 @@ router.post("/spotify/control", async (req, res) => {
     switch (action) {
       case "play":
         if (query) {
-          // Search and play
+          // Search across tracks, albums, and playlists; prefer track → playlist → album
           const searchRes = await fetch(
             `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track,album,playlist&limit=5`,
             { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) }
           );
+          if (!searchRes.ok) {
+            const errBody = await searchRes.json().catch(() => ({})) as { error?: { message?: string } };
+            res.json({ ok: false, error: errBody.error?.message ?? "Search failed" });
+            break;
+          }
           const searchData = await searchRes.json() as {
             tracks?: { items: { uri: string; name: string; artists: { name: string }[] }[] };
-            albums?: { items: { uri: string }[] };
-            playlists?: { items: { uri: string }[] };
+            albums?: { items: { uri: string; name: string }[] };
+            playlists?: { items: { uri: string; name: string }[] };
           };
-          const trackUri = searchData.tracks?.items?.[0]?.uri;
-          if (trackUri) {
-            await fetch("https://api.spotify.com/v1/me/player/play", {
-              method: "PUT",
-              headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ uris: [trackUri] }),
-              signal: AbortSignal.timeout(5000),
-            });
-            const item = searchData.tracks!.items[0]!;
-            res.json({ ok: true, track: item.name, artist: item.artists.map(a => a.name).join(", ") });
-          } else {
-            res.json({ ok: false, error: "No results found" });
+
+          // Try track first, then playlist, then album
+          const trackItem = searchData.tracks?.items?.[0];
+          const playlistItem = searchData.playlists?.items?.[0];
+          const albumItem = searchData.albums?.items?.[0];
+          const bestUri = trackItem?.uri ?? playlistItem?.uri ?? albumItem?.uri;
+
+          if (!bestUri) {
+            res.json({ ok: false, error: "No results found for that query" });
+            break;
           }
+
+          // For tracks: play single URI; for context (album/playlist): use context_uri
+          const isTrack = bestUri.startsWith("spotify:track:");
+          const playBody = isTrack
+            ? JSON.stringify({ uris: [bestUri] })
+            : JSON.stringify({ context_uri: bestUri });
+
+          const playRes = await fetch("https://api.spotify.com/v1/me/player/play", {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: playBody,
+            signal: AbortSignal.timeout(5000),
+          });
+
+          if (!playRes.ok && playRes.status !== 204) {
+            const errBody = await playRes.json().catch(() => ({})) as { error?: { message?: string; reason?: string } };
+            const reason = errBody.error?.reason;
+            if (reason === "PREMIUM_REQUIRED") {
+              res.json({ ok: false, error: "Spotify Premium is required for playback control" });
+            } else if (reason === "NO_ACTIVE_DEVICE" || playRes.status === 404) {
+              res.json({ ok: false, error: "No active Spotify device found — open Spotify on a device first" });
+            } else {
+              res.json({ ok: false, error: errBody.error?.message ?? "Playback failed" });
+            }
+            break;
+          }
+
+          const label = trackItem
+            ? `${trackItem.name} by ${trackItem.artists.map(a => a.name).join(", ")}`
+            : (playlistItem?.name ?? albumItem?.name ?? query);
+          res.json({ ok: true, track: label });
         } else {
-          await fetch("https://api.spotify.com/v1/me/player/play", {
+          const playRes = await fetch("https://api.spotify.com/v1/me/player/play", {
             method: "PUT",
             headers: { Authorization: `Bearer ${token}` },
             signal: AbortSignal.timeout(5000),
           });
+          if (!playRes.ok && playRes.status !== 204) {
+            const errBody = await playRes.json().catch(() => ({})) as { error?: { message?: string; reason?: string } };
+            const reason = errBody.error?.reason;
+            if (reason === "NO_ACTIVE_DEVICE" || playRes.status === 404) {
+              res.json({ ok: false, error: "No active Spotify device — open Spotify on a device first" });
+            } else {
+              res.json({ ok: false, error: errBody.error?.message ?? "Playback failed" });
+            }
+            break;
+          }
           res.json({ ok: true });
         }
         break;
 
-      case "pause":
-        await fetch("https://api.spotify.com/v1/me/player/pause", {
+      case "pause": {
+        const r = await fetch("https://api.spotify.com/v1/me/player/pause", {
           method: "PUT",
           headers: { Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(5000),
         });
+        if (!r.ok && r.status !== 204) {
+          const e = await r.json().catch(() => ({})) as { error?: { message?: string } };
+          res.json({ ok: false, error: e.error?.message ?? "Could not pause" });
+          break;
+        }
         res.json({ ok: true });
         break;
+      }
 
-      case "next":
-        await fetch("https://api.spotify.com/v1/me/player/next", {
+      case "next": {
+        const r = await fetch("https://api.spotify.com/v1/me/player/next", {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(5000),
         });
+        if (!r.ok && r.status !== 204) {
+          const e = await r.json().catch(() => ({})) as { error?: { message?: string } };
+          res.json({ ok: false, error: e.error?.message ?? "Skip failed" });
+          break;
+        }
         res.json({ ok: true });
         break;
+      }
 
-      case "previous":
-        await fetch("https://api.spotify.com/v1/me/player/previous", {
+      case "previous": {
+        const r = await fetch("https://api.spotify.com/v1/me/player/previous", {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(5000),
         });
+        if (!r.ok && r.status !== 204) {
+          const e = await r.json().catch(() => ({})) as { error?: { message?: string } };
+          res.json({ ok: false, error: e.error?.message ?? "Previous failed" });
+          break;
+        }
         res.json({ ok: true });
         break;
+      }
 
-      case "volume":
+      case "volume": {
         const vol = Math.min(100, Math.max(0, Number(req.body.volume ?? 50)));
-        await fetch(`https://api.spotify.com/v1/me/player/volume?volume_percent=${vol}`, {
+        const r = await fetch(`https://api.spotify.com/v1/me/player/volume?volume_percent=${vol}`, {
           method: "PUT",
           headers: { Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(5000),
         });
+        if (!r.ok && r.status !== 204) {
+          const e = await r.json().catch(() => ({})) as { error?: { message?: string } };
+          res.json({ ok: false, error: e.error?.message ?? "Volume change failed" });
+          break;
+        }
         res.json({ ok: true });
         break;
+      }
 
       default:
         res.status(400).json({ error: "Unknown action" });
