@@ -50,9 +50,14 @@ Edit `artifacts/api-server/src/config/jarvis.ts` to change:
 
 ## Required secrets
 
-- `OPENAI_WHISPER_API_KEY` — NVIDIA build.nvidia.com API key for Whisper STT
-- `OPENAI_LLM_API_KEY` — NVIDIA build.nvidia.com API key for the LLM
+- `OPENAI_WHISPER_API_KEY` — NVIDIA build.nvidia.com API key for Whisper Large v3 STT
+- `OPENAI_LLM_API_KEY` — NVIDIA build.nvidia.com API key for the LLM (gpt-oss-20b)
 - `ELEVENLABS_API_KEY` — ElevenLabs API key for TTS
+- `SPOTIFY_CLIENT_ID` — Spotify app client ID (for music widget)
+- `SPOTIFY_CLIENT_SECRET` — Spotify app client secret
+- `GOOGLE_CLIENT_ID` — Google Cloud OAuth client ID (for Google integrations)
+- `GOOGLE_CLIENT_SECRET` — Google Cloud OAuth client secret
+- `TAVILY_API_KEY` — Tavily API key for web search
 
 These are set as Replit Secrets (never committed). Add them via the Secrets panel before starting the server.
 

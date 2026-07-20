@@ -110,6 +110,20 @@ export default function Home() {
   const { toast } = useToast();
   const synthesizeSpeech = useSynthesizeSpeech();
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  // iOS Safari requires audio.play() to be triggered synchronously from a user
+  // gesture. We pre-create and "unlock" one Audio element on first tap, then
+  // reuse it for every TTS response so the async network gap doesn't block it.
+  const iosUnlockedAudioRef = useRef<HTMLAudioElement | null>(null);
+  const unlockAudioForIOS = useCallback(() => {
+    if (iosUnlockedAudioRef.current) return; // already unlocked
+    const el = new Audio();
+    // Play a silent data-URI — this gesture-unlocks the element on iOS.
+    el.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+    el.volume = 0;
+    el.play().catch(() => {}); // ignore — only purpose is to unlock
+    el.onended = () => { el.volume = 1; }; // restore volume for real playback
+    iosUnlockedAudioRef.current = el;
+  }, []);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { activeConvIdRef.current = activeConversationId; }, [activeConversationId]);
@@ -309,18 +323,28 @@ export default function Home() {
             for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
             const blob = new Blob([bytes.buffer], { type: speechData.contentType });
             const url = URL.createObjectURL(blob);
-            const el = new Audio(url);
+
+            // Reuse the pre-unlocked Audio element so iOS doesn't block play()
+            // called from this async context. Fall back to a fresh element on
+            // desktop browsers that don't have the gesture restriction.
+            const el = iosUnlockedAudioRef.current ?? new Audio();
+            // Reset any previous src/state before loading new audio
+            el.pause();
+            el.removeAttribute('src');
+            el.load();
+            el.src = url;
+            el.volume = 1;
             activeAudioRef.current = el;
             onStart(); // flip to 'speaking' only when audio is ready
-            el.play();
+            el.play().catch(() => handleError("Audio playback failed"));
             el.onended = () => { URL.revokeObjectURL(url); activeAudioRef.current = null; onDone(); };
-            el.onerror = () => handleError("Audio playback failed");
+            el.onerror = () => { URL.revokeObjectURL(url); handleError("Audio playback failed"); };
           } catch { handleError("Failed to decode audio"); }
         },
         onError: () => onDone(),
       }
     );
-  }, [synthesizeSpeech, handleError]);
+  }, [synthesizeSpeech, handleError, iosUnlockedAudioRef]);
 
   const processUserText = useCallback(async (userText: string, file?: AttachedFile | null) => {
     // Optimistically add message (with file preview if any)
@@ -370,6 +394,7 @@ export default function Home() {
   }, [handleError, refreshSidebar, playTTS, isChatMode, startWakeWord, webSearchEnabled]);
 
   const handleToggleRecording = useCallback(() => {
+    unlockAudioForIOS(); // must be called synchronously from user gesture for iOS Safari
     if (status === 'speaking') {
       activeAudioRef.current?.pause();
       activeAudioRef.current = null;
@@ -411,6 +436,7 @@ export default function Home() {
     const text = chatInput.trim();
     if (!text && !attachedFile) return;
     if (status === 'thinking' || status === 'transcribing') return;
+    unlockAudioForIOS(); // must be called synchronously from user gesture for iOS Safari
     const file = attachedFile;
     setChatInput('');
     setAttachedFile(null);
