@@ -71,6 +71,10 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
   // After unsuppressing, we ignore results for this long so residual TTS audio
   // doesn't trigger a false command.
   const unsuppressCooldownRef = useRef(0);
+  // Debounce timer for command submission — fires onCommand only after the user
+  // stops speaking for 900ms, so a brief pause mid-sentence doesn't cut them off.
+  const commandDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingCommandRef = useRef<string>('');
 
   const onWakeRef = useRef(onWake);
   const onCommandRef = useRef(onCommand);
@@ -103,6 +107,23 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
 
+    // Debounce helper: waits 900ms after the last final result before firing
+    // onCommand. Resets on every new final chunk so mid-sentence pauses don't
+    // submit prematurely.
+    const scheduleCommand = (text: string) => {
+      pendingCommandRef.current = text;
+      if (commandDebounceRef.current) clearTimeout(commandDebounceRef.current);
+      commandDebounceRef.current = setTimeout(() => {
+        commandDebounceRef.current = null;
+        const cmd = pendingCommandRef.current;
+        pendingCommandRef.current = '';
+        if (!cmd) return;
+        commandModeRef.current = false;
+        wakeResultIndexRef.current = -1;
+        onCommandRef.current(cmd);
+      }, 900);
+    };
+
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       // While suppressed (during TTS / thinking), keep the recognizer alive but
       // ignore all results so we don't send background noise as commands.
@@ -129,13 +150,9 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
             if (isFinal) {
               const cmd = extractCommand(transcript);
               if (cmd.length > 1) {
-                // Reset to wake mode but DO NOT stop the recognizer.
-                // Keeping it alive means activateCommand() called later from a
-                // setTimeout only needs to flip refs — no recognition.start()
-                // required, which iOS blocks outside a user gesture.
-                commandModeRef.current = false;
-                wakeResultIndexRef.current = -1;
-                onCommandRef.current(cmd);
+                // Debounce even inline commands so a one-word inline doesn't
+                // fire before the user finishes the sentence.
+                scheduleCommand(cmd);
                 return;
               }
               // No inline command — wait for the next utterance in command mode.
@@ -147,19 +164,11 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
             // Still processing the same result that contained the wake word.
             if (isFinal) {
               const cmd = extractCommand(transcript);
-              if (cmd.length > 1) {
-                commandModeRef.current = false;
-                wakeResultIndexRef.current = -1;
-                onCommandRef.current(cmd);
-                return;
-              }
+              if (cmd.length > 1) scheduleCommand(cmd);
             }
           } else if (i > wakeResultIndexRef.current && isFinal) {
-            // A subsequent final result — this is the user's command.
-            commandModeRef.current = false;
-            wakeResultIndexRef.current = -1;
-            onCommandRef.current(transcript);
-            return;
+            // A subsequent final result — accumulate and debounce.
+            scheduleCommand(transcript);
           }
         }
       }
@@ -220,6 +229,8 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
     activeRef.current = false;
     commandModeRef.current = false;
     wakeResultIndexRef.current = -1;
+    if (commandDebounceRef.current) { clearTimeout(commandDebounceRef.current); commandDebounceRef.current = null; }
+    pendingCommandRef.current = '';
     try {
       recognitionRef.current?.stop();
     } catch { /* noop */ }
