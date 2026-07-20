@@ -391,7 +391,7 @@ export default function Home() {
       // is only allowed from a user gesture. Here we ARE in a gesture, so
       // activateCommand()'s fallback start() is also iOS-safe.
       setStatus('recording');
-      activateCommand();
+      activateCommand(true); // user gesture — safe to start a fresh recognizer on iOS
     } else if (status === 'recording') {
       // Cancel: reset the wake-word hook to idle wake mode without stopping it.
       // suppress() clears command mode, unsuppress() re-enables callbacks —

@@ -123,10 +123,12 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
             if (isFinal) {
               const cmd = extractCommand(transcript);
               if (cmd.length > 1) {
+                // Reset to wake mode but DO NOT stop the recognizer.
+                // Keeping it alive means activateCommand() called later from a
+                // setTimeout only needs to flip refs — no recognition.start()
+                // required, which iOS blocks outside a user gesture.
                 commandModeRef.current = false;
                 wakeResultIndexRef.current = -1;
-                activeRef.current = false;
-                try { recognition.stop(); } catch { /* noop */ }
                 onCommandRef.current(cmd);
                 return;
               }
@@ -142,8 +144,6 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
               if (cmd.length > 1) {
                 commandModeRef.current = false;
                 wakeResultIndexRef.current = -1;
-                activeRef.current = false;
-                try { recognition.stop(); } catch { /* noop */ }
                 onCommandRef.current(cmd);
                 return;
               }
@@ -152,8 +152,6 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
             // A subsequent final result — this is the user's command.
             commandModeRef.current = false;
             wakeResultIndexRef.current = -1;
-            activeRef.current = false;
-            try { recognition.stop(); } catch { /* noop */ }
             onCommandRef.current(transcript);
             return;
           }
@@ -184,18 +182,19 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
         onCommandTimeoutRef.current?.();
       }
 
-      // Restart in wake mode. Preferred: reuse the same instance (iOS allows .start()
-      // on the same instance from onend, but blocks new instances from SR callbacks).
-      // Fallback: if same instance refuses, escape the SR callback via setTimeout and
-      // create a fresh instance (safe outside the callback context).
+      // Restart in wake mode by reusing the same instance — iOS allows .start()
+      // on the same instance from onend. We intentionally do NOT fall back to
+      // creating a new instance via setTimeout: that path is blocked on iOS
+      // (WKWebView) and throws "not allowed". If the same instance can't restart
+      // (e.g. audio session conflict while TTS is playing), we stop gracefully
+      // and let the home page know so it can revert to wake-mode UI.
       try {
         recognition.start();
       } catch {
         activeRef.current = false;
         recognitionRef.current = null;
-        setTimeout(() => {
-          if (!activeRef.current) startRef.current();
-        }, 300);
+        // Signal home to flip back to wake status so the user can tap to re-engage.
+        onCommandTimeoutRef.current?.();
       }
     };
 
@@ -251,21 +250,31 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
 
   /**
    * Skip wake-word detection for one utterance — the next thing the user says
-   * goes straight to onCommand. Always safe to call: if the recognizer is running
-   * (even while suppressed), just flips refs — no recognition.start() needed,
-   * so iOS never blocks it. If the recognizer somehow stopped, falls back to start().
+   * goes straight to onCommand.
+   *
+   * @param fromGesture  Pass true when called directly from a user tap (orb press).
+   *   iOS WebKit only allows recognition.start() on a NEW instance from a gesture
+   *   context. If the recognizer is already alive, both values are safe (no new
+   *   instance needed). If the recognizer died (e.g. audio-session conflict during
+   *   TTS) and fromGesture is false, we fall back gracefully instead of throwing.
    */
-  const activateCommand = useCallback(() => {
+  const activateCommand = useCallback((fromGesture = false) => {
     suppressedRef.current = false;
     commandModeRef.current = true;
     wakeResultIndexRef.current = -1;
     if (!activeRef.current) {
-      // Fallback: recognizer was fully stopped (e.g. chat mode was active).
-      // This path requires a user gesture on iOS; it won't be hit during normal
-      // voice-mode TTS flow because suppress() keeps the recognizer alive.
-      start();
-      commandModeRef.current = true;
-      wakeResultIndexRef.current = -1;
+      if (fromGesture) {
+        // User tap — safe to start a brand-new recognizer instance on iOS.
+        start();
+        commandModeRef.current = true;
+        wakeResultIndexRef.current = -1;
+      } else {
+        // Non-gesture context (e.g. setTimeout after TTS). Starting a new
+        // recognizer here is blocked on iOS. Fall back to wake mode so the
+        // user can tap or say "hey Jarvis" to continue.
+        commandModeRef.current = false;
+        onCommandTimeoutRef.current?.();
+      }
     }
   }, [start]);
 
