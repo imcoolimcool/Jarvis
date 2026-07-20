@@ -386,26 +386,26 @@ export default function Home() {
         handleError("Voice mode requires Chrome or Edge browser.");
         return;
       }
-      stopWakeWord();
+      // Use activateCommand() instead of stopWakeWord() + startListening().
+      // This keeps a single recognizer alive — critical on iOS where start()
+      // is only allowed from a user gesture. Here we ARE in a gesture, so
+      // activateCommand()'s fallback start() is also iOS-safe.
       setStatus('recording');
-      // Delay slightly so iOS can release the wake-word audio session before
-      // the new recogniser claims it — prevents an immediate 'aborted' error.
-      setTimeout(() => startListening(), 150);
+      activateCommand();
     } else if (status === 'recording') {
-      // Stop whichever recognizer is active — could be the orb-tap session
-      // (useSpeechRecognition) or the wake-word session (useWakeWord in command mode).
-      stopListening();
-      stopWakeWord();
-      // Return to wake-word listening; useWakeWord.stop() clears activeRef so
-      // onend won't auto-restart — we have to restart manually here.
+      // Cancel: reset the wake-word hook to idle wake mode without stopping it.
+      // suppress() clears command mode, unsuppress() re-enables callbacks —
+      // net effect: recognizer stays alive in wake-word detection mode.
+      suppressWakeWord();
+      stopListening(); // no-op if orb-tap recognizer isn't running
       if (!isChatMode) {
         setStatus('wake');
-        startWakeWord();
+        unsuppressWakeWord();
       } else {
         setStatus('idle');
       }
     }
-  }, [status, isChatMode, startListening, stopListening, stopWakeWord, startWakeWord, handleError]);
+  }, [status, isChatMode, startListening, stopListening, stopWakeWord, startWakeWord, suppressWakeWord, unsuppressWakeWord, activateCommand, handleError]);
 
   const handleChatSubmit = () => {
     const text = chatInput.trim();
