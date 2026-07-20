@@ -45,7 +45,7 @@ function detectIntent(msg: string): Intent {
   if (/\b(set( a)? timer|start( a)? timer|timer (for|of)|countdown|count down)\b/.test(t)) return 'timer';
   if (/\b(set( an?)? alarm|wake me up( at)?|alarm( at| for)?|remind me at)\b/.test(t)) return 'alarm';
   if (/\b(calendar|my schedule|agenda|upcoming events?|what('?s| is) (on|happening)|this week|next week|show me (my )?(events?|calendar))\b/.test(t)) return 'calendar';
-  if (/\b(play |pause|skip( track| song)?|next (track|song)|previous (track|song)|what('?s| is) playing|stop (music|playing)|music)\b/.test(t)) return 'music';
+  if (/\b(play |pause|skip( track| song)?|next (track|song)|previous (track|song)|what('?s| is) playing|stop (music|playing))\b/.test(t)) return 'music';
 
   return null;
 }

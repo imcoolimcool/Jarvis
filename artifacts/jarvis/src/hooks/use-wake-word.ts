@@ -68,6 +68,9 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
   // (which iOS WebKit blocks). The recognizer auto-restarts on onend using the same
   // instance, which iOS allows.
   const suppressedRef = useRef(false);
+  // After unsuppressing, we ignore results for this long so residual TTS audio
+  // doesn't trigger a false command.
+  const unsuppressCooldownRef = useRef(0);
 
   const onWakeRef = useRef(onWake);
   const onCommandRef = useRef(onCommand);
@@ -104,6 +107,9 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
       // While suppressed (during TTS / thinking), keep the recognizer alive but
       // ignore all results so we don't send background noise as commands.
       if (suppressedRef.current) return;
+      // Cooldown after unsuppress: ignore results for 1.5 s so residual TTS
+      // audio picked up by the recognizer doesn't trigger a false command.
+      if (Date.now() < unsuppressCooldownRef.current) return;
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
@@ -246,6 +252,9 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
    */
   const unsuppress = useCallback(() => {
     suppressedRef.current = false;
+    // Set a 1.5 s cooldown so the recognizer doesn't immediately process
+    // any TTS-echo audio that accumulated while suppressed.
+    unsuppressCooldownRef.current = Date.now() + 1500;
   }, []);
 
   /**

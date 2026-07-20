@@ -360,18 +360,18 @@ export default function Home() {
                 source.buffer = decoded;
                 source.connect(ctx.destination);
 
-                // Store a stop handle so handleStopSpeaking / interruption
-                // can silence playback immediately.
+                source.onended = () => {
+                  activeAudioRef.current = null;
+                  onDone();
+                };
+                // MUST set onended BEFORE start(0) — on some browsers the
+                // callback won't fire if registered after playback begins.
                 activeAudioRef.current = {
                   stop: () => { try { source.stop(); } catch {} },
                 } as any;
 
                 onStart();
                 source.start(0);
-                source.onended = () => {
-                  activeAudioRef.current = null;
-                  onDone();
-                };
               })
               .catch(() => { URL.revokeObjectURL(url); handleError("Audio playback failed"); });
           } catch { handleError("Failed to decode audio"); }
