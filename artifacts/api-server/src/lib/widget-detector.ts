@@ -11,7 +11,7 @@ export interface ClockTimezone { label: string; tz: string }
 export type Widget =
   | { type: 'clock'; timezones: ClockTimezone[] }
   | { type: 'weather'; location: string; temp_c: number; temp_f: number; feelsLike_c: number; condition: string; conditionCode: number; humidity: number; windSpeed_kmh: number; windDir: string; isDay: boolean; forecast: ForecastDay[] }
-  | { type: 'timer'; durationSeconds: number; label?: string }
+  | { type: 'timer'; durationSeconds: number; label?: string; timerAction?: 'set' | 'add' | 'cancel'; deltaSeconds?: number }
   | { type: 'alarm'; time: string; label?: string }    // "HH:MM" 24-h
   | { type: 'calendar'; events: CalendarEvent[]; weekStart: string }
   | { type: 'music'; track?: string; artist?: string; album?: string; albumArt?: string | null; playing: boolean; query?: string }
@@ -35,13 +35,21 @@ export interface CalendarEvent {
 
 // ─── Intent detection ────────────────────────────────────────────────────────
 
-type Intent = 'clock' | 'weather' | 'timer' | 'alarm' | 'calendar' | 'music' | null;
+type Intent = 'clock' | 'weather' | 'timer' | 'timer_edit' | 'timer_cancel' | 'alarm' | 'calendar' | 'music' | null;
 
 function detectIntent(msg: string): Intent {
   const t = msg.toLowerCase();
 
   if (/\b(what('?s| is) the time|what time is it|current time|time (right )?now|time in\b|time at\b|clock)\b/.test(t)) return 'clock';
   if (/\b(weather|temperature|how (hot|cold|warm)|forecast|raining|sunny|cloudy|humidity|wind speed)\b/.test(t)) return 'weather';
+  // Timer cancel must be checked before edit/set to avoid misclassification
+  if (/\b(cancel|stop|clear|dismiss|delete|remove)\s+(the\s+)?timer\b/.test(t)) return 'timer_cancel';
+  // Timer edit: change/update/extend/shorten/add to existing timer
+  if (/\b(change|update|extend|shorten|modify|adjust)\s+(the\s+)?timer\b/.test(t)) return 'timer_edit';
+  if (/\badd\s+\d+.*\s*(more\s+)?(minutes?|mins?|seconds?|secs?|hours?|hrs?)\s+(to|on)\s+(the\s+)?timer\b/.test(t)) return 'timer_edit';
+  if (/\b(subtract|remove|take off)\s+\d+.*\s*(minutes?|mins?|seconds?|secs?|hours?|hrs?)\s+(from|off)\s+(the\s+)?timer\b/.test(t)) return 'timer_edit';
+  if (/\bset\s+(the\s+)?timer\s+to\b/.test(t)) return 'timer_edit';
+  if (/\bmake\s+(the\s+)?timer\b/.test(t)) return 'timer_edit';
   if (/\b(set( a)? timer|start( a)? timer|timer (for|of)|countdown|count down)\b/.test(t)) return 'timer';
   if (/\b(set( an?)? alarm|wake me up( at)?|alarm( at| for)?|remind me at)\b/.test(t)) return 'alarm';
   if (/\b(calendar|my schedule|agenda|upcoming events?|what('?s| is) (on|happening)|this week|next week|show me (my )?(events?|calendar))\b/.test(t)) return 'calendar';
@@ -167,35 +175,61 @@ function extractWeatherLocation(msg: string, settingsLocation: string): string {
 
 // ─── Timer ───────────────────────────────────────────────────────────────────
 
-function parseTimerWidget(msg: string): Extract<Widget, { type: 'timer' }> | null {
-  const t = msg.toLowerCase();
-  let seconds = 0;
-
+/** Parse a human-readable duration string into total seconds. Returns 0 if nothing found. */
+function parseDurationSeconds(t: string): number {
   const hourMin = t.match(/(\d+)\s*h(?:our|r)?s?\s*(?:and\s*)?(\d+)\s*m(?:in(?:ute)?)?s?/);
   const minSec  = t.match(/(\d+)\s*m(?:in(?:ute)?)?s?\s*(?:and\s*)?(\d+)\s*s(?:ec(?:ond)?)?s?/);
   const hoursOnly = t.match(/(\d+)\s*h(?:our|r)?s?/);
   const minsOnly  = t.match(/(\d+)\s*m(?:in(?:ute)?)?s?/);
   const secsOnly  = t.match(/(\d+)\s*s(?:ec(?:ond)?)?s?/);
 
-  if (hourMin) {
-    seconds = parseInt(hourMin[1]) * 3600 + parseInt(hourMin[2]) * 60;
-  } else if (minSec) {
-    seconds = parseInt(minSec[1]) * 60 + parseInt(minSec[2]);
-  } else if (hoursOnly) {
-    seconds = parseInt(hoursOnly[1]) * 3600;
-  } else if (minsOnly) {
-    seconds = parseInt(minsOnly[1]) * 60;
-  } else if (secsOnly) {
-    seconds = parseInt(secsOnly[1]);
-  }
+  if (hourMin) return parseInt(hourMin[1]) * 3600 + parseInt(hourMin[2]) * 60;
+  if (minSec)  return parseInt(minSec[1])  * 60   + parseInt(minSec[2]);
+  if (hoursOnly) return parseInt(hoursOnly[1]) * 3600;
+  if (minsOnly)  return parseInt(minsOnly[1])  * 60;
+  if (secsOnly)  return parseInt(secsOnly[1]);
+  return 0;
+}
 
+function parseTimerWidget(msg: string): Extract<Widget, { type: 'timer' }> | null {
+  const seconds = parseDurationSeconds(msg.toLowerCase());
   if (seconds <= 0) return null;
 
-  // Extract optional label
+  // Extract optional label (e.g. "set a timer for pasta" → label="pasta")
   const labelMatch = msg.match(/(?:for|to)\s+([a-zA-Z\s]+?)(?:\s+timer|\s*\?|$)/i);
   const label = labelMatch?.[1]?.trim();
 
-  return { type: 'timer', durationSeconds: seconds, label };
+  return { type: 'timer', durationSeconds: seconds, label, timerAction: 'set' };
+}
+
+function parseTimerEditWidget(msg: string): Extract<Widget, { type: 'timer' }> | null {
+  const t = msg.toLowerCase();
+
+  // "cancel"/"stop" the timer
+  if (/\b(cancel|stop|clear|dismiss|delete|remove)\s+(the\s+)?timer\b/.test(t)) {
+    return { type: 'timer', durationSeconds: 0, timerAction: 'cancel' };
+  }
+
+  // "add X to the timer" / "extend by X"
+  const addMatch = t.match(/(?:add|extend(?:\s+by)?)\s+([\d\s\w]+?)\s+(?:more\s+)?(?:to|on)\s+(?:the\s+)?timer/);
+  if (addMatch) {
+    const delta = parseDurationSeconds(addMatch[1]);
+    if (delta > 0) return { type: 'timer', durationSeconds: 0, deltaSeconds: delta, timerAction: 'add' };
+  }
+
+  // "subtract/remove X from the timer"
+  const subMatch = t.match(/(?:subtract|remove|take off)\s+([\d\s\w]+?)\s+(?:from|off)\s+(?:the\s+)?timer/);
+  if (subMatch) {
+    const delta = parseDurationSeconds(subMatch[1]);
+    if (delta > 0) return { type: 'timer', durationSeconds: 0, deltaSeconds: delta, timerAction: 'add', };
+    // Negative delta handled on frontend
+  }
+
+  // "change/set/make/update the timer to X" or "make it X"
+  const seconds = parseDurationSeconds(t);
+  if (seconds > 0) return { type: 'timer', durationSeconds: seconds, timerAction: 'set' };
+
+  return null;
 }
 
 // ─── Alarm ───────────────────────────────────────────────────────────────────
@@ -378,6 +412,14 @@ export async function detectAndBuildWidget(
 
     case 'timer': {
       return parseTimerWidget(userMessage);
+    }
+
+    case 'timer_edit': {
+      return parseTimerEditWidget(userMessage);
+    }
+
+    case 'timer_cancel': {
+      return { type: 'timer', durationSeconds: 0, timerAction: 'cancel' };
     }
 
     case 'alarm': {

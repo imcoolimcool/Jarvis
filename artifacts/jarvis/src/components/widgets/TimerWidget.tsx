@@ -38,8 +38,20 @@ export function TimerWidget({ durationSeconds, label, compact, onClose }: TimerW
   const [running, setRunning] = useState(true);
   const [done, setDone] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevDurationRef = useRef(durationSeconds);
 
   const clearTimer = () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+
+  // Reset timer when durationSeconds prop changes (Jarvis edits the timer)
+  useEffect(() => {
+    if (durationSeconds !== prevDurationRef.current && durationSeconds > 0) {
+      prevDurationRef.current = durationSeconds;
+      clearTimer();
+      setRemaining(durationSeconds);
+      setDone(false);
+      setRunning(true);
+    }
+  }, [durationSeconds]);
 
   const tick = useCallback(() => {
     setRemaining(prev => {

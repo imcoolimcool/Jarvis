@@ -63,6 +63,11 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  // Timer tracking for chat mode — timer lives inline in the feed, not in the sidebar
+  const chatTimerMsgIdxRef = useRef<number | null>(null);
+  const timerStartedAtRef = useRef<number | null>(null);
+  const timerOriginalDurationRef = useRef<number | null>(null);
+
   // Keep a ref so speech-recognition callbacks never hold stale closures.
   const isChatModeRef = useRef(isChatMode);
   useEffect(() => { isChatModeRef.current = isChatMode; }, [isChatMode]);
@@ -328,6 +333,9 @@ export default function Home() {
     setSuggestions([]);
     setSubtitle(null);
     setActiveWidget(null);
+    chatTimerMsgIdxRef.current = null;
+    timerStartedAtRef.current = null;
+    timerOriginalDurationRef.current = null;
   }, []);
 
   const playTTS = useCallback((jarvisText: string, onStart: () => void, onDone: () => void) => {
@@ -410,9 +418,51 @@ export default function Home() {
       if (!activeConvIdRef.current) setActiveConversationId(convId);
       refreshSidebar();
 
-      setMessages(prev => [...prev, { role: 'assistant', content: jarvisText, widget: widget ?? undefined }]);
+      if (widget?.type === 'timer' && isChatMode) {
+        // In chat mode, timer lives inline in the feed — update existing or add to new message
+        setMessages(prev => {
+          const existingIdx = chatTimerMsgIdxRef.current;
+
+          if (widget.timerAction === 'cancel') {
+            chatTimerMsgIdxRef.current = null;
+            timerStartedAtRef.current = null;
+            timerOriginalDurationRef.current = null;
+            if (existingIdx !== null && existingIdx < prev.length) {
+              const copy = [...prev];
+              copy[existingIdx] = { ...copy[existingIdx], widget: undefined };
+              return [...copy, { role: 'assistant', content: jarvisText }];
+            }
+            return [...prev, { role: 'assistant', content: jarvisText }];
+
+          } else if (existingIdx !== null && existingIdx < prev.length) {
+            // Update the existing timer message in-place
+            let newDuration = widget.durationSeconds;
+            if (widget.timerAction === 'add' && widget.deltaSeconds) {
+              const elapsed = timerStartedAtRef.current
+                ? Math.floor((Date.now() - timerStartedAtRef.current) / 1000)
+                : 0;
+              const currentRemaining = Math.max(0, (timerOriginalDurationRef.current ?? 0) - elapsed);
+              newDuration = currentRemaining + widget.deltaSeconds;
+            }
+            timerStartedAtRef.current = Date.now();
+            timerOriginalDurationRef.current = newDuration;
+            const copy = [...prev];
+            copy[existingIdx] = { ...copy[existingIdx], widget: { ...widget, durationSeconds: newDuration, timerAction: 'set' } };
+            return [...copy, { role: 'assistant', content: jarvisText }];
+
+          } else {
+            // First timer — add inline to new assistant message
+            chatTimerMsgIdxRef.current = prev.length;
+            timerStartedAtRef.current = Date.now();
+            timerOriginalDurationRef.current = widget.durationSeconds;
+            return [...prev, { role: 'assistant', content: jarvisText, widget }];
+          }
+        });
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: jarvisText, widget: widget ?? undefined }]);
+        if (widget) setActiveWidget(widget);
+      }
       setSuggestions(newSuggestions);
-      if (widget) setActiveWidget(widget);
 
       // In chat mode, only speak if the request came from the mic (speak=true).
       // Keyboard-typed messages get a text-only response.
