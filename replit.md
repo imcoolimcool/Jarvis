@@ -50,16 +50,29 @@ Edit `artifacts/api-server/src/config/jarvis.ts` to change:
 
 ## Required secrets
 
-- `OPENAI_WHISPER_API_KEY` — NVIDIA build.nvidia.com API key for Whisper Large v3 STT
-- `OPENAI_LLM_API_KEY` — NVIDIA build.nvidia.com API key for the LLM (gpt-oss-20b)
-- `ELEVENLABS_API_KEY` — ElevenLabs API key for TTS
-- `SPOTIFY_CLIENT_ID` — Spotify app client ID (for music widget)
-- `SPOTIFY_CLIENT_SECRET` — Spotify app client secret
-- `GOOGLE_CLIENT_ID` — Google Cloud OAuth client ID (for Google integrations)
-- `GOOGLE_CLIENT_SECRET` — Google Cloud OAuth client secret
-- `TAVILY_API_KEY` — Tavily API key for web search
+Set these via the Replit Secrets panel (never committed to git):
 
-These are set as Replit Secrets (never committed). Add them via the Secrets panel before starting the server.
+| Secret | Purpose |
+|--------|---------|
+| `OPENAI_WHISPER_API_KEY` | NVIDIA NIM key for Whisper Large v3 STT (build.nvidia.com) |
+| `OPENAI_LLM_API_KEY` | NVIDIA NIM key for gpt-oss-20b LLM (build.nvidia.com) |
+| `ELEVENLABS_API_KEY` | ElevenLabs TTS |
+| `SPOTIFY_CLIENT_ID` | Spotify OAuth client ID |
+| `SPOTIFY_CLIENT_SECRET` | Spotify OAuth client secret |
+| `GOOGLE_CLIENT_ID` | Google Cloud OAuth 2.0 client ID |
+| `GOOGLE_CLIENT_SECRET` | Google Cloud OAuth 2.0 client secret |
+| `TAVILY_API_KEY` | Tavily web search |
+
+## OAuth redirect URIs
+
+Both Spotify and Google OAuth compute redirect URIs dynamically from `REPLIT_DEV_DOMAIN` in development, so no extra config is needed for local dev. For deployment, set these env vars to the stable production domain:
+
+| Env var | Value (replace `<YOUR_DOMAIN>`) |
+|---------|--------------------------------|
+| `SPOTIFY_REDIRECT_URI` | `https://<YOUR_DOMAIN>/api/jarvis/spotify/callback` |
+| `GOOGLE_REDIRECT_URI` | `https://<YOUR_DOMAIN>/api/jarvis/gmail/callback` |
+
+Register the same URIs in your Spotify app (developer.spotify.com) and Google Cloud OAuth client (console.cloud.google.com). Development URIs use the current `REPLIT_DEV_DOMAIN` automatically — no manual registration needed for dev.
 
 ## First-time setup
 
@@ -68,10 +81,10 @@ These are set as Replit Secrets (never committed). Add them via the Secrets pane
 pnpm install
 
 # 2. Apply the database schema (idempotent — safe to re-run)
-pnpm --filter db push
+pnpm --filter @workspace/db run push
 ```
 
-The post-merge script (`scripts/post-merge.sh`) runs both steps automatically after any task merge. For local/fresh setup, run them manually once before starting the workflows.
+The post-merge script (`scripts/post-merge.sh`) runs both steps automatically after any task merge. For a fresh clone or environment reset, run them manually once before starting the workflows.
 
 ## NVIDIA API configuration
 
@@ -90,3 +103,4 @@ _Populate as you build — explicit user instructions worth remembering across s
 - After any change to `lib/api-spec/openapi.yaml`, run codegen before building the frontend
 - The api-zod tsconfig includes `"lib": ["esnext", "dom"]` — needed for `File`/`Blob` types in the generated Whisper input schema
 - MediaRecorder uses `audio/webm;codecs=opus` as the primary MIME type (Safari fallback: `audio/webm`)
+- Spotify and Google redirect URIs auto-compute from `REPLIT_DEV_DOMAIN` in dev; set `SPOTIFY_REDIRECT_URI` / `GOOGLE_REDIRECT_URI` explicitly for production
