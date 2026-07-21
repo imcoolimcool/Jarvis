@@ -50,7 +50,10 @@ function detectIntent(msg: string): Intent {
   if (/\b(subtract|remove|take off)\s+\d+.*\s*(minutes?|mins?|seconds?|secs?|hours?|hrs?)\s+(from|off)\s+(the\s+)?timer\b/.test(t)) return 'timer_edit';
   if (/\bset\s+(the\s+)?timer\s+to\b/.test(t)) return 'timer_edit';
   if (/\bmake\s+(the\s+)?timer\b/.test(t)) return 'timer_edit';
-  if (/\b(set( a)? timer|start( a)? timer|timer (for|of)|countdown|count down)\b/.test(t)) return 'timer';
+  // "set a 5 minute timer", "set a timer for pasta", "start a 30 second timer", etc.
+  if (/\b(set|start)\s+(?:a\s+)?(?:\d+[\s\w]*?\s+)?timer\b/.test(t)) return 'timer';
+  if (/\btimer\s+(for|of)\b/.test(t)) return 'timer';
+  if (/\b(countdown|count down)\b/.test(t)) return 'timer';
   if (/\b(set( an?)? alarm|wake me up( at)?|alarm( at| for)?|remind me at)\b/.test(t)) return 'alarm';
   if (/\b(calendar|my schedule|agenda|upcoming events?|what('?s| is) (on|happening)|this week|next week|show me (my )?(events?|calendar))\b/.test(t)) return 'calendar';
   if (/\b(play |pause|skip( track| song)?|next (track|song)|previous (track|song)|what('?s| is) playing|stop (music|playing))\b/.test(t)) return 'music';
