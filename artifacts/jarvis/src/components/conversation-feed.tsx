@@ -70,9 +70,13 @@ export function ConversationFeed({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    // #18: Use requestAnimationFrame for smooth, non-jumpy autoscroll
+    const frame = requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    });
+    return () => cancelAnimationFrame(frame);
   }, [messages, isThinking, suggestions]);
 
   const showSuggestions =

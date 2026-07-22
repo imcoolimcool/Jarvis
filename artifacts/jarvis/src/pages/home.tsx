@@ -38,7 +38,10 @@ function useTheme() {
 export default function Home() {
   const [status, setStatus] = useState<AppState>('idle');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isChatMode, setIsChatMode] = useState(false);
+  // #13: Persist chat mode across iOS Safari tab reloads (iOS aggressively reloads background tabs)
+  const [isChatMode, setIsChatMode] = useState(() => {
+    try { return localStorage.getItem('jarvis-chat-mode') === 'true'; } catch { return false; }
+  });
   const [chatInput, setChatInput] = useState('');
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [sidebarRefreshTick, setSidebarRefreshTick] = useState(0);
@@ -71,6 +74,10 @@ export default function Home() {
   // Keep a ref so speech-recognition callbacks never hold stale closures.
   const isChatModeRef = useRef(isChatMode);
   useEffect(() => { isChatModeRef.current = isChatMode; }, [isChatMode]);
+  // #13: Persist chat mode to localStorage
+  useEffect(() => {
+    try { localStorage.setItem('jarvis-chat-mode', String(isChatMode)); } catch { /* noop */ }
+  }, [isChatMode]);
 
   const { start: startListening, stop: stopListening } = useSpeechRecognition({
     onTranscript: (text) => {
@@ -244,8 +251,15 @@ export default function Home() {
   }, []);
 
   const playWakeSound = useCallback(() => {
+    // #44: Reuse the shared AudioContext — creating a new one per wake-word leaks browser
+    // audio handles and eventually exhausts the limit (~6 contexts on Chrome/Safari).
     try {
-      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      if (!audioContextRef.current) {
+        const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        audioContextRef.current = new Ctor();
+      }
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
@@ -588,11 +602,13 @@ export default function Home() {
   useEffect(() => {
     if (isChatMode) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && e.target === document.body) {
-        e.preventDefault();
-        if (e.repeat) return;
-        if (status === 'idle' || status === 'wake' || status === 'recording' || status === 'speaking') handleToggleRecording();
-      }
+      if (e.code !== 'Space' || e.repeat) return;
+      // #1: Don't fire PTT when the user is typing in an input, textarea, or contenteditable
+      const target = e.target as HTMLElement;
+      const tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
+      e.preventDefault();
+      if (status === 'idle' || status === 'wake' || status === 'recording' || status === 'speaking') handleToggleRecording();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -894,8 +910,8 @@ export default function Home() {
                   onSuggestionClick={handleSuggestionClick}
                 />
 
-                {/* Input bar */}
-                <div className="border-t border-border/30 bg-background/90 backdrop-blur-md px-4 py-3 flex-shrink-0 space-y-2">
+                {/* Input bar — #21: padding-bottom accounts for Safari's home indicator / safe area */}
+                <div className="border-t border-border/30 bg-background/90 backdrop-blur-md px-4 pt-3 flex-shrink-0 space-y-2" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
                   {attachedFile && (
                     <div className="flex items-center gap-2">
                       <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-border flex-shrink-0 flex items-center justify-center bg-card/40">

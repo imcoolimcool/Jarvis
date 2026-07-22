@@ -62,3 +62,5 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
+GOOGLE_REDIRECT_URI = "https://9d2b9df0-748a-4afe-82f8-7c1d27c82b34-00-33wvqt2nsicbd.kirk.replit.dev/api/jarvis/gmail/callback"
+SPOTIFY_REDIRECT_URI = "https://9d2b9df0-748a-4afe-82f8-7c1d27c82b34-00-33wvqt2nsicbd.kirk.replit.dev/api/jarvis/spotify/callback"

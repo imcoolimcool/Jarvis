@@ -1,6 +1,8 @@
 import * as React from 'react';
 
-const MOBILE_BREAKPOINT = 768;
+// #31: Use 1024px to match Tailwind `lg` breakpoint used throughout the UI
+// (sidebar uses `hidden lg:flex`, so the mobile/desktop boundary must be 1024, not 768)
+const MOBILE_BREAKPOINT = 1024;
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(

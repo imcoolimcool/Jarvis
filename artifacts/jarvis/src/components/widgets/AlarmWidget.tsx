@@ -8,9 +8,18 @@ interface AlarmWidgetProps {
   onClose?: () => void;
 }
 
+// #28: Shared module-level AudioContext — avoids creating a new context on every alarm tick
+let _alarmCtx: AudioContext | null = null;
+function getAlarmCtx(): AudioContext {
+  const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  if (!_alarmCtx || _alarmCtx.state === 'closed') _alarmCtx = new Ctor();
+  return _alarmCtx;
+}
+
 function playAlarmSound() {
   try {
-    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const ctx = getAlarmCtx();
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
     const freqs = [440, 554, 659, 554, 440];
     freqs.forEach((f, i) => {
       const osc = ctx.createOscillator();
@@ -31,19 +40,35 @@ export function AlarmWidget({ time, label, compact, onClose }: AlarmWidgetProps)
   const [dismissed, setDismissed] = useState(false);
   const checkedRef = useRef(false);
 
+  // #42: Reset checkedRef when the time prop changes so the alarm re-arms for the next day
+  useEffect(() => {
+    checkedRef.current = false;
+    setFired(false);
+    setDismissed(false);
+  }, [time]);
+
   useEffect(() => {
     if (dismissed) return;
     const check = () => {
       const now = new Date();
       const [hh, mm] = time.split(':').map(Number);
-      if (now.getHours() === hh && now.getMinutes() === mm && !checkedRef.current) {
+      const nowMatches = now.getHours() === hh && now.getMinutes() === mm;
+
+      // #42: Auto-reset checkedRef when the minute passes so it can fire again next day
+      if (!nowMatches) {
+        if (checkedRef.current) checkedRef.current = false;
+        return;
+      }
+
+      if (!checkedRef.current) {
         checkedRef.current = true;
         setFired(true);
         playAlarmSound();
       }
     };
     check();
-    const id = setInterval(check, 5000);
+    // #41: Check every second instead of every 5s to reduce max latency from 5s to 1s
+    const id = setInterval(check, 1000);
     return () => clearInterval(id);
   }, [time, dismissed]);
 

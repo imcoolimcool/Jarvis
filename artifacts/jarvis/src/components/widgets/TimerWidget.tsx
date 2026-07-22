@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, X, Timer } from 'lucide-react';
 
 interface TimerWidgetProps {
@@ -16,9 +16,18 @@ function formatTime(s: number) {
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
+// #36: Shared module-level AudioContext — avoids creating a new context per beep
+let _timerCtx: AudioContext | null = null;
+function getTimerCtx(): AudioContext {
+  const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  if (!_timerCtx || _timerCtx.state === 'closed') _timerCtx = new Ctor();
+  return _timerCtx;
+}
+
 function playBeep() {
   try {
-    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const ctx = getTimerCtx();
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
     [0, 0.3, 0.6].forEach(offset => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -40,7 +49,9 @@ export function TimerWidget({ durationSeconds, label, compact, onClose }: TimerW
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevDurationRef = useRef(durationSeconds);
 
-  const clearTimer = () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  const clearTimer = () => {
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+  };
 
   // Reset timer when durationSeconds prop changes (Jarvis edits the timer)
   useEffect(() => {
@@ -53,29 +64,31 @@ export function TimerWidget({ durationSeconds, label, compact, onClose }: TimerW
     }
   }, [durationSeconds]);
 
-  const tick = useCallback(() => {
-    setRemaining(prev => {
-      if (prev <= 1) {
+  // #22: Wall-clock countdown — immune to background timer throttling on mobile.
+  // Capture endTime at the moment running starts (or resumes) so drift accumulates
+  // only in the interval granularity, not across every tick.
+  useEffect(() => {
+    if (!running || done) { clearTimer(); return; }
+
+    // Snapshot end time from current remaining at the moment we (re)start.
+    const endTime = Date.now() + remaining * 1000;
+
+    // Poll at 250 ms for responsiveness but compute from wall clock, not decrement.
+    intervalRef.current = setInterval(() => {
+      const timeLeft = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      setRemaining(timeLeft);
+      if (timeLeft <= 0) {
         clearTimer();
         setRunning(false);
         setDone(true);
         playBeep();
-        return 0;
       }
-      return prev - 1;
-    });
-  }, []);
+    }, 250);
 
-  useEffect(() => {
-    if (running) {
-      intervalRef.current = setInterval(tick, 1000);
-    } else {
-      clearTimer();
-    }
     return clearTimer;
-  }, [running, tick]);
+  }, [running]); // eslint-disable-line react-hooks/exhaustive-deps -- remaining captured intentionally at start
 
-  const reset = () => { setRemaining(durationSeconds); setDone(false); setRunning(false); };
+  const reset = () => { clearTimer(); setRemaining(durationSeconds); setDone(false); setRunning(false); };
 
   const progress = 1 - remaining / durationSeconds;
   const circumference = 2 * Math.PI * 44;

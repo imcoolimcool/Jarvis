@@ -52,6 +52,13 @@ export function useSpeechRecognition({
         // so onEnd() would be called twice (once here, once in onend). Let onend handle it.
       } else if (event.error === 'not-allowed') {
         onError('Microphone access denied. Please allow microphone in your browser settings.');
+      } else if (event.error === 'network') {
+        // #12: Distinguish network errors — give useful feedback on WiFi→LTE handoffs
+        if (!navigator.onLine) {
+          onError('No internet connection. Speech recognition requires an active connection.');
+        } else {
+          onError('Network error during speech recognition. Check your connection and try again.');
+        }
       } else {
         onError(`Microphone error: ${event.error}`);
       }

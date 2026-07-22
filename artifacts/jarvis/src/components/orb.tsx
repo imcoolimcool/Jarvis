@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square } from 'lucide-react';
 
@@ -8,44 +9,50 @@ interface OrbProps {
   onClick?: () => void;
 }
 
-// Floating particles for active states
+// #39: Pre-compute particle positions with useMemo so Math.random() is called once at
+// mount time, not on every render. Previously, positions teleported on every state change.
 function Particles({ count = 8, color = 'rgba(0,212,255,0.5)' }: { count?: number; color?: string }) {
+  const particles = useMemo(() =>
+    Array.from({ length: count }).map((_, i) => ({
+      angle: (i / count) * 360,
+      radius: 120 + Math.random() * 40,
+      delay: (i / count) * 2,
+      duration: 3 + (i % 3) * 0.7,
+    })),
+    [count]
+  );
+
   return (
     <>
-      {Array.from({ length: count }).map((_, i) => {
-        const angle = (i / count) * 360;
-        const radius = 120 + Math.random() * 40;
-        const delay = (i / count) * 2;
-        return (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 rounded-full pointer-events-none"
-            style={{ background: color }}
-            animate={{
-              x: [
-                `${Math.cos((angle * Math.PI) / 180) * radius * 0.7}px`,
-                `${Math.cos(((angle + 30) * Math.PI) / 180) * radius}px`,
-                `${Math.cos(((angle + 60) * Math.PI) / 180) * radius * 0.8}px`,
-                `${Math.cos((angle * Math.PI) / 180) * radius * 0.7}px`,
-              ],
-              y: [
-                `${Math.sin((angle * Math.PI) / 180) * radius * 0.7}px`,
-                `${Math.sin(((angle + 30) * Math.PI) / 180) * radius}px`,
-                `${Math.sin(((angle + 60) * Math.PI) / 180) * radius * 0.8}px`,
-                `${Math.sin((angle * Math.PI) / 180) * radius * 0.7}px`,
-              ],
-              opacity: [0, 0.8, 0.4, 0],
-              scale: [0, 1.5, 1, 0],
-            }}
-            transition={{
-              repeat: Infinity,
-              duration: 3 + (i % 3) * 0.7,
-              delay,
-              ease: 'easeInOut',
-            }}
-          />
-        );
-      })}
+      {particles.map(({ angle, radius, delay, duration }, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-1 h-1 rounded-full pointer-events-none"
+          style={{ background: color }}
+          animate={{
+            x: [
+              `${Math.cos((angle * Math.PI) / 180) * radius * 0.7}px`,
+              `${Math.cos(((angle + 30) * Math.PI) / 180) * radius}px`,
+              `${Math.cos(((angle + 60) * Math.PI) / 180) * radius * 0.8}px`,
+              `${Math.cos((angle * Math.PI) / 180) * radius * 0.7}px`,
+            ],
+            y: [
+              `${Math.sin((angle * Math.PI) / 180) * radius * 0.7}px`,
+              `${Math.sin(((angle + 30) * Math.PI) / 180) * radius}px`,
+              `${Math.sin(((angle + 60) * Math.PI) / 180) * radius * 0.8}px`,
+              `${Math.sin((angle * Math.PI) / 180) * radius * 0.7}px`,
+            ],
+            opacity: [0, 0.8, 0.4, 0],
+            scale: [0, 1.5, 1, 0],
+          }}
+          transition={{
+            repeat: Infinity,
+            duration,
+            delay,
+            ease: 'easeInOut',
+          }}
+        />
+      ))}
     </>
   );
 }
@@ -91,10 +98,14 @@ export function Orb({ status, onClick }: OrbProps) {
     'inset 0 0 30px rgba(0,212,255,0.4), 0 0 20px rgba(0,212,255,0.1)';
 
   return (
+    // #10: onPointerDown fires immediately on touch without the 300ms iOS tap delay.
+    // touch-action: manipulation disables double-tap zoom, removing the browser delay.
     <div
       className="relative flex items-center justify-center w-[280px] h-[280px] sm:w-[300px] sm:h-[300px] cursor-pointer group select-none"
-      onClick={onClick}
+      onPointerDown={onClick}
+      style={{ touchAction: 'manipulation' }}
       aria-label={status}
+      role="button"
     >
       {/* Deep ambient glow — breathing with state color */}
       <motion.div
@@ -220,7 +231,7 @@ export function Orb({ status, onClick }: OrbProps) {
         </AnimatePresence>
       </div>
 
-      {/* Floating particles for active states */}
+      {/* Floating particles for active states — #29: reduced counts for low-end device performance */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <AnimatePresence>
           {(status === 'speaking' || status === 'thinking' || status === 'recording') && (
@@ -232,7 +243,7 @@ export function Orb({ status, onClick }: OrbProps) {
               transition={{ duration: 0.4 }}
             >
               <Particles
-                count={status === 'speaking' ? 10 : 6}
+                count={status === 'speaking' ? 6 : 4}
                 color={
                   status === 'speaking' ? 'rgba(80,255,180,0.6)' :
                   status === 'recording' ? 'rgba(255,100,100,0.6)' :

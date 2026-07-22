@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 
 // Extend window for webkit prefix
 declare global {
@@ -224,6 +224,21 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
 
   // Always keep startRef pointing at start so the onend fallback can call it.
   startRef.current = start;
+
+  // #11: Restart the recognizer if it died while the tab was hidden (tab switch / lock screen).
+  // Without this, "hey Jarvis" stops working after the user backgrounds the app on iOS/Android.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      // Tab became visible — if we should be active but the recognizer is gone, restart it.
+      if (activeRef.current && !recognitionRef.current) {
+        activeRef.current = false; // allow start() to proceed
+        startRef.current();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []); // empty deps — only uses refs that are always current
 
   const stop = useCallback(() => {
     activeRef.current = false;

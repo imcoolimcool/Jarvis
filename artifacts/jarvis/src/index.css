@@ -133,11 +133,27 @@
   }
 }
 
-/* Scrollbar */
+/* Scrollbar — WebKit */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--primary) / 0.25); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.5); }
+
+/* #38: Scrollbar — Firefox + Android Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary) / 0.25) transparent;
+}
+
+/* #35: Safe-area insets for notched iPhones and Dynamic Island.
+   Combine with padding-bottom: env(safe-area-inset-bottom) on sticky bars.
+   CSS custom properties so components can reference them. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
 
 /* Glow only in dark mode */
 .dark .glow-text { text-shadow: 0 0 10px hsl(var(--primary) / 0.5); }
