@@ -8,9 +8,9 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe, SlidersHorizontal, Music2, AlarmClock, Plus, Camera } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe, SlidersHorizontal, AlarmClock, Plus, Camera } from 'lucide-react';
 import type { Widget } from '@/types/widget';
-import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, MusicWidget } from '@/components/widgets';
+import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget } from '@/components/widgets';
 
 type Theme = 'dark' | 'light';
 
@@ -819,7 +819,6 @@ export default function Home() {
                     {activeWidget.type === 'weather'  && <WeatherWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                     {activeWidget.type === 'timer'    && <TimerWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                     {activeWidget.type === 'calendar' && <CalendarWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
-                    {activeWidget.type === 'music'    && <MusicWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                   </div>
                 ) : (
                   <div className="space-y-2 min-h-[5rem]">
@@ -870,7 +869,6 @@ export default function Home() {
                     {activeWidget.type === 'weather'  && <WeatherWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                     {activeWidget.type === 'timer'    && <TimerWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                     {activeWidget.type === 'calendar' && <CalendarWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
-                    {activeWidget.type === 'music'    && <MusicWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                   </div>
                 )}
               </div>
@@ -886,7 +884,6 @@ export default function Home() {
                     {activeWidget.type === 'clock'    && <ClockWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                     {activeWidget.type === 'weather'  && <WeatherWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                     {activeWidget.type === 'calendar' && <CalendarWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
-                    {activeWidget.type === 'music'    && <MusicWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                   </div>
                 )}
 

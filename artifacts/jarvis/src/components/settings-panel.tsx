@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut, Brain, Globe, Music2, Pencil, Check } from 'lucide-react';
+import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut, Brain, Globe, Music2, Pencil, Check, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Settings {
@@ -17,6 +17,7 @@ interface Settings {
   calendar_name_5: string;
   web_search_enabled: string;
   google_calendar_enabled: string;
+  user_profile: string;
 }
 
 const EMPTY: Settings = {
@@ -33,6 +34,7 @@ const EMPTY: Settings = {
   calendar_name_5: '',
   web_search_enabled: 'false',
   google_calendar_enabled: 'true',
+  user_profile: '',
 };
 
 interface SettingsPanelProps {
@@ -52,10 +54,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [memories, setMemories] = useState<{ topic: string; value: string; updatedAt: string }[]>([]);
   const [loadingMemories, setLoadingMemories] = useState(false);
   const [deletingMemory, setDeletingMemory] = useState<string | null>(null);
-  const [editingMemory, setEditingMemory] = useState<string | null>(null); // topic being edited
+  const [editingMemory, setEditingMemory] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
 
-  // Number of calendar slots currently shown (at least those with values, min 1)
   const [visibleSlots, setVisibleSlots] = useState(1);
 
   const fetchGmailStatus = useCallback(() => {
@@ -132,7 +133,6 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       .then(data => {
         const loaded: Settings = { ...EMPTY, ...data };
         setForm(loaded);
-        // Show enough slots for existing values
         const filled = [1,2,3,4,5].filter(n => loaded[`calendar_ics_url_${n}` as keyof Settings]);
         setVisibleSlots(Math.max(1, filled.length));
       })
@@ -170,7 +170,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         fetchSpotifyStatus();
         window.removeEventListener('message', onMessage);
         popup?.close();
-        toast({ title: 'Spotify connected', description: 'Say "play [song]" to start music.', duration: 4000 });
+        toast({ title: 'Spotify connected', duration: 4000 });
       }
     };
     window.addEventListener('message', onMessage);
@@ -270,135 +270,36 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 </p>
               </div>
 
-              {/* Gmail + Google Calendar (combined OAuth) */}
+              {/* ── USER PROFILE ── */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 text-primary/70" />
-                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">GMAIL + GOOGLE CALENDAR</label>
-                </div>
-
-                {gmailStatus?.connected ? (
-                  <div className="flex items-center justify-between p-3 border border-primary/30 bg-primary/5 rounded-lg">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-mono text-primary">Connected</p>
-                        <p className="text-[10px] font-mono text-muted-foreground/60 truncate">{gmailStatus.email}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleDisconnectGmail}
-                      disabled={disconnecting}
-                      className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0 ml-2"
-                    >
-                      <LogOut className="w-3 h-3" />
-                      {disconnecting ? 'Disconnecting…' : 'Disconnect'}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleConnectGmail}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-border/50 rounded-lg text-[11px] font-mono text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
-                  >
-                    <Mail className="w-3.5 h-3.5" />
-                    Connect Google account (Gmail + Calendar)
-                  </button>
-                )}
-                <p className="text-[10px] font-mono text-muted-foreground/50">
-                  {gmailStatus?.connected
-                    ? `↳ Gmail inbox + Google Calendar synced as ${gmailStatus.email}`
-                    : 'Grants Jarvis read access to your Gmail inbox and Google Calendar.'}
-                </p>
-              </div>
-
-              {/* Spotify */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Music2 className="w-3.5 h-3.5 text-primary/70" />
-                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">SPOTIFY</label>
-                </div>
-
-                {spotifyStatus?.connected ? (
-                  <div className="flex items-center justify-between p-3 border border-primary/30 bg-primary/5 rounded-lg">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-mono text-primary">Connected</p>
-                        {spotifyStatus.displayName && (
-                          <p className="text-[10px] font-mono text-muted-foreground/60 truncate">{spotifyStatus.displayName}</p>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleDisconnectSpotify}
-                      disabled={disconnectingSpotify}
-                      className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0 ml-2"
-                    >
-                      <LogOut className="w-3 h-3" />
-                      {disconnectingSpotify ? 'Disconnecting…' : 'Disconnect'}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleConnectSpotify}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-green-500/30 rounded-lg text-[11px] font-mono text-green-400/80 hover:border-green-500/60 hover:text-green-400 transition-all"
-                  >
-                    <Music2 className="w-3.5 h-3.5" />
-                    Connect Spotify
-                  </button>
-                )}
-                <p className="text-[10px] font-mono text-muted-foreground/50">
-                  Say "play [song or artist]" to control Spotify. Requires an active Spotify device.
-                </p>
-              </div>
-
-              {/* Web Search */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Globe className="w-3.5 h-3.5 text-primary/70" />
-                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">WEB SEARCH</label>
-                </div>
-                <div className="flex items-center justify-between p-3 border border-border/50 rounded-lg bg-card/30">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-mono text-foreground">Let Jarvis search the web</p>
-                    <p className="text-[10px] font-mono text-muted-foreground/60">Powered by Tavily.</p>
-                  </div>
-                  <button
-                    onClick={() => setForm(f => ({ ...f, web_search_enabled: f.web_search_enabled === 'true' ? 'false' : 'true' }))}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${form.web_search_enabled === 'true' ? 'bg-primary' : 'bg-muted'}`}
-                    aria-label="Toggle web search"
-                  >
-                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-background transition-transform ${form.web_search_enabled === 'true' ? 'translate-x-5' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Weather */}
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <Cloud className="w-3.5 h-3.5 text-primary/70" />
-                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">WEATHER</label>
-                </div>
-                <input
-                  type="text"
-                  value={form.weather_location}
-                  onChange={e => setForm(f => ({ ...f, weather_location: e.target.value }))}
-                  placeholder="e.g. London, New York, Tokyo"
-                  className="w-full bg-card border border-border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all"
-                />
-                <p className="text-[10px] font-mono text-muted-foreground/60">
-                  Powered by wttr.in — free, no account needed.
-                </p>
-              </div>
-
-              {/* User Profile / Memory */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Brain className="w-3.5 h-3.5 text-primary/70" />
+                  <User className="w-3.5 h-3.5 text-primary/70" />
                   <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">USER PROFILE</label>
                 </div>
                 <p className="text-[10px] font-mono text-muted-foreground/50">
-                  Facts Jarvis has learned about you. Edit or delete any entry.
+                  A few sentences about yourself. Jarvis reads this every conversation to personalise replies.
+                </p>
+                <textarea
+                  value={form.user_profile}
+                  onChange={e => setForm(f => ({ ...f, user_profile: e.target.value }))}
+                  placeholder="e.g. My name is Alex. I'm a software engineer based in London. I prefer concise answers and use metric units."
+                  rows={4}
+                  maxLength={2000}
+                  className="w-full bg-card border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-[11px] px-4 py-3 rounded-lg outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all resize-none leading-relaxed"
+                />
+                <p className="text-[10px] font-mono text-muted-foreground/40 text-right">
+                  {form.user_profile.length}/2000
+                </p>
+              </div>
+
+              {/* ── MEMORIES ── */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-3.5 h-3.5 text-primary/70" />
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">MEMORIES</label>
+                </div>
+                <p className="text-[10px] font-mono text-muted-foreground/50">
+                  Facts Jarvis has picked up during conversations. Edit or delete any entry.
                 </p>
 
                 {loadingMemories ? (
@@ -407,7 +308,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                   <div className="p-3 border border-border/30 rounded-lg bg-card/20 text-center">
                     <Brain className="w-5 h-5 text-muted-foreground/30 mx-auto mb-1.5" />
                     <p className="text-[11px] font-mono text-muted-foreground/50">
-                      No profile yet. Talk to Jarvis and he'll start learning about you.
+                      No memories yet. Chat with Jarvis and he'll start picking things up.
                     </p>
                   </div>
                 ) : (
@@ -470,7 +371,128 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 )}
               </div>
 
-              {/* Calendar — iCal fallback feeds */}
+              {/* ── GMAIL + GOOGLE CALENDAR ── */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5 text-primary/70" />
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">GMAIL + GOOGLE CALENDAR</label>
+                </div>
+
+                {gmailStatus?.connected ? (
+                  <div className="flex items-center justify-between p-3 border border-primary/30 bg-primary/5 rounded-lg">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-mono text-primary">Connected</p>
+                        <p className="text-[10px] font-mono text-muted-foreground/60 truncate">{gmailStatus.email}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleDisconnectGmail}
+                      disabled={disconnecting}
+                      className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0 ml-2"
+                    >
+                      <LogOut className="w-3 h-3" />
+                      {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleConnectGmail}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-border/50 rounded-lg text-[11px] font-mono text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    Connect Google account (Gmail + Calendar)
+                  </button>
+                )}
+                <p className="text-[10px] font-mono text-muted-foreground/50">
+                  {gmailStatus?.connected
+                    ? `↳ Gmail inbox + Google Calendar synced as ${gmailStatus.email}`
+                    : 'Grants Jarvis read access to your Gmail inbox and Google Calendar.'}
+                </p>
+              </div>
+
+              {/* ── SPOTIFY ── */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Music2 className="w-3.5 h-3.5 text-primary/70" />
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">SPOTIFY</label>
+                </div>
+
+                {spotifyStatus?.connected ? (
+                  <div className="flex items-center justify-between p-3 border border-primary/30 bg-primary/5 rounded-lg">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-mono text-primary">Connected</p>
+                        {spotifyStatus.displayName && (
+                          <p className="text-[10px] font-mono text-muted-foreground/60 truncate">{spotifyStatus.displayName}</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleDisconnectSpotify}
+                      disabled={disconnectingSpotify}
+                      className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0 ml-2"
+                    >
+                      <LogOut className="w-3 h-3" />
+                      {disconnectingSpotify ? 'Disconnecting…' : 'Disconnect'}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleConnectSpotify}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-green-500/30 rounded-lg text-[11px] font-mono text-green-400/80 hover:border-green-500/60 hover:text-green-400 transition-all"
+                  >
+                    <Music2 className="w-3.5 h-3.5" />
+                    Connect Spotify
+                  </button>
+                )}
+                <p className="text-[10px] font-mono text-muted-foreground/50">
+                  Link your Spotify account so Jarvis can see your listening context.
+                </p>
+              </div>
+
+              {/* ── WEB SEARCH ── */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-primary/70" />
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">WEB SEARCH</label>
+                </div>
+                <div className="flex items-center justify-between p-3 border border-border/50 rounded-lg bg-card/30">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-mono text-foreground">Let Jarvis search the web</p>
+                    <p className="text-[10px] font-mono text-muted-foreground/60">Powered by Tavily.</p>
+                  </div>
+                  <button
+                    onClick={() => setForm(f => ({ ...f, web_search_enabled: f.web_search_enabled === 'true' ? 'false' : 'true' }))}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${form.web_search_enabled === 'true' ? 'bg-primary' : 'bg-muted'}`}
+                    aria-label="Toggle web search"
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-background transition-transform ${form.web_search_enabled === 'true' ? 'translate-x-5' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* ── WEATHER ── */}
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <Cloud className="w-3.5 h-3.5 text-primary/70" />
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">WEATHER</label>
+                </div>
+                <input
+                  type="text"
+                  value={form.weather_location}
+                  onChange={e => setForm(f => ({ ...f, weather_location: e.target.value }))}
+                  placeholder="e.g. London, New York, Tokyo"
+                  className="w-full bg-card border border-border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all"
+                />
+                <p className="text-[10px] font-mono text-muted-foreground/60">
+                  Also used for your local timezone when you ask Jarvis the time.
+                </p>
+              </div>
+
+              {/* ── CALENDAR FEEDS ── */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

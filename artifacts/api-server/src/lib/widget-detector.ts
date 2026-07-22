@@ -14,7 +14,7 @@ export type Widget =
   | { type: 'timer'; durationSeconds: number; label?: string; timerAction?: 'set' | 'add' | 'cancel'; deltaSeconds?: number }
   | { type: 'alarm'; time: string; label?: string }    // "HH:MM" 24-h
   | { type: 'calendar'; events: CalendarEvent[]; weekStart: string }
-  | { type: 'music'; track?: string; artist?: string; album?: string; albumArt?: string | null; playing: boolean; query?: string }
+
 
 export interface ForecastDay {
   date: string;           // YYYY-MM-DD
@@ -35,7 +35,7 @@ export interface CalendarEvent {
 
 // ─── Intent detection ────────────────────────────────────────────────────────
 
-type Intent = 'clock' | 'weather' | 'timer' | 'timer_edit' | 'timer_cancel' | 'alarm' | 'calendar' | 'music' | null;
+type Intent = 'clock' | 'weather' | 'timer' | 'timer_edit' | 'timer_cancel' | 'alarm' | 'calendar' | null;
 
 function detectIntent(msg: string): Intent {
   const t = msg.toLowerCase();
@@ -56,7 +56,6 @@ function detectIntent(msg: string): Intent {
   if (/\b(countdown|count down)\b/.test(t)) return 'timer';
   if (/\b(set( an?)? alarm|wake me up( at)?|alarm( at| for)?|remind me at)\b/.test(t)) return 'alarm';
   if (/\b(calendar|my schedule|agenda|upcoming events?|what('?s| is) (on|happening)|this week|next week|show me (my )?(events?|calendar))\b/.test(t)) return 'calendar';
-  if (/\b(play |pause|skip( track| song)?|next (track|song)|previous (track|song)|what('?s| is) playing|stop (music|playing))\b/.test(t)) return 'music';
 
   return null;
 }
@@ -103,14 +102,57 @@ const DEFAULT_TIMEZONES: ClockTimezone[] = [
   { label: 'Sydney',      tz: 'Australia/Sydney' },
 ];
 
-function buildClockWidget(msg: string): Extract<Widget, { type: 'clock' }> {
+/** Map a free-form location string to an IANA timezone — used for weather_location → clock tz */
+function getTimezoneFromLocation(location: string): string {
+  const t = location.toLowerCase().trim();
+  // Direct city match
+  for (const [city, info] of Object.entries(CITY_TZ)) {
+    if (t.includes(city) || city.includes(t.split(',')[0].trim())) return info.tz;
+  }
+  // Country / region fallbacks
+  const COUNTRY_TZ: Record<string, string> = {
+    'uk': 'Europe/London', 'england': 'Europe/London', 'britain': 'Europe/London', 'scotland': 'Europe/London', 'wales': 'Europe/London',
+    'usa': 'America/New_York', 'united states': 'America/New_York', 'america': 'America/New_York',
+    'germany': 'Europe/Berlin', 'france': 'Europe/Paris', 'spain': 'Europe/Madrid',
+    'italy': 'Europe/Rome', 'japan': 'Asia/Tokyo', 'china': 'Asia/Shanghai',
+    'australia': 'Australia/Sydney', 'india': 'Asia/Kolkata', 'brazil': 'America/Sao_Paulo',
+    'canada': 'America/Toronto', 'mexico': 'America/Mexico_City', 'russia': 'Europe/Moscow',
+    'netherlands': 'Europe/Amsterdam', 'sweden': 'Europe/Stockholm', 'norway': 'Europe/Oslo',
+    'denmark': 'Europe/Copenhagen', 'switzerland': 'Europe/Zurich', 'austria': 'Europe/Vienna',
+    'poland': 'Europe/Warsaw', 'turkey': 'Europe/Istanbul', 'egypt': 'Africa/Cairo',
+    'nigeria': 'Africa/Lagos', 'kenya': 'Africa/Nairobi', 'south africa': 'Africa/Johannesburg',
+    'argentina': 'America/Argentina/Buenos_Aires', 'colombia': 'America/Bogota',
+    'chile': 'America/Santiago', 'peru': 'America/Lima', 'new zealand': 'Pacific/Auckland',
+    'portugal': 'Europe/Lisbon', 'ireland': 'Europe/Dublin', 'greece': 'Europe/Athens',
+    'czech': 'Europe/Prague', 'hungary': 'Europe/Budapest', 'romania': 'Europe/Bucharest',
+    'ukraine': 'Europe/Kiev', 'finland': 'Europe/Helsinki', 'israel': 'Asia/Jerusalem',
+    'saudi': 'Asia/Riyadh', 'iran': 'Asia/Tehran', 'pakistan': 'Asia/Karachi',
+    'bangladesh': 'Asia/Dhaka', 'thailand': 'Asia/Bangkok', 'vietnam': 'Asia/Ho_Chi_Minh',
+    'malaysia': 'Asia/Kuala_Lumpur', 'philippines': 'Asia/Manila', 'indonesia': 'Asia/Jakarta',
+  };
+  for (const [key, tz] of Object.entries(COUNTRY_TZ)) {
+    if (t.includes(key)) return tz;
+  }
+  return 'UTC';
+}
+
+function buildClockWidget(msg: string, settings: Record<string, string>): Extract<Widget, { type: 'clock' }> {
   const t = msg.toLowerCase();
   const found: ClockTimezone[] = [];
   for (const [city, info] of Object.entries(CITY_TZ)) {
     if (t.includes(city) && !found.some(f => f.tz === info.tz)) found.push(info);
   }
-  const timezones = found.length > 0 ? found : DEFAULT_TIMEZONES;
-  return { type: 'clock', timezones };
+  if (found.length > 0) return { type: 'clock', timezones: found };
+
+  // No specific city mentioned — use the user's weather location for local time
+  const weatherLoc = settings['weather_location']?.trim();
+  if (weatherLoc) {
+    const tz = getTimezoneFromLocation(weatherLoc);
+    const label = weatherLoc.split(',')[0].trim();
+    return { type: 'clock', timezones: [{ label, tz }] };
+  }
+
+  return { type: 'clock', timezones: DEFAULT_TIMEZONES };
 }
 
 // ─── Weather ─────────────────────────────────────────────────────────────────
@@ -345,26 +387,6 @@ function parseIcsDate(value: string): { date: Date; allDay: boolean } | null {
   return { date, allDay: false };
 }
 
-// ─── Music ───────────────────────────────────────────────────────────────────
-
-function extractMusicQuery(msg: string): string | undefined {
-  // "play X", "play some X", "put on X"
-  const m = msg.match(/\b(?:play|put on)\s+(?:some\s+)?(.+?)(?:\s+(?:music|song|track|playlist))?$/i)
-    ?? msg.match(/\b(?:play)\s+(.+)/i);
-  return m?.[1]?.trim();
-}
-
-function buildMusicWidget(msg: string): Extract<Widget, { type: 'music' }> {
-  const t = msg.toLowerCase();
-  const query = extractMusicQuery(msg);
-
-  // Determine action from message
-  if (/\b(pause|stop)\b/.test(t)) return { type: 'music', playing: false };
-  if (/\bwhat('?s| is) playing\b/.test(t)) return { type: 'music', playing: true };
-
-  return { type: 'music', playing: true, query };
-}
-
 // ─── Google Calendar (via API) ───────────────────────────────────────────────
 
 async function fetchGoogleCalendarWidget(): Promise<Extract<Widget, { type: 'calendar' }> | null> {
@@ -406,7 +428,7 @@ export async function detectAndBuildWidget(
 
   switch (intent) {
     case 'clock':
-      return buildClockWidget(userMessage);
+      return buildClockWidget(userMessage, settings);
 
     case 'weather': {
       const location = extractWeatherLocation(userMessage, settings['weather_location'] ?? 'London');
@@ -442,8 +464,5 @@ export async function detectAndBuildWidget(
       return await fetchCalendarWidget(calendars);
     }
 
-    case 'music': {
-      return buildMusicWidget(userMessage);
-    }
   }
 }

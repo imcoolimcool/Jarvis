@@ -125,12 +125,24 @@ Examples: [{"topic":"favorite_animal","value":"The user likes frogs"},{"topic":"
   }
 }
 
-/** Build a formatted memory block to inject into the system prompt */
+/** Build a formatted memory + profile block to inject into the system prompt */
 async function buildMemoryContext(): Promise<string | null> {
-  const memories = await db.select().from(userMemories);
-  if (memories.length === 0) return null;
-  const lines = memories.map((m) => `- ${m.value}`).join("\n");
-  return `## What you remember about the user\n${lines}`;
+  const [memories, settings] = await Promise.all([
+    db.select().from(userMemories),
+    getSettings(),
+  ]);
+
+  const parts: string[] = [];
+
+  const profile = settings["user_profile"]?.trim();
+  if (profile) parts.push(`## About the user\n${profile}`);
+
+  if (memories.length > 0) {
+    const lines = memories.map((m) => `- ${m.value}`).join("\n");
+    parts.push(`## What you remember about the user\n${lines}`);
+  }
+
+  return parts.length > 0 ? parts.join("\n\n") : null;
 }
 
 /** Generate 3 short follow-up suggestion chips from the assistant's last response */

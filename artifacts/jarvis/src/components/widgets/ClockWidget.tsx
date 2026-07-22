@@ -25,8 +25,24 @@ function useTime(tz: string) {
   return { h: get('hour'), m: get('minute'), s: get('second'), dayPeriod: get('dayPeriod') };
 }
 
-function TZClock({ label, tz, primary }: { label: string; tz: string; primary?: boolean }) {
+function TZClock({ label, tz, primary, solo }: { label: string; tz: string; primary?: boolean; solo?: boolean }) {
   const { h, m, s, dayPeriod } = useTime(tz);
+
+  if (solo) {
+    return (
+      <div className="flex flex-col items-center py-5">
+        <span className="text-[11px] font-mono tracking-widest text-muted-foreground/60 mb-4 uppercase">{label}</span>
+        <div className="flex items-baseline gap-1">
+          <span className="font-display text-7xl font-bold tabular-nums text-primary leading-none">
+            {h}:{m}
+          </span>
+          <span className="font-mono text-4xl tabular-nums text-primary/70 leading-none">:{s}</span>
+          <span className="text-xl font-mono text-muted-foreground/50 ml-2 tracking-wider self-end mb-1">{dayPeriod}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex flex-col items-center p-4 rounded-2xl border transition-all ${
       primary ? 'border-primary/40 bg-primary/5' : 'border-border/30 bg-card/30'
@@ -46,7 +62,9 @@ function TZClock({ label, tz, primary }: { label: string; tz: string; primary?: 
 }
 
 export function ClockWidget({ timezones, onClose }: ClockWidgetProps) {
-  const cols = timezones.length <= 2 ? 'grid-cols-2' :
+  const solo = timezones.length === 1;
+  const cols = solo ? 'grid-cols-1' :
+               timezones.length <= 2 ? 'grid-cols-2' :
                timezones.length === 3 ? 'grid-cols-3' :
                timezones.length === 4 ? 'grid-cols-2 sm:grid-cols-4' :
                'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5';
@@ -58,10 +76,12 @@ export function ClockWidget({ timezones, onClose }: ClockWidgetProps) {
           <X className="w-3.5 h-3.5" />
         </button>
       )}
-      <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 mb-3 uppercase">World Clock</p>
+      {!solo && (
+        <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 mb-3 uppercase">World Clock</p>
+      )}
       <div className={`grid ${cols} gap-2`}>
         {timezones.map((tz, i) => (
-          <TZClock key={tz.tz} label={tz.label} tz={tz.tz} primary={i === 0} />
+          <TZClock key={tz.tz} label={tz.label} tz={tz.tz} primary={i === 0} solo={solo} />
         ))}
       </div>
     </div>
