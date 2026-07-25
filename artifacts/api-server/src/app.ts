@@ -39,14 +39,23 @@ app.use(express.urlencoded({ extended: true, limit: "1gb" }));
 
 app.use("/api", router);
 
-// ── Serve built frontend static files ──
-const staticDir = path.resolve(__dirname, "..", "..", "..", "artifacts", "jarvis", "dist", "public");
-app.use(express.static(staticDir));
+// ── Serve built frontend static files (production only) ──
+// In development the Vite dev server handles the frontend; attempting to serve
+// the unbuilt dist folder here would throw ENOENT and produce spurious 500s.
+if (process.env["NODE_ENV"] !== "development") {
+  const staticDir = path.resolve(__dirname, "..", "..", "..", "artifacts", "jarvis", "dist", "public");
+  app.use(express.static(staticDir));
 
-// ── SPA fallback — any non-API, non-static request serves index.html ──
-app.use((req: Request, res: Response) => {
-  res.sendFile(path.join(staticDir, "index.html"));
-});
+  // ── SPA fallback — any non-API, non-static request serves index.html ──
+  app.use((req: Request, res: Response) => {
+    res.sendFile(path.join(staticDir, "index.html"));
+  });
+} else {
+  // In development: return a clean 404 for any non-API route instead of crashing
+  app.use((_req: Request, res: Response) => {
+    res.status(404).json({ error: "Not found (dev mode: frontend is served by Vite)" });
+  });
+}
 
 // ── Global error handler — catches any unhandled errors and returns detailed info ──
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
