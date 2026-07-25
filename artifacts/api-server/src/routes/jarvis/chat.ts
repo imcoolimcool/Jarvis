@@ -730,9 +730,22 @@ router.post("/chat", async (req, res) => {
     let msg = "Chat request failed. Please try again.";
     if (err instanceof Error) {
       if (err.message.includes("OPENAI_LLM_API_KEY")) msg = "LLM API key not configured on the server.";
-      else if (err.message.includes("401") || err.message.includes("Unauthorized")) msg = "LLM authentication failed — check API key.";
+      else if (err.message.includes("401") || err.message.includes("Unauthorized")) msg = "LLM authentication failed — check OPENAI_LLM_API_KEY.";
+      else if (err.message.includes("403") || err.message.includes("PermissionDenied") || err.message.includes("Permission")) msg = "LLM API key denied — verify OPENAI_LLM_API_KEY has access to this model.";
       else if (err.message.includes("429") || err.message.includes("Rate limit")) msg = "LLM rate limit exceeded — try again shortly.";
       else if (err.message.includes("timeout") || err.message.includes("abort")) msg = "LLM request timed out — check your connection.";
+    }
+    // If SSE headers were already flushed we can't send a JSON response —
+    // send an SSE error event instead so the frontend can surface it.
+    if (res.headersSent) {
+      try {
+        res.write(`data: ${JSON.stringify({ type: "error", message: msg })}\n\n`);
+        res.write("data: [DONE]\n\n");
+        res.end();
+      } catch {
+        // Socket already closed — nothing we can do
+      }
+      return;
     }
     const detail = buildErrorDetail(err instanceof Error ? err : new Error(String(err)), req, 500, startMs);
     res.status(500).json({ error: msg, detail });
