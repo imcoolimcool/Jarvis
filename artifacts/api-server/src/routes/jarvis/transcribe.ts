@@ -6,6 +6,7 @@ import { writeFile, readFile, unlink } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
 import { randomUUID } from "crypto";
+import { buildErrorDetail } from "../../lib/error-detail";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -51,6 +52,7 @@ async function convertToFlac(
 }
 
 router.post("/transcribe", upload.single("audio"), async (req, res) => {
+  const startMs = Date.now();
   if (!req.file) {
     res.status(400).json({ error: "No audio file provided" });
     return;
@@ -81,7 +83,9 @@ router.post("/transcribe", upload.single("audio"), async (req, res) => {
     res.json({ transcript });
   } catch (err) {
     req.log.error({ err }, "Whisper transcription failed");
-    res.status(500).json({ error: "Transcription failed. Please try again." });
+    const e = err instanceof Error ? err : new Error(String(err));
+    const detail = buildErrorDetail(e, req, 500, startMs);
+    res.status(500).json({ error: "Transcription failed. Please try again.", detail });
   }
 });
 

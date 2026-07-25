@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { db, jarvisSettings } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { buildErrorDetail } from "../../lib/error-detail";
+import { jarvisConfig } from "../../config/jarvis";
 
 const router = Router();
 
@@ -17,14 +19,17 @@ const ALLOWED_KEYS = [
   "calendar_name_4",
   "calendar_name_5",
   "personality",
+  "auto_personality",
   "custom_personality_prompt",
   "web_search_enabled",
   "google_calendar_enabled",
+  "user_profile",
 ] as const;
 type SettingKey = (typeof ALLOWED_KEYS)[number];
 
 /** GET /api/jarvis/settings — returns all settings as a key→value map */
 router.get("/settings", async (req, res) => {
+  const startMs = Date.now();
   try {
     const rows = await db.select().from(jarvisSettings);
     const map: Record<string, string> = {};
@@ -32,12 +37,14 @@ router.get("/settings", async (req, res) => {
     res.json(map);
   } catch (err) {
     req.log.error({ err }, "Failed to read settings");
-    res.status(500).json({ error: "Failed to read settings" });
+    const detail = buildErrorDetail(err instanceof Error ? err : new Error(String(err)), req, 500, startMs);
+    res.status(500).json({ error: "Failed to read settings", detail });
   }
 });
 
 /** PUT /api/jarvis/settings — upsert one or more settings */
 router.put("/settings", async (req, res) => {
+  const startMs = Date.now();
   const body = req.body as Partial<Record<SettingKey, string>>;
 
   const entries = Object.entries(body).filter(([k]) =>
@@ -66,8 +73,19 @@ router.put("/settings", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     req.log.error({ err }, "Failed to save settings");
-    res.status(500).json({ error: "Failed to save settings" });
+    const detail = buildErrorDetail(err instanceof Error ? err : new Error(String(err)), req, 500, startMs);
+    res.status(500).json({ error: "Failed to save settings", detail });
   }
+});
+
+/** GET /api/jarvis/system-prompt — returns the system prompt (power user visibility) */
+router.get("/system-prompt", (_req, res) => {
+  res.json({
+    prompt: jarvisConfig.systemPrompt,
+    model: jarvisConfig.llmModel,
+    voice: jarvisConfig.ttsVoiceId,
+    ttsModel: jarvisConfig.ttsModel,
+  });
 });
 
 export default router;

@@ -7,6 +7,8 @@ import settingsRouter from "./settings";
 import memoriesRouter from "./memories";
 import gmailRouter from "./gmail";
 import spotifyRouter from "./spotify";
+import browseRouter from "./browse";
+import generateImageRouter from "./generate-image";
 
 const router = Router();
 
@@ -18,5 +20,7 @@ router.use(chatRouter);
 router.use(speakRouter);
 router.use(gmailRouter);
 router.use(spotifyRouter);
+router.use("/browse", browseRouter);
+router.use(generateImageRouter);
 
 export default router;

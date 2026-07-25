@@ -47,3 +47,16 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Environment variables
+.env
+.env.*
+
+# Binary libraries (Puppeteer deps)
+*.so
+
+# Screenshots
+*.png
+
+# Claude changes log
+claude_changes_log.txt

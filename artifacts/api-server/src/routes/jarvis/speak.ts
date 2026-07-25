@@ -1,12 +1,11 @@
 import { Router } from "express";
+import { buildErrorDetail } from "../../lib/error-detail";
+import { jarvisConfig } from "../../config/jarvis";
 
 const router = Router();
 
-// George — British male voice on ElevenLabs
-const ELEVENLABS_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb";
-const ELEVENLABS_MODEL    = "eleven_multilingual_v2";
-
 router.post("/speak", async (req, res) => {
+  const startMs = Date.now();
   const { text } = req.body as { text: string };
 
   if (!text || typeof text !== "string") {
@@ -16,13 +15,15 @@ router.post("/speak", async (req, res) => {
 
   const apiKey = process.env["ELEVENLABS_API_KEY"];
   if (!apiKey) {
-    res.status(500).json({ error: "ELEVENLABS_API_KEY is not set" });
+    const err = new Error("ELEVENLABS_API_KEY is not set");
+    const detail = buildErrorDetail(err, req, 500, startMs);
+    res.status(500).json({ error: "ELEVENLABS_API_KEY is not set", detail });
     return;
   }
 
   try {
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${jarvisConfig.ttsVoiceId}`,
       {
         method: "POST",
         headers: {
@@ -32,7 +33,7 @@ router.post("/speak", async (req, res) => {
         },
         body: JSON.stringify({
           text,
-          model_id: ELEVENLABS_MODEL,
+          model_id: jarvisConfig.ttsModel,
           voice_settings: { stability: 0.5, similarity_boost: 0.75 },
         }),
       }
@@ -41,7 +42,9 @@ router.post("/speak", async (req, res) => {
     if (!response.ok) {
       const errText = await response.text();
       req.log.error({ status: response.status, errText }, "ElevenLabs TTS failed");
-      res.status(500).json({ error: "Speech synthesis failed. Please try again." });
+      const err = new Error(`ElevenLabs API returned ${response.status}: ${errText.slice(0, 200)}`);
+      const detail = buildErrorDetail(err, req, 500, startMs);
+      res.status(500).json({ error: "Speech synthesis failed. Please try again.", detail });
       return;
     }
 
@@ -51,7 +54,9 @@ router.post("/speak", async (req, res) => {
     res.json({ audio: audioBase64, contentType: "audio/mpeg" });
   } catch (err) {
     req.log.error({ err }, "ElevenLabs TTS failed");
-    res.status(500).json({ error: "Speech synthesis failed. Please try again." });
+    const e = err instanceof Error ? err : new Error(String(err));
+    const detail = buildErrorDetail(e, req, 500, startMs);
+    res.status(500).json({ error: "Speech synthesis failed. Please try again.", detail });
   }
 });
 

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, conversations, messages } from "@workspace/db";
-import { eq, desc, asc } from "drizzle-orm";
+import { eq, desc, asc, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -68,6 +68,19 @@ router.delete("/conversations/:id", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to delete conversation");
     res.status(500).json({ error: "Failed to delete conversation" });
+  }
+});
+
+/** Delete all conversations (messages cascade) */
+router.delete("/conversations", async (req, res) => {
+  try {
+    // Delete all messages first, then all conversations
+    await db.delete(messages);
+    await db.delete(conversations);
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete all conversations");
+    res.status(500).json({ error: "Failed to delete all conversations" });
   }
 });
 

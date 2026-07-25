@@ -2,15 +2,20 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSpeechRecognition, isSpeechRecognitionSupported } from '@/hooks/use-speech-recognition';
 import { useWakeWord, isWakeWordSupported } from '@/hooks/use-wake-word';
+import { useClapDetection } from '@/hooks/use-clap-detection';
 import { useSynthesizeSpeech } from '@workspace/api-client-react';
 import { Orb, AppState } from '@/components/orb';
 import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe, SlidersHorizontal, AlarmClock, Plus, Camera } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe, SlidersHorizontal, AlarmClock, Plus, Camera, Bug, Image as ImageIcon, Monitor, Bot, Webcam } from 'lucide-react';
 import type { Widget } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget } from '@/components/widgets';
+import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
+import { useScreenShare } from '@/hooks/use-screen-share';
+import { JarvisBrowser } from '@/components/jarvis-browser';
+import { CameraFeed } from '@/components/camera-feed';
 
 type Theme = 'dark' | 'light';
 
@@ -38,10 +43,13 @@ function useTheme() {
 export default function Home() {
   const [status, setStatus] = useState<AppState>('idle');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  // #13: Persist chat mode across iOS Safari tab reloads (iOS aggressively reloads background tabs)
-  const [isChatMode, setIsChatMode] = useState(() => {
-    try { return localStorage.getItem('jarvis-chat-mode') === 'true'; } catch { return false; }
+  // #13: Persist modes across iOS Safari tab reloads
+  const [mode, setMode] = useState<'voice' | 'chat' | 'agent' | 'camera'>(() => {
+    try { return (localStorage.getItem('jarvis-mode') as any) || 'voice'; } catch { return 'voice'; }
   });
+  const isChatMode = mode === 'chat';
+  const isAgentMode = mode === 'agent';
+  const isCameraMode = mode === 'camera';
   const [chatInput, setChatInput] = useState('');
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [sidebarRefreshTick, setSidebarRefreshTick] = useState(0);
@@ -57,12 +65,59 @@ export default function Home() {
   const [customPrompt, setCustomPrompt] = useState('');
   const [customPromptOpen, setCustomPromptOpen] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const openPlusMenu = useCallback(() => {
+    if (plusButtonRef.current) {
+      const rect = plusButtonRef.current.getBoundingClientRect();
+      setPlusMenuCoords({ bottom: window.innerHeight - rect.top + 8, right: window.innerWidth - rect.right - 8 });
+    }
+    setPlusMenuOpen(true);
+  }, []);
+  const closePlusMenu = useCallback(() => {
+    setPlusMenuOpen(false);
+    setPlusMenuCoords(null);
+  }, []);
+  const [errorDetail, setErrorDetail] = useState<ErrorDetail | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [generatingImagePrompt, setGeneratingImagePrompt] = useState('');
+  const [screenShareActive, setScreenShareActive] = useState(false);
+  const [pipBrowserOpen, setPipBrowserOpen] = useState(false);
+  const [pipCameraOpen, setPipCameraOpen] = useState(false);
+  const [pipFullscreen, setPipFullscreen] = useState<'browser' | 'camera' | null>(null);
+  const [agentModeActive, setAgentModeActive] = useState(false);
+  const [plusMenuCoords, setPlusMenuCoords] = useState<{ bottom: number; right: number } | null>(null);
+  const plusButtonRef = useRef<HTMLDivElement>(null);
 
   const { theme, toggle: toggleTheme } = useTheme();
+  const { toast } = useToast();
+
+  // Track the last submitted message for retry
+  const lastFailedTextRef = useRef<string | null>(null);
+  const lastFailedFileRef = useRef<AttachedFile | null>(null);
+
+  // Track connection quality via time-to-first-token
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const latencySamplesRef = useRef<number[]>([]);
+  const requestStartRef = useRef<number>(0);
+
+  // Track backend connectivity — show banner when offline
+  const [backendOnline, setBackendOnline] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const check = () =>
+      fetch('/api/healthz')
+        .then(r => { if (!cancelled) setBackendOnline(r.ok); })
+        .catch(() => { if (!cancelled) setBackendOnline(false); });
+    check();
+    const interval = setInterval(check, 15000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   const messagesRef = useRef<ChatMessage[]>([]);
   const activeConvIdRef = useRef<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -76,8 +131,8 @@ export default function Home() {
   useEffect(() => { isChatModeRef.current = isChatMode; }, [isChatMode]);
   // #13: Persist chat mode to localStorage
   useEffect(() => {
-    try { localStorage.setItem('jarvis-chat-mode', String(isChatMode)); } catch { /* noop */ }
-  }, [isChatMode]);
+    try { localStorage.setItem('jarvis-mode', mode); } catch { /* noop */ }
+  }, [mode]);
 
   const { start: startListening, stop: stopListening } = useSpeechRecognition({
     onTranscript: (text) => {
@@ -98,6 +153,12 @@ export default function Home() {
         return prev;
       });
     },
+  });
+
+  // Activation method: 'wake' for "Hey Jarvis", 'clap' for double clap
+  const [activationMethod, setActivationMethod] = useState<'wake' | 'clap'>(() => {
+    try { return (localStorage.getItem('jarvis-activation-method') as 'wake' | 'clap') || 'wake'; }
+    catch { return 'wake'; }
   });
 
   const { start: startWakeWord, stop: stopWakeWord, reset: resetWakeWord, suppress: suppressWakeWord, unsuppress: unsuppressWakeWord, activateCommand } = useWakeWord({
@@ -122,8 +183,33 @@ export default function Home() {
       setStatus(prev => prev === 'recording' ? 'idle' : prev);
     },
   });
-  const { toast } = useToast();
+
+  // Double clap detection — alternative activation method
+  const { start: startClapDetection, stop: stopClapDetection } = useClapDetection({
+    onClap: () => {
+      if (isChatMode) return;
+      if (status === 'idle' || status === 'wake') {
+        playWakeSound();
+        vibrate([50, 30, 50]);
+        setStatus('recording');
+        activateCommand(true);
+      }
+    },
+    enabled: activationMethod === 'clap' && !isChatMode,
+  });
+
+  // Persist activation method to localStorage
+  useEffect(() => {
+    try { localStorage.setItem('jarvis-activation-method', activationMethod); } catch { /* noop */ }
+  }, [activationMethod]);
   const synthesizeSpeech = useSynthesizeSpeech();
+
+  // Screen share — start/stop + track active state + latest frame for AI
+  const { start: startScreenShare, stop: stopScreenShare, latestFrame: screenFrame } = useScreenShare({
+    onFrame: (frame) => {
+      // Store latest frame for AI context
+    },
+  });
   const activeAudioRef = useRef<{ stop: () => void } | null>(null);
   // Audio context shared across all TTS playback. Using Web Audio API with
   // decodeAudioData fully buffers the audio before playing — eliminates the
@@ -274,8 +360,37 @@ export default function Home() {
     } catch { /* audio not supported */ }
   }, []);
 
-  const handleError = useCallback((msg: string) => {
-    toast({ variant: 'destructive', title: 'Something went wrong', description: msg });
+  const handleError = useCallback((msg: string, detail?: ErrorDetail, onRetry?: () => void) => {
+    setErrorDetail(detail ?? null);
+    toast({
+      variant: 'destructive',
+      title: 'Something went wrong',
+      description: (
+        <span className="flex items-center gap-2">
+          <span className="flex-1">{msg}</span>
+          <span className="flex items-center gap-1 flex-shrink-0">
+            {detail && (
+              <button
+                onClick={() => setErrorDetail(detail)}
+                className="flex items-center gap-1 px-2 py-0.5 rounded border border-red-400/30 bg-red-400/10 text-red-400 text-[10px] font-mono tracking-wider hover:bg-red-400/20 transition-colors"
+              >
+                <Bug className="w-2.5 h-2.5" />
+                DETAILS
+              </button>
+            )}
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="px-2 py-0.5 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400 text-[10px] font-mono tracking-wider hover:bg-amber-400/20 transition-colors"
+              >
+                RETRY
+              </button>
+            )}
+          </span>
+        </span>
+      ),
+      duration: 8000,
+    });
     vibrate([100, 50, 100]);
     setStatus('idle');
   }, [toast, vibrate]);
@@ -405,16 +520,26 @@ export default function Home() {
 
   const processUserText = useCallback(async (userText: string, file?: AttachedFile | null, speak = true) => {
     // Optimistically add message (with file preview if any)
-    setMessages(prev => [...prev, { role: 'user', content: userText, file: file ?? undefined }]);
+    setMessages(prev => [...prev, { role: 'user', content: userText, file: file ?? undefined, timestamp: Date.now() }]);
     setSuggestions([]);
     setStatus('thinking');
     vibrate(20);
+    requestStartRef.current = Date.now();
 
     try {
       const body: Record<string, string> = { userMessage: userText };
       if (activeConvIdRef.current) body.conversationId = activeConvIdRef.current;
       if (file) { body.fileBase64 = file.base64; body.fileMimeType = file.mimeType; }
+      // Include screen share frame as image for AI to see (don't overwrite manual file)
+      if (screenShareActive && screenFrame && !file) {
+        const base64 = screenFrame.split(',')[1] || screenFrame;
+        if (base64.length > 100) {
+          body.fileBase64 = base64;
+          body.fileMimeType = 'image/jpeg';
+        }
+      }
       if (webSearchEnabled) body.webSearchEnabled = 'true';
+      body.responseStyle = isChatMode ? 'chat' : 'voice';
 
       const res = await fetch('/api/jarvis/chat', {
         method: 'POST',
@@ -422,70 +547,182 @@ export default function Home() {
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) { handleError("Jarvis hit a snag — try again."); return; }
-      const data = await res.json();
-      const jarvisText: string = data.response;
-      const convId: string = data.conversationId;
-      const newSuggestions: string[] = data.suggestions ?? [];
-      const widget: Widget | null = data.widget ?? null;
+      if (!res.ok) {
+        try {
+          const errBody = await res.json();
+          handleError(errBody?.error || `Server error (${res.status})`, errBody?.detail, () => processUserTextRef.current?.(userText, file, speak));
+        } catch {
+          handleError(`Server error (${res.status})`, undefined, () => processUserTextRef.current?.(userText, file, speak));
+        }
+        return;
+      }
 
-      if (!activeConvIdRef.current) setActiveConversationId(convId);
+      // ── SSE stream consumption ──────────────────────────────────
+      const reader = res.body?.getReader();
+      if (!reader) { handleError('No response stream'); return; }
+
+      const decoder = new TextDecoder();
+      let streamBuffer = '';
+      let jarvisText = '';
+      let convId = activeConvIdRef.current ?? '';
+      let newSuggestions: string[] = [];
+      let widget: Widget | null = null;
+
+      // Add an empty assistant message that we'll update as tokens arrive
+      setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now() }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        streamBuffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE lines
+        const lines = streamBuffer.split('\n');
+        streamBuffer = lines.pop() ?? ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+
+          try {
+            const parsed = JSON.parse(data);
+            switch (parsed.type) {
+              case 'token':
+                // Track time-to-first-token for connection quality
+                if (requestStartRef.current > 0) {
+                  const ttft = Date.now() - requestStartRef.current;
+                  requestStartRef.current = 0; // only measure once
+                  const samples = latencySamplesRef.current;
+                  samples.push(ttft);
+                  if (samples.length > 5) samples.shift(); // keep last 5
+                  // Compute average of last 3
+                  const last3 = samples.slice(-3);
+                  setLatencyMs(last3.reduce((a, b) => a + b, 0) / last3.length);
+                }
+                jarvisText += parsed.content;
+                // Update the last message (assistant) with accumulated text
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { ...updated[updated.length - 1], content: jarvisText };
+                  return updated;
+                });
+                break;
+              case 'done':
+                convId = parsed.conversationId ?? convId;
+                break;
+              case 'suggestions':
+                newSuggestions = parsed.suggestions ?? [];
+                break;
+              case 'widget':
+                widget = parsed.widget ?? null;
+                break;
+              case 'agent_browser_detected':
+                // Auto-open PiP browser and navigate to search
+                setPipBrowserOpen(true);
+                setMessages(prev => prev.slice(0, -1)); // remove empty assistant msg
+                // Navigate the browser after a short delay to let it connect
+                setTimeout(() => {
+                  fetch('/api/jarvis/browse/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'navigate', payload: `https://www.google.com/search?q=${encodeURIComponent(parsed.searchQuery)}` }),
+                  }).catch(() => {});
+                }, 1000);
+                break;
+              case 'screen_share_detected':
+                // Show screen share confirmation card
+                setMessages(prev => {
+                  const withoutEmpty = prev.slice(0, -1);
+                  return [...withoutEmpty, {
+                    role: 'assistant' as const,
+                    content: '',
+                    timestamp: Date.now(),
+                    pendingScreenShare: true,
+                  }];
+                });
+                // If in voice mode, switch to chat so card is visible
+                if (mode === 'voice') setMode('chat');
+                break;
+              case 'image_request_detected':
+                // If in voice mode, switch to chat mode so the confirmation card is visible
+                if (mode === 'voice') setMode('chat');
+                // Show image generation confirmation card — embed it in the message list
+                setMessages(prev => {
+                  const withoutEmpty = prev.slice(0, -1); // remove the empty assistant message
+                  return [...withoutEmpty, {
+                    role: 'assistant' as const,
+                    content: '',
+                    timestamp: Date.now(),
+                    pendingImage: {
+                      imagePrompt: parsed.imagePrompt,
+                      confirmationMessage: parsed.confirmationMessage,
+                    },
+                  }];
+                });
+                break;
+              case 'error':
+                handleError(parsed.message ?? 'Stream error');
+                return;
+            }
+          } catch { /* skip malformed lines */ }
+        }
+      }
+
+      if (!activeConvIdRef.current && convId) setActiveConversationId(convId);
       refreshSidebar();
 
-      if (widget?.type === 'timer' && isChatMode) {
-        // In chat mode, timer lives inline in the feed — update existing or add to new message
-        setMessages(prev => {
-          const existingIdx = chatTimerMsgIdxRef.current;
-
-          if (widget.timerAction === 'cancel') {
-            chatTimerMsgIdxRef.current = null;
-            timerStartedAtRef.current = null;
-            timerOriginalDurationRef.current = null;
-            if (existingIdx !== null && existingIdx < prev.length) {
+      // Apply widget and suggestions after stream completes
+      if (widget) {
+        if (widget.type === 'timer' && isChatMode) {
+          setMessages(prev => {
+            const existingIdx = chatTimerMsgIdxRef.current;
+            if (widget.timerAction === 'cancel') {
+              chatTimerMsgIdxRef.current = null;
+              timerStartedAtRef.current = null;
+              timerOriginalDurationRef.current = null;
+              if (existingIdx !== null && existingIdx < prev.length) {
+                const copy = [...prev];
+                copy[existingIdx] = { ...copy[existingIdx], widget: undefined };
+                return copy;
+              }
+              return prev;
+            } else if (existingIdx !== null && existingIdx < prev.length) {
+              let newDuration = widget.durationSeconds;
+              if (widget.timerAction === 'add' && widget.deltaSeconds) {
+                const elapsed = timerStartedAtRef.current
+                  ? Math.floor((Date.now() - timerStartedAtRef.current) / 1000) : 0;
+                const currentRemaining = Math.max(0, (timerOriginalDurationRef.current ?? 0) - elapsed);
+                newDuration = currentRemaining + widget.deltaSeconds;
+              }
+              timerStartedAtRef.current = Date.now();
+              timerOriginalDurationRef.current = newDuration;
               const copy = [...prev];
-              copy[existingIdx] = { ...copy[existingIdx], widget: undefined };
-              return [...copy, { role: 'assistant', content: jarvisText }];
+              copy[existingIdx] = { ...copy[existingIdx], widget: { ...widget, durationSeconds: newDuration, timerAction: 'set' } };
+              return copy;
+            } else {
+              chatTimerMsgIdxRef.current = prev.length - 1;
+              timerStartedAtRef.current = Date.now();
+              timerOriginalDurationRef.current = widget.durationSeconds;
+              const copy = [...prev];
+              copy[copy.length - 1] = { ...copy[copy.length - 1], widget };
+              return copy;
             }
-            return [...prev, { role: 'assistant', content: jarvisText }];
-
-          } else if (existingIdx !== null && existingIdx < prev.length) {
-            // Update the existing timer message in-place
-            let newDuration = widget.durationSeconds;
-            if (widget.timerAction === 'add' && widget.deltaSeconds) {
-              const elapsed = timerStartedAtRef.current
-                ? Math.floor((Date.now() - timerStartedAtRef.current) / 1000)
-                : 0;
-              const currentRemaining = Math.max(0, (timerOriginalDurationRef.current ?? 0) - elapsed);
-              newDuration = currentRemaining + widget.deltaSeconds;
-            }
-            timerStartedAtRef.current = Date.now();
-            timerOriginalDurationRef.current = newDuration;
+          });
+        } else {
+          setMessages(prev => {
             const copy = [...prev];
-            copy[existingIdx] = { ...copy[existingIdx], widget: { ...widget, durationSeconds: newDuration, timerAction: 'set' } };
-            return [...copy, { role: 'assistant', content: jarvisText }];
-
-          } else {
-            // First timer — add inline to new assistant message
-            chatTimerMsgIdxRef.current = prev.length;
-            timerStartedAtRef.current = Date.now();
-            timerOriginalDurationRef.current = widget.durationSeconds;
-            return [...prev, { role: 'assistant', content: jarvisText, widget }];
-          }
-        });
-      } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: jarvisText, widget: widget ?? undefined }]);
-        if (widget) setActiveWidget(widget);
+            copy[copy.length - 1] = { ...copy[copy.length - 1], widget: widget! };
+            return copy;
+          });
+          setActiveWidget(widget);
+        }
       }
       setSuggestions(newSuggestions);
 
       // In chat mode, only speak if the request came from the mic (speak=true).
-      // Keyboard-typed messages get a text-only response.
       if (speak) {
         playTTS(jarvisText, () => { vibrate([20, 30, 20]); setStatus('speaking'); }, () => {
-          // Always return to idle after speaking. In voice mode the wake-word
-          // useEffect will unsuppress the recognizer so "hey Jarvis" or an orb
-          // tap starts the next command. Auto-activating command mode caused
-          // the TTS echo to immediately trigger a new request.
           setStatus('idle');
           if (isChatMode) setTimeout(() => inputRef.current?.focus(), 50);
         });
@@ -493,7 +730,10 @@ export default function Home() {
         setStatus('idle');
         setTimeout(() => inputRef.current?.focus(), 50);
       }
-    } catch { handleError("Jarvis hit a snag — try again."); }
+    } catch (err) {
+      const msg = err instanceof TypeError ? 'Network error — is the server running?' : 'Request failed';
+      handleError(msg, undefined, () => processUserTextRef.current?.(userText, file, speak));
+    }
   }, [handleError, refreshSidebar, playTTS, isChatMode, webSearchEnabled, activateCommand, vibrate]);
 
   const handleToggleRecording = useCallback(() => {
@@ -502,11 +742,15 @@ export default function Home() {
     if (status === 'speaking') {
       activeAudioRef.current?.stop?.();
       activeAudioRef.current = null;
-      if (!isChatMode) {
-        setStatus('wake');
-        startWakeWord(); // call directly here — we're in a user-gesture context (iOS safe)
+      // Barge-in: stop TTS and immediately start recording
+      setStatus('recording');
+      if (isChatMode) {
+        // In chat mode, start chat mic recording for barge-in
+        unlockAudioForIOS();
+        vibrate([30, 50, 30]);
+        startChatRecording();
       } else {
-        setStatus('idle');
+        activateCommand(true); // user gesture — safe on iOS, starts listening immediately
       }
       return;
     }
@@ -544,6 +788,22 @@ export default function Home() {
     const file = attachedFile;
     setChatInput('');
     setAttachedFile(null);
+
+    // Agent mode: open browser PiP and search
+    if (agentModeActive) {
+      setPipBrowserOpen(true);
+      setPipFullscreen(null);
+      setMessages(prev => [...prev, { role: 'user', content: text, timestamp: Date.now() }, { role: 'assistant', content: `Searching for "${text}"...`, timestamp: Date.now() }]);
+      setTimeout(() => {
+        fetch('/api/jarvis/browse/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'navigate', payload: `https://www.google.com/search?q=${encodeURIComponent(text)}` }),
+        }).catch(() => {});
+      }, 1000);
+      return;
+    }
+
     // Keyboard submit: no TTS. Only mic-sourced messages speak in chat mode.
     processUserText(text || `📎 ${file?.fileName ?? 'File'}`, file, false);
   };
@@ -554,10 +814,90 @@ export default function Home() {
     processUserText(text, null, !isChatMode);
   }, [processUserText, isChatMode]);
 
+  // ── Image generation ────────────────────────────────────────────
+
+  const handleImageCancel = useCallback(() => {
+    setImageConfirmation(null);
+    setStatus('idle');
+  }, []);
+
+  const handleGenerateImage = useCallback(async (prompt: string) => {
+    setImageConfirmation(null);
+    setGeneratingImage(true);
+    setGeneratingImagePrompt(prompt);
+    setStatus('thinking');
+
+    // Add a user message about the image request
+    setMessages(prev => [...prev, { role: 'user', content: prompt, timestamp: Date.now() }]);
+
+    try {
+      const res = await fetch('/api/jarvis/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        handleError(errBody?.error || `Image generation failed (${res.status})`, errBody?.detail);
+        return;
+      }
+
+      const data = await res.json();
+      // Add the generated image as an assistant message
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `Here's your image of: ${prompt}`,
+        image: data.image,
+        timestamp: Date.now(),
+      }]);
+    } catch (err) {
+      const msg = err instanceof TypeError ? 'Network error — is the server running?' : 'Image generation failed';
+      handleError(msg);
+    } finally {
+      setGeneratingImage(false);
+      setGeneratingImagePrompt('');
+      setStatus('idle');
+      refreshSidebar();
+    }
+  }, [handleError, refreshSidebar]);
+
+  const handleImageConfirm = useCallback((prompt: string) => {
+    handleGenerateImage(prompt);
+  }, [handleGenerateImage]);
+
+  // ── Screen sharing ────────────────────────────────────────────
+
+  const handleToggleScreenShare = useCallback(async () => {
+    if (screenShareActive) {
+      stopScreenShare();
+      setScreenShareActive(false);
+      toast({ title: 'Screen sharing stopped' });
+    } else {
+      try {
+        await startScreenShare();
+        setScreenShareActive(true);
+        toast({ title: 'Screen sharing started', description: 'Jarvis can now see your screen' });
+      } catch {
+        setScreenShareActive(false);
+        toast({ variant: 'destructive', title: 'Screen sharing failed' });
+      }
+    }
+  }, [screenShareActive, startScreenShare, stopScreenShare, toast]);
+
   const [chatRecording, setChatRecording] = useState(false);
   // Ref so the transcript callback can call processUserText without stale closure
   const processUserTextRef = useRef<typeof processUserText | null>(null);
   useEffect(() => { processUserTextRef.current = processUserText; }, [processUserText]);
+
+  // Auto-grow/shrink the chat textarea when input changes
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+  }, [chatInput]);
 
   const { start: startChatRecording, stop: stopChatRecording } = useSpeechRecognition({
     onTranscript: (text) => {
@@ -600,10 +940,21 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (isChatMode) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+K / Cmd+K → focus chat input
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        if (isChatMode) {
+          inputRef.current?.focus();
+        } else {
+          setIsChatMode(true);
+          setTimeout(() => inputRef.current?.focus(), 100);
+        }
+        return;
+      }
+      // Spacebar for voice mode PTT
+      if (isChatMode) return;
       if (e.code !== 'Space' || e.repeat) return;
-      // #1: Don't fire PTT when the user is typing in an input, textarea, or contenteditable
       const target = e.target as HTMLElement;
       const tag = target.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
@@ -613,6 +964,33 @@ export default function Home() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [status, isChatMode, handleToggleRecording]);
+
+  /** Regenerate the assistant's response from a given message index */
+  const handleRegenerate = useCallback((messageIndex: number) => {
+    // Find the last user message before this assistant message
+    const msg = messages[messageIndex];
+    if (!msg || msg.role !== 'assistant') return;
+    // Walk backwards to find the user message that triggered this response
+    let userText = '';
+    for (let i = messageIndex - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') { userText = messages[i].content; break; }
+    }
+    if (!userText) return;
+    // Remove everything from the assistant message onward
+    setMessages(prev => prev.slice(0, messageIndex));
+    // Re-send
+    processUserText(userText, null, false);
+  }, [messages, processUserText]);
+
+  /** Edit a user message and re-send from that point */
+  const handleEditMessage = useCallback((messageIndex: number, newContent: string) => {
+    const msg = messages[messageIndex];
+    if (!msg || msg.role !== 'user') return;
+    if (newContent === msg.content) return; // no change
+    // Trim history to before this message, then re-send with edited text
+    setMessages(prev => prev.slice(0, messageIndex));
+    processUserText(newContent, null, false);
+  }, [messages, processUserText]);
 
   const isBusy = status === 'thinking' || status === 'transcribing';
 
@@ -635,9 +1013,17 @@ export default function Home() {
     : "Thinking…";
 
   return (
-    <div className={`${theme} min-h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden`}>
+    <div className={`${theme} h-dvh bg-background text-foreground flex flex-col overflow-hidden`}>
 
       {/* ── Header ───────────────────────────────── */}
+      {!backendOnline && (
+        <div className="px-4 py-2 bg-destructive/20 border-b border-destructive/30 flex items-center justify-center gap-2 flex-shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse flex-shrink-0" />
+          <p className="text-[11px] font-mono text-destructive tracking-wider">
+            Backend offline — API server may not be running
+          </p>
+        </div>
+      )}
       <header className="px-4 py-3 flex items-center gap-3 border-b border-border/50 bg-background/80 backdrop-blur-md relative z-50 flex-shrink-0">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <button
@@ -650,6 +1036,21 @@ export default function Home() {
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-2 h-2 bg-primary rounded-full animate-pulse flex-shrink-0" />
             <h1 className="font-display font-bold tracking-[0.15em] text-base sm:text-lg glow-text truncate">JARVIS</h1>
+            {/* Connection quality indicator */}
+            {latencyMs !== null && (
+              <span className={`hidden sm:inline-flex items-center gap-1 text-[9px] font-mono tracking-widest px-1.5 py-0.5 rounded-full ${
+                latencyMs < 1500 ? 'text-green-400/70 bg-green-400/5' :
+                latencyMs < 3500 ? 'text-yellow-400/70 bg-yellow-400/5' :
+                'text-red-400/70 bg-red-400/5'
+              }`}>
+                <span className={`w-1 h-1 rounded-full ${
+                  latencyMs < 1500 ? 'bg-green-400' :
+                  latencyMs < 3500 ? 'bg-yellow-400' :
+                  'bg-red-400'
+                }`} />
+                {latencyMs < 1000 ? '<1s' : `${Math.round(latencyMs / 100) / 10}s`}
+              </span>
+            )}
           </div>
         </div>
 
@@ -661,12 +1062,14 @@ export default function Home() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/50 bg-card/50 text-[11px] font-display tracking-wider text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
               aria-label="Change personality"
             >
+              {personality === 'auto' && <Sparkles className="w-3 h-3" />}
               {personality === 'balanced' && <MessageCircle className="w-3 h-3" />}
               {personality === 'talkative' && <Sparkles className="w-3 h-3" />}
               {personality === 'helpful' && <Briefcase className="w-3 h-3" />}
               {personality === 'concise' && <Zap className="w-3 h-3" />}
               {personality === 'custom' && <SlidersHorizontal className="w-3 h-3" />}
               <span className="hidden sm:inline">
+                {personality === 'auto' && 'Auto'}
                 {personality === 'balanced' && 'Balanced'}
                 {personality === 'talkative' && 'Talkative'}
                 {personality === 'helpful' && 'Helpful'}
@@ -681,11 +1084,12 @@ export default function Home() {
                 <div className="fixed inset-0 z-40" onClick={() => setPersonalityMenuOpen(false)} />
                 <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 min-w-[11rem] p-1 rounded-xl border border-border/50 bg-card shadow-xl overflow-hidden">
                   {[
+                    { value: 'auto', label: 'Auto (AI decides)', icon: Sparkles },
                     { value: 'balanced', label: 'Balanced', icon: MessageCircle },
                     { value: 'talkative', label: 'Talkative', icon: Sparkles },
                     { value: 'helpful', label: 'Helpful', icon: Briefcase },
                     { value: 'concise', label: 'Just gets it done', icon: Zap },
-                    { value: 'custom', label: 'Custom', icon: SlidersHorizontal },
+                    { value: 'custom', label: 'Custom (needs setup)', icon: SlidersHorizontal },
                   ].map(({ value, label, icon: Icon }) => (
                     <button
                       key={value}
@@ -729,19 +1133,26 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={() => setIsChatMode(m => !m)}
-            title={isChatMode ? "Switch to voice" : "Switch to chat"}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-display tracking-wider transition-all ${
-              isChatMode
-                ? 'border-primary bg-primary/15 text-primary'
-                : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
-            }`}
-          >
-            {isChatMode
-              ? <><Mic className="w-3 h-3" /><span className="hidden sm:inline">VOICE</span></>
-              : <><MessageSquare className="w-3 h-3" /><span className="hidden sm:inline">CHAT</span></>}
-          </button>
+          {/* Mode selector — chat / voice */}
+          <div className="flex items-center gap-1 bg-card/50 border border-border/50 rounded-md p-0.5">
+            {([
+              { id: 'voice' as const, label: 'VOICE', icon: Mic },
+              { id: 'chat' as const, label: 'CHAT', icon: MessageSquare },
+            ]).map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setMode(id)}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-display tracking-wider transition-all ${
+                  mode === id
+                    ? 'bg-primary/15 text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon className="w-3 h-3" />
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            ))}
+          </div>
           <button onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
             className="p-1.5 rounded-md border border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all">
             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -764,10 +1175,10 @@ export default function Home() {
           onMobileClose={() => setMobileSidebarOpen(false)}
         />
 
-        <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <main className="flex-1 flex flex-col h-full min-h-0 overflow-hidden">
 
           {/* ── VOICE MODE ── */}
-          {!isChatMode && (
+          {mode === 'voice' && (
             <div className="flex-1 flex flex-col min-h-0 relative">
               <div className="dark:block hidden absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
 
@@ -785,6 +1196,37 @@ export default function Home() {
                   </div>
                 )}
                 <Orb status={status} onClick={handleToggleRecording} />
+
+                {/* PiP toggles — agent + browser + camera */}
+                <div className="flex items-center gap-2 mt-4">
+                  <button
+                    onClick={() => { setAgentModeActive(a => !a); if (!agentModeActive) setPipBrowserOpen(true); setPipFullscreen(null); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono tracking-wider transition-all ${
+                      agentModeActive ? 'border-primary bg-primary/10 text-primary' : 'border-border/30 text-muted-foreground/50 hover:text-foreground'
+                    }`}
+                  >
+                    <Bot className="w-3 h-3" />
+                    {agentModeActive ? 'AGENT ON' : 'AGENT'}
+                  </button>
+                  <button
+                    onClick={() => { setPipBrowserOpen(b => !b); setPipFullscreen(null); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono tracking-wider transition-all ${
+                      pipBrowserOpen ? 'border-cyan-400/50 bg-cyan-500/10 text-cyan-300' : 'border-border/30 text-muted-foreground/50 hover:text-foreground'
+                    }`}
+                  >
+                    <Globe className="w-3 h-3" />
+                    {pipBrowserOpen ? 'BROWSER ON' : 'BROWSER'}
+                  </button>
+                  <button
+                    onClick={() => { setPipCameraOpen(c => !c); setPipFullscreen(null); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono tracking-wider transition-all ${
+                      pipCameraOpen ? 'border-purple-400/50 bg-purple-500/10 text-purple-300' : 'border-border/30 text-muted-foreground/50 hover:text-foreground'
+                    }`}
+                  >
+                    <Webcam className="w-3 h-3" />
+                    {pipCameraOpen ? 'CAM ON' : 'CAM'}
+                  </button>
+                </div>
                 <div className="mt-8 text-center space-y-2">
                   <AnimatePresence mode="wait">
                     <motion.h2
@@ -827,14 +1269,39 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Widget panel OR subtitle strip — pinned to bottom */}
+              {/* Widget panel OR conversation history — pinned to bottom */}
               <div className="flex-shrink-0 px-4 sm:px-6 pb-4 sm:pb-8 pt-2 max-w-2xl w-full mx-auto">
                 {activeWidget && activeWidget.type !== 'alarm' && activeWidget.type !== 'timer' ? (
                   <div className="overflow-y-auto max-h-[40vh] sm:max-h-[55vh]">
                     {activeWidget.type === 'clock'    && <ClockWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                     {activeWidget.type === 'weather'  && <WeatherWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
-                    {activeWidget.type === 'timer'    && <TimerWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                     {activeWidget.type === 'calendar' && <CalendarWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
+                  </div>
+                ) : messages.length > 0 ? (
+                  /* Compact conversation history strip */
+                  <div className="max-h-[40vh] overflow-y-auto space-y-2 scrollbar-thin px-2">
+                    {messages.slice(-8).map((msg, i) => (
+                      <motion.div
+                        key={messages.length - 8 + i}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className={`flex items-start gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className={`max-w-[85%] px-3 py-1.5 rounded-2xl text-sm leading-snug font-sans ${
+                          msg.role === 'user'
+                            ? 'bg-primary/20 text-foreground rounded-tr-sm'
+                            : 'bg-card/60 border border-border/30 text-foreground/90 rounded-tl-sm'
+                        }`}>
+                          <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 mb-0.5">
+                            {msg.role === 'user' ? 'YOU' : 'JARVIS'}
+                          </p>
+                          <p className="text-[13px] leading-relaxed line-clamp-3">
+                            {msg.content}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))}
                   </div>
                 ) : (
                   <div className="space-y-2 min-h-[5rem]">
@@ -857,7 +1324,7 @@ export default function Home() {
           )}
 
           {/* ── CHAT MODE ── */}
-          {isChatMode && (
+          {mode === 'chat' && (
             <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
               {/* Orb panel */}
               <div className="hidden lg:flex flex-shrink-0 lg:w-72 xl:w-80 flex-col items-center justify-center p-6 border-r border-border/20 relative overflow-y-auto">
@@ -887,10 +1354,41 @@ export default function Home() {
                     {activeWidget.type === 'calendar' && <CalendarWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
                   </div>
                 )}
+
+                {/* PiP toggles — agent + browser + camera */}
+                <div className="flex items-center gap-2 mt-4">
+                  <button
+                    onClick={() => { setAgentModeActive(a => !a); if (!agentModeActive) setPipBrowserOpen(true); setPipFullscreen(null); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono tracking-wider transition-all ${
+                      agentModeActive ? 'border-primary bg-primary/10 text-primary' : 'border-border/30 text-muted-foreground/50 hover:text-foreground'
+                    }`}
+                  >
+                    <Bot className="w-3 h-3" />
+                    {agentModeActive ? 'AGENT ON' : 'AGENT'}
+                  </button>
+                  <button
+                    onClick={() => { setPipBrowserOpen(b => !b); setPipFullscreen(null); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono tracking-wider transition-all ${
+                      pipBrowserOpen ? 'border-cyan-400/50 bg-cyan-500/10 text-cyan-300' : 'border-border/30 text-muted-foreground/50 hover:text-foreground'
+                    }`}
+                  >
+                    <Globe className="w-3 h-3" />
+                    {pipBrowserOpen ? 'BROWSER ON' : 'BROWSER'}
+                  </button>
+                  <button
+                    onClick={() => { setPipCameraOpen(c => !c); setPipFullscreen(null); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono tracking-wider transition-all ${
+                      pipCameraOpen ? 'border-purple-400/50 bg-purple-500/10 text-purple-300' : 'border-border/30 text-muted-foreground/50 hover:text-foreground'
+                    }`}
+                  >
+                    <Webcam className="w-3 h-3" />
+                    {pipCameraOpen ? 'CAM ON' : 'CAM'}
+                  </button>
+                </div>
               </div>
 
               {/* Chat area */}
-              <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-card/5">
+              <div className="flex-1 flex flex-col h-full min-h-0 bg-card/5">
 
                 {/* Mobile-only widget strip (orb panel is hidden on mobile) */}
                 {activeWidget && (
@@ -908,10 +1406,108 @@ export default function Home() {
                   isThinking={status === 'thinking'}
                   suggestions={suggestions}
                   onSuggestionClick={handleSuggestionClick}
+                  onRegenerate={handleRegenerate}
+                  onEditMessage={handleEditMessage}
+                  onImageConfirm={(prompt) => {
+                    // Remove pending image messages and generate
+                    setMessages(prev => prev.filter(m => !m.pendingImage));
+                    handleGenerateImage(prompt);
+                  }}
+                  onImageCancel={() => {
+                    // Remove pending image messages
+                    setMessages(prev => prev.filter(m => !m.pendingImage));
+                    setStatus('idle');
+                  }}
+                  generatingImage={generatingImage}
+                  generatingImagePrompt={generatingImagePrompt}
+                  onScreenShareConfirm={() => {
+                    setMessages(prev => prev.filter(m => !m.pendingScreenShare));
+                    handleToggleScreenShare();
+                  }}
+                  onScreenShareCancel={() => {
+                    setMessages(prev => prev.filter(m => !m.pendingScreenShare));
+                    setStatus('idle');
+                  }}
+                  onAgentBrowserConfirm={(query) => {
+                    setMessages(prev => prev.filter(m => !m.pendingAgentBrowser));
+                    setPipBrowserOpen(true);
+                    setPipFullscreen(null);
+                    // Navigate browser to search after PiP opens
+                    setTimeout(() => {
+                      fetch('/api/jarvis/browse/action', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'navigate', payload: `https://www.google.com/search?q=${encodeURIComponent(query)}` }),
+                      }).catch(() => {});
+                    }, 1000);
+                  }}
+                  onAgentBrowserCancel={() => {
+                    setMessages(prev => prev.filter(m => !m.pendingAgentBrowser));
+                    setStatus('idle');
+                  }}
                 />
 
                 {/* Input bar — #21: padding-bottom accounts for Safari's home indicator / safe area */}
-                <div className="border-t border-border/30 bg-background/90 backdrop-blur-md px-4 pt-3 flex-shrink-0 space-y-2" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
+                <div
+                  className={`border-t border-border/30 bg-background/90 backdrop-blur-md px-4 pt-3 flex-shrink-0 space-y-2 relative ${dragOver ? 'border-primary/50' : ''}`}
+                  style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={e => { e.preventDefault(); setDragOver(false); }}
+                  onDrop={async e => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (!file) return;
+                    setUploadProgress(0);
+                    try {
+                      // Simulate progress during file read
+                      const progressInterval = setInterval(() => {
+                        setUploadProgress(p => Math.min(95, (p ?? 0) + Math.random() * 15));
+                      }, 200);
+                      const result = await readFile(file);
+                      clearInterval(progressInterval);
+                      setUploadProgress(100);
+                      setTimeout(() => setUploadProgress(null), 500);
+                      if (attachedFile?.preview) URL.revokeObjectURL(attachedFile.preview);
+                      setAttachedFile(result);
+                      toast({ title: 'File attached', description: file.name });
+                    } catch {
+                      setUploadProgress(null);
+                      toast({ title: 'Could not read file', variant: 'destructive' });
+                    }
+                  }}
+                >
+                  {/* Drag-over overlay */}
+                  <AnimatePresence>
+                    {dragOver && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-20 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 flex items-center justify-center pointer-events-none"
+                      >
+                        <p className="font-display text-sm tracking-widest text-primary/70">DROP FILE HERE</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  {/* Upload progress bar */}
+                  <AnimatePresence>
+                    {uploadProgress !== null && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="h-1 bg-card rounded-full overflow-hidden"
+                      >
+                        <motion.div
+                          className="h-full bg-primary rounded-full"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${uploadProgress}%` }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                   {attachedFile && (
                     <div className="flex items-center gap-2">
                       <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-border flex-shrink-0 flex items-center justify-center bg-card/40">
@@ -937,9 +1533,10 @@ export default function Home() {
                     <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
 
                     {/* + menu button */}
-                    <div className="relative flex-shrink-0">
+                    <div className="relative flex-shrink-0" ref={plusButtonRef}>
                       <button
-                        onClick={() => setPlusMenuOpen(o => !o)}
+                        id="plus-menu-button"
+                        onClick={() => plusMenuOpen ? closePlusMenu() : openPlusMenu()}
                         disabled={isBusy}
                         title="Attach, camera, or search"
                         className={`p-2.5 rounded-lg border transition-all ${
@@ -950,63 +1547,53 @@ export default function Home() {
                       >
                         <Plus className="w-4 h-4" />
                       </button>
-
-                      {plusMenuOpen && !isBusy && (
-                        <>
-                          <div className="fixed inset-0 z-40" onClick={() => setPlusMenuOpen(false)} />
-                          <div className="absolute bottom-full left-0 mb-2 z-50 w-44 p-1 rounded-xl border border-border/50 bg-card shadow-xl overflow-hidden">
-                            <button
-                              onClick={() => { setPlusMenuOpen(false); fileInputRef.current?.click(); }}
-                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono transition-colors ${
-                                attachedFile ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                              }`}
-                            >
-                              <Paperclip className="w-3.5 h-3.5 flex-shrink-0" />
-                              {attachedFile ? 'Replace file' : 'Attach file'}
-                            </button>
-                            <button
-                              onClick={() => { setPlusMenuOpen(false); cameraInputRef.current?.click(); }}
-                              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                            >
-                              <Camera className="w-3.5 h-3.5 flex-shrink-0" />
-                              Camera
-                            </button>
-                            <div className="h-px bg-border/30 my-1" />
-                            <button
-                              onClick={() => { setPlusMenuOpen(false); handleToggleWebSearch(); }}
-                              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono transition-colors ${
-                                webSearchEnabled ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                              }`}
-                            >
-                              <Globe className="w-3.5 h-3.5 flex-shrink-0" />
-                              Web search {webSearchEnabled ? '(on)' : '(off)'}
-                            </button>
-                          </div>
-                        </>
-                      )}
                     </div>
 
-                    <input ref={inputRef} type="text" value={chatInput}
-                      onChange={e => setChatInput(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleChatSubmit()}
-                      onPaste={handleInputPaste}
-                      placeholder={
-                        chatRecording ? '🎙 Listening… speak now'
-                        : isBusy ? 'Processing…'
-                        : attachedFile ? 'Add a message…'
-                        : 'Message Jarvis…'
-                      }
-                      disabled={isBusy}
-                      className={`flex-1 bg-card border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:ring-2 transition-all disabled:opacity-40 ${
-                        chatRecording
-                          ? 'border-red-400/60 focus:border-red-400/80 focus:ring-red-400/10 placeholder:text-red-400/60 animate-pulse'
-                          : status === 'thinking'
-                          ? 'border-yellow-400/40 focus:border-yellow-400/60 focus:ring-yellow-400/10'
-                          : status === 'speaking'
-                          ? 'border-primary/40 focus:border-primary/60 focus:ring-primary/10'
-                          : 'border-border focus:border-primary/60 focus:ring-primary/10'
-                      }`}
-                    />
+                    <div className="relative flex-1">
+                      <textarea ref={e => { inputRef.current = e; textareaRef.current = e; }} value={chatInput}
+                        onChange={e => setChatInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSubmit(); }
+                          if (e.key === 'Escape' && chatInput) { setChatInput(''); e.preventDefault(); }
+                          if (e.key === 'ArrowUp' && !chatInput && messages.length > 0) {
+                            // Find last user message for quick edit
+                            const lastUserIdx = [...messages].reverse().findIndex(m => m.role === 'user');
+                            if (lastUserIdx >= 0) {
+                              const realIdx = messages.length - 1 - lastUserIdx;
+                              const lastUserMsg = messages[realIdx].content;
+                              if (lastUserMsg) {
+                                setChatInput(lastUserMsg);
+                                e.preventDefault();
+                              }
+                            }
+                          }
+                        }}
+                        onPaste={handleInputPaste}
+                        rows={1}
+                        placeholder={
+                          chatRecording ? '🎙 Listening… speak now'
+                          : isBusy ? 'Processing…'
+                          : attachedFile ? 'Add a message…'
+                          : 'Ask Jarvis anything…'
+                        }
+                        disabled={isBusy}
+                        className={`w-full bg-card border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:ring-2 transition-all disabled:opacity-40 resize-none min-h-[42px] max-h-[160px] ${
+                          chatRecording
+                            ? 'border-red-400/60 focus:border-red-400/80 focus:ring-red-400/10 placeholder:text-red-400/60 animate-pulse'
+                            : status === 'thinking'
+                            ? 'border-yellow-400/40 focus:border-yellow-400/60 focus:ring-yellow-400/10'
+                            : status === 'speaking'
+                            ? 'border-primary/40 focus:border-primary/60 focus:ring-primary/10'
+                            : 'border-border focus:border-primary/60 focus:ring-primary/10'
+                        }`}
+                      />
+                      {/* Character count */}
+                      {chatInput.length > 0 && (
+                        <span className="absolute bottom-1.5 right-3 text-[9px] font-mono text-muted-foreground/30 pointer-events-none">
+                          {chatInput.length}
+                        </span>
+                      )}
+                    </div>
                     <button onClick={handleChatMicToggle} disabled={isBusy}
                       title={chatRecording ? 'Stop recording' : 'Voice input — Jarvis will speak back'}
                       className={`p-2.5 rounded-lg border transition-all flex-shrink-0 ${
@@ -1022,6 +1609,83 @@ export default function Home() {
                       <span className="hidden sm:inline">SEND</span>
                     </button>
                   </div>
+
+                  {/* Fixed + menu popover — NOT clipped by overflow ancestors */}
+                  <AnimatePresence>
+                    {plusMenuOpen && !isBusy && plusMenuCoords && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={closePlusMenu} />
+                        <motion.div
+                          initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                          transition={{ duration: 0.15 }}
+                          className="fixed z-50 w-44 p-1 rounded-xl border border-border/50 bg-background shadow-xl overflow-hidden"
+                          style={{ bottom: plusMenuCoords.bottom, right: plusMenuCoords.right }}
+                        >
+                          <button
+                            onClick={() => { closePlusMenu(); fileInputRef.current?.click(); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            <Paperclip className="w-3.5 h-3.5 flex-shrink-0" />
+                            Attach file
+                          </button>
+                          <button
+                            onClick={() => { closePlusMenu(); cameraInputRef.current?.click(); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            <Camera className="w-3.5 h-3.5 flex-shrink-0" />
+                            Camera
+                          </button>
+                          <div className="h-px bg-border/30 my-1" />
+                          <button
+                            onClick={() => { closePlusMenu(); setTimeout(() => inputRef.current?.focus(), 50); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            <ImageIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                            Generate image
+                          </button>
+                          <button
+                            onClick={() => { closePlusMenu(); handleToggleScreenShare(); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono transition-colors ${
+                              screenShareActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            }`}
+                          >
+                            <Monitor className="w-3.5 h-3.5 flex-shrink-0" />
+                            {screenShareActive ? 'Stop sharing' : 'Share screen'}
+                          </button>
+                          <div className="h-px bg-border/30 my-1" />
+                          <button
+                            onClick={() => { closePlusMenu(); setAgentModeActive(a => !a); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono transition-colors ${
+                              agentModeActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            }`}
+                          >
+                            <Bot className="w-3.5 h-3.5 flex-shrink-0" />
+                            {agentModeActive ? 'Agent mode ON' : 'Agent mode'}
+                          </button>
+                          <div className="h-px bg-border/30 my-1" />
+                          <button
+                            onClick={() => { closePlusMenu(); handleToggleWebSearch(); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono transition-colors ${
+                              webSearchEnabled ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            }`}
+                          >
+                            <Globe className="w-3.5 h-3.5 flex-shrink-0" />
+                            Web search {webSearchEnabled ? '(on)' : '(off)'}
+                          </button>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Agent mode indicator */}
+                  {agentModeActive && (
+                    <div className="flex items-center gap-1.5 px-1 pb-1">
+                      <Bot className="w-3 h-3 text-primary" />
+                      <span className="text-[9px] font-mono text-primary/70 tracking-wider">AGENT MODE ON — your message will search the web</span>
+                    </div>
+                  )}
 
                   {/* Status bar below input */}
                   <div className="min-h-[16px]">
@@ -1048,10 +1712,86 @@ export default function Home() {
           )}
 
         </main>
+
+        {/* ── PiP Floating Windows ── */}
+        <AnimatePresence>
+          {pipBrowserOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+              className={`fixed z-50 bg-card border border-border/50 rounded-xl shadow-2xl overflow-hidden flex flex-col ${
+                pipFullscreen === 'browser'
+                  ? 'inset-4'
+                  : 'bottom-20 right-4 w-80 h-60'
+              }`}
+            >
+              <div className="flex items-center justify-between px-2 py-1 bg-muted/30 border-b border-border/30 flex-shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <Globe className="w-3 h-3 text-cyan-400" />
+                  <span className="text-[10px] font-mono text-muted-foreground tracking-wider">AGENT BROWSER</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setPipFullscreen(f => f === 'browser' ? null : 'browser')} className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground transition-colors">
+                    {pipFullscreen === 'browser' ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+                  </button>
+                  <button onClick={() => { setPipBrowserOpen(false); setPipFullscreen(null); }} className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 min-h-0">
+                <JarvisBrowser className="h-full border-0" />
+              </div>
+            </motion.div>
+          )}
+
+          {pipCameraOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+              className={`fixed z-50 bg-card border border-border/50 rounded-xl shadow-2xl overflow-hidden flex flex-col ${
+                pipFullscreen === 'camera'
+                  ? 'inset-4'
+                  : pipBrowserOpen
+                    ? 'bottom-20 right-[340px] w-64 h-48'
+                    : 'bottom-20 right-4 w-64 h-48'
+              }`}
+            >
+              <div className="flex items-center justify-between px-2 py-1 bg-muted/30 border-b border-border/30 flex-shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <Webcam className="w-3 h-3 text-purple-400" />
+                  <span className="text-[10px] font-mono text-muted-foreground tracking-wider">CAMERA</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setPipFullscreen(f => f === 'camera' ? null : 'camera')} className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground transition-colors">
+                    {pipFullscreen === 'camera' ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+                  </button>
+                  <button onClick={() => { setPipCameraOpen(false); setPipFullscreen(null); }} className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 min-h-0">
+                <CameraFeed className="h-full" enableDetection />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="dark:block hidden pointer-events-none fixed inset-0 z-30 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(5,5,8,0.7)_100%)]" />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* Error Detail Panel — slides up from bottom when an error occurs */}
+      <AnimatePresence>
+        {errorDetail && (
+          <ErrorDetailPanel detail={errorDetail} onClose={() => setErrorDetail(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

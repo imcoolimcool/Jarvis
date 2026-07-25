@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut, Brain, Globe, Music2, Pencil, Check, User } from 'lucide-react';
+import { X, Save, Cloud, CalendarDays, Info, Plus, Trash2, Mail, CheckCircle2, LogOut, Brain, Globe, Music2, Pencil, Check, User, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Settings {
@@ -56,6 +56,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [deletingMemory, setDeletingMemory] = useState<string | null>(null);
   const [editingMemory, setEditingMemory] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
+  const [dirty, setDirty] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   const [visibleSlots, setVisibleSlots] = useState(1);
 
@@ -135,12 +137,33 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         setForm(loaded);
         const filled = [1,2,3,4,5].filter(n => loaded[`calendar_ics_url_${n}` as keyof Settings]);
         setVisibleSlots(Math.max(1, filled.length));
+        setDirty(false); // Reset dirty on fresh load
       })
       .catch(() => {});
     fetchGmailStatus();
     fetchSpotifyStatus();
     fetchMemories();
   }, [open, fetchGmailStatus, fetchSpotifyStatus, fetchMemories]);
+
+  // Track unsaved changes — activate after initial load
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (initializedRef.current && open) setDirty(true);
+    if (!initializedRef.current && open) initializedRef.current = true;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form]);
+
+  const handleCloseWithCheck = useCallback(() => {
+    if (dirty) { setConfirmClose(true); return; }
+    onClose();
+  }, [dirty, onClose]);
+
+  const handleConfirmClose = useCallback(() => {
+    setConfirmClose(false);
+    setDirty(false);
+    initializedRef.current = false;
+    onClose();
+  }, [onClose]);
 
   const handleConnectGmail = () => {
     const popup = window.open('/api/jarvis/gmail/auth', 'gmail_auth', 'width=500,height=650,left=200,top=100');
@@ -201,7 +224,33 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
   const calendarKeys = Array.from({ length: visibleSlots }, (_, i) => `calendar_ics_url_${i + 1}` as keyof Settings);
 
-  const handleSave = async () => {
+  // Auto-save settings with debounce (800ms)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!dirty || !open) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(async () => {
+      setSaving(true);
+      try {
+        await fetch('/api/jarvis/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form),
+        });
+        setSaved(true);
+        setDirty(false);
+        setTimeout(() => setSaved(false), 2000);
+      } catch {
+        toast({ title: 'Auto-save failed', description: 'Check your connection', variant: 'destructive' });
+      } finally {
+        setSaving(false);
+      }
+    }, 800);
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, dirty, open]);
+
+  const handleManualSave = async () => {
     setSaving(true);
     try {
       await fetch('/api/jarvis/settings', {
@@ -210,6 +259,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         body: JSON.stringify(form),
       });
       setSaved(true);
+      setDirty(false);
       setTimeout(() => setSaved(false), 2000);
     } finally {
       setSaving(false);
@@ -237,7 +287,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={handleCloseWithCheck}
             className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
           />
 
@@ -254,7 +304,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <h2 className="font-display font-bold tracking-[0.15em] text-sm text-primary glow-text">SETTINGS</h2>
                 <p className="text-[10px] font-mono text-muted-foreground tracking-widest mt-0.5">LIVE CONTEXT CONFIGURATION</p>
               </div>
-              <button onClick={onClose} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <button onClick={handleCloseWithCheck} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -297,6 +347,11 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <div className="flex items-center gap-2">
                   <Brain className="w-3.5 h-3.5 text-primary/70" />
                   <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">MEMORIES</label>
+                  {memories.length > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-mono tracking-wider">
+                      {memories.length}
+                    </span>
+                  )}
                 </div>
                 <p className="text-[10px] font-mono text-muted-foreground/50">
                   Facts Jarvis has picked up during conversations. Edit or delete any entry.
@@ -321,13 +376,22 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                           </p>
                           <div className="flex items-center gap-0.5 flex-shrink-0">
                             {editingMemory === m.topic ? (
-                              <button
-                                onClick={() => handleSaveMemoryEdit(m.topic)}
-                                className="p-1.5 text-primary hover:text-primary/80 transition-colors"
-                                title="Save"
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleSaveMemoryEdit(m.topic)}
+                                  className="p-1.5 text-primary hover:text-primary/80 transition-colors"
+                                  title="Save (Enter)"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => { setEditingMemory(null); setEditDraft(''); }}
+                                  className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                                  title="Cancel (Escape)"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </>
                             ) : (
                               <button
                                 onClick={() => startEditMemory(m.topic, m.value)}
@@ -453,6 +517,40 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 </p>
               </div>
 
+              {/* ── SYSTEM PROMPT ── */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-3.5 h-3.5 text-primary/70" />
+                  <label className="font-display text-[11px] tracking-widest text-foreground font-semibold">SYSTEM PROMPT</label>
+                </div>
+                <p className="text-[10px] font-mono text-muted-foreground/50">
+                  The full instruction Jarvis follows for every response.
+                </p>
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/jarvis/system-prompt');
+                      const data = await res.json();
+                      toast({
+                        title: 'Prompt preview',
+                        description: (
+                          <div className="max-h-40 overflow-y-auto text-[10px] font-mono leading-relaxed whitespace-pre-wrap">
+                            {data.prompt?.slice(0, 2000)}
+                          </div>
+                        ),
+                        duration: 6000,
+                      });
+                    } catch {
+                      toast({ title: 'Could not load prompt', variant: 'destructive' });
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-border/50 rounded-lg text-[10px] font-mono text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
+                >
+                  <Info className="w-3 h-3" />
+                  PREVIEW SYSTEM PROMPT
+                </button>
+              </div>
+
               {/* ── WEB SEARCH ── */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -574,16 +672,77 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             </div>
 
-            {/* Save */}
+
+            {/* Unsaved changes confirmation dialog */}
+            <AnimatePresence>
+              {confirmClose && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                  onClick={() => setConfirmClose(false)}
+                >
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    onClick={e => e.stopPropagation()}
+                    className="bg-card border border-border/60 rounded-xl p-5 max-w-sm w-full shadow-2xl space-y-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-display font-bold tracking-wide text-foreground">Unsaved changes</p>
+                        <p className="text-[11px] font-mono text-muted-foreground/70 mt-1 leading-relaxed">
+                          You have unsaved settings. Discard them?
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => setConfirmClose(false)}
+                        className="px-4 py-2 rounded-lg border border-border/50 text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                      >
+                        Keep editing
+                      </button>
+                      <button
+                        onClick={handleConfirmClose}
+                        className="px-4 py-2 rounded-lg bg-destructive text-destructive-foreground text-[11px] font-mono hover:opacity-90 transition-opacity"
+                      >
+                        Discard
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {/* Save status indicator — settings auto-save */}
             <div className="px-6 py-5 border-t border-border/30 flex-shrink-0">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-display tracking-widest text-xs disabled:opacity-50 rounded-lg"
-              >
-                <Save className="w-3.5 h-3.5" />
-                {saving ? 'SAVING…' : saved ? 'SAVED ✓' : 'SAVE SETTINGS'}
-              </button>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {saving ? (
+                    <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                  ) : saved ? (
+                    <span className="w-2 h-2 rounded-full bg-green-400" />
+                  ) : dirty ? (
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  ) : (
+                    <span className="w-2 h-2 rounded-full bg-green-400/50" />
+                  )}
+                  <span className="text-[10px] font-mono text-muted-foreground/60 tracking-widest">
+                    {saving ? 'SAVING…' : saved ? 'ALL CHANGES SAVED' : dirty ? 'UNSAVED CHANGES' : 'AUTO-SAVE ON'}
+                  </span>
+                </div>
+                <button
+                  onClick={handleManualSave}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/50 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
+                >
+                  <Save className="w-3 h-3" />
+                  SAVE NOW
+                </button>
+              </div>
             </div>
           </motion.div>
         </>
