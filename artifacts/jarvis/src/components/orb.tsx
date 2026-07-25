@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square } from 'lucide-react';
 
@@ -7,71 +7,222 @@ export type AppState = 'idle' | 'wake' | 'recording' | 'transcribing' | 'thinkin
 interface OrbProps {
   status: AppState;
   onClick?: () => void;
+  /** Audio amplitude 0–1 for reactive particles during speaking/recording */
+  amplitude?: number;
 }
 
-// #39: Pre-compute particle positions with useMemo so Math.random() is called once at
-// mount time, not on every render. Previously, positions teleported on every state change.
-function Particles({ count = 8, color = 'rgba(0,212,255,0.5)' }: { count?: number; color?: string }) {
-  const particles = useMemo(() =>
+// ── Particle system: 120 particles forming a circle ──
+interface Particle {
+  angle: number;
+  radius: number;
+  size: number;
+  delay: number;
+  orbitSpeed: number;
+  drift: number;
+}
+
+function useParticles(count = 120) {
+  return useMemo<Particle[]>(() =>
     Array.from({ length: count }).map((_, i) => ({
       angle: (i / count) * 360,
-      radius: 120 + Math.random() * 40,
-      delay: (i / count) * 2,
-      duration: 3 + (i % 3) * 0.7,
+      radius: 100 + Math.random() * 60,
+      size: 1.5 + Math.random() * 3,
+      delay: Math.random() * 3,
+      orbitSpeed: 0.3 + Math.random() * 0.6,
+      drift: (Math.random() - 0.5) * 0.5,
     })),
     [count]
   );
+}
+
+function ParticleRing({ status, amplitude = 0 }: { status: AppState; amplitude?: number }) {
+  const particles = useParticles(120);
+  const isActive = status === 'speaking' || status === 'recording' || status === 'thinking';
+
+  const color =
+    status === 'recording' ? '255, 80, 80' :
+    status === 'speaking' ? '80, 255, 180' :
+    status === 'thinking' || status === 'transcribing' ? '255, 200, 80' :
+    '0, 122, 255';
 
   return (
-    <>
-      {particles.map(({ angle, radius, delay, duration }, i) => (
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <AnimatePresence>
         <motion.div
-          key={i}
-          className="absolute w-1 h-1 rounded-full pointer-events-none"
-          style={{ background: color }}
-          animate={{
-            x: [
-              `${Math.cos((angle * Math.PI) / 180) * radius * 0.7}px`,
-              `${Math.cos(((angle + 30) * Math.PI) / 180) * radius}px`,
-              `${Math.cos(((angle + 60) * Math.PI) / 180) * radius * 0.8}px`,
-              `${Math.cos((angle * Math.PI) / 180) * radius * 0.7}px`,
-            ],
-            y: [
-              `${Math.sin((angle * Math.PI) / 180) * radius * 0.7}px`,
-              `${Math.sin(((angle + 30) * Math.PI) / 180) * radius}px`,
-              `${Math.sin(((angle + 60) * Math.PI) / 180) * radius * 0.8}px`,
-              `${Math.sin((angle * Math.PI) / 180) * radius * 0.7}px`,
-            ],
-            opacity: [0, 0.8, 0.4, 0],
-            scale: [0, 1.5, 1, 0],
-          }}
-          transition={{
-            repeat: Infinity,
-            duration,
-            delay,
-            ease: 'easeInOut',
-          }}
-        />
-      ))}
-    </>
+          key={`particles-${isActive}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          {particles.map((p, i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                width: p.size + (isActive ? amplitude * 3 : 0) + 'px',
+                height: p.size + (isActive ? amplitude * 3 : 0) + 'px',
+                background: `rgba(${color}, ${isActive ? 0.4 + amplitude * 0.4 : 0.15})`,
+                boxShadow: isActive ? `0 0 ${4 + amplitude * 8}px rgba(${color}, ${0.3 + amplitude * 0.5})` : 'none',
+              }}
+              animate={{
+                x: [
+                  `${Math.cos((p.angle * Math.PI) / 180) * p.radius * 0.85}px`,
+                  `${Math.cos(((p.angle + 90) * Math.PI) / 180) * (p.radius + amplitude * 15)}px`,
+                  `${Math.cos(((p.angle + 180) * Math.PI) / 180) * p.radius * 0.9}px`,
+                  `${Math.cos(((p.angle + 270) * Math.PI) / 180) * (p.radius - amplitude * 10)}px`,
+                  `${Math.cos((p.angle * Math.PI) / 180) * p.radius * 0.85}px`,
+                ],
+                y: [
+                  `${Math.sin((p.angle * Math.PI) / 180) * p.radius * 0.85}px`,
+                  `${Math.sin(((p.angle + 90) * Math.PI) / 180) * (p.radius + amplitude * 15)}px`,
+                  `${Math.sin(((p.angle + 180) * Math.PI) / 180) * p.radius * 0.9}px`,
+                  `${Math.sin(((p.angle + 270) * Math.PI) / 180) * (p.radius - amplitude * 10)}px`,
+                  `${Math.sin((p.angle * Math.PI) / 180) * p.radius * 0.85}px`,
+                ],
+                opacity: isActive
+                  ? [0.2 + amplitude * 0.3, 0.7 + amplitude * 0.3, 0.3 + amplitude * 0.2, 0.8 + amplitude * 0.2, 0.2 + amplitude * 0.3]
+                  : [0.08, 0.15, 0.08, 0.15, 0.08],
+                scale: isActive ? [0.8, 1.2 + amplitude, 0.9, 1.1, 0.8] : [0.6, 0.8, 0.6, 0.8, 0.6],
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: isActive ? 4 - amplitude * 1.5 : 8 + p.orbitSpeed * 2,
+                delay: p.delay,
+                ease: 'easeInOut',
+              }}
+            />
+          ))}
+        </motion.div>
+      </AnimatePresence>
+    </div>
   );
 }
 
-// Waveform bars for speaking state
-function Waveform() {
+// ── Animated rings for different states ──
+function StatusRings({ status }: { status: AppState }) {
   return (
-    <div className="absolute bottom-[-32px] left-1/2 -translate-x-1/2 flex items-end gap-[3px] h-6">
-      {Array.from({ length: 9 }).map((_, i) => (
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <AnimatePresence>
+        {/* Wake/Recording: expanding rings */}
+        {(status === 'recording' || status === 'wake') && (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <motion.div
+                key={`ring-${i}`}
+                className="absolute w-full h-full rounded-full border"
+                style={{
+                  borderColor: status === 'recording'
+                    ? 'rgba(255, 80, 80, 0.4)'
+                    : 'rgba(0, 122, 255, 0.25)',
+                }}
+                initial={{ scale: status === 'wake' ? 0.9 : 0.85, opacity: status === 'wake' ? 0.4 : 0.8 }}
+                animate={{ scale: status === 'wake' ? 1.6 : 2.2, opacity: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  repeat: Infinity,
+                  duration: status === 'wake' ? 3.5 : 2.0,
+                  delay: i * (status === 'wake' ? 0.9 : 0.5),
+                  ease: [0.23, 1, 0.32, 1],
+                }}
+              />
+            ))}
+          </>
+        )}
+
+        {/* Thinking: rotating dashed rings */}
+        {status === 'thinking' && (
+          <>
+            {[0, 1, 2, 3].map((i) => (
+              <motion.div
+                key={`think-${i}`}
+                className="absolute rounded-full border"
+                style={{
+                  width: `${55 + i * 12}%`,
+                  height: `${55 + i * 12}%`,
+                  borderColor: `rgba(255, 200, 80, ${0.3 - i * 0.05})`,
+                  borderStyle: i % 2 === 0 ? 'dashed' : 'solid',
+                  borderWidth: i % 2 === 0 ? '2px' : '1px',
+                }}
+                animate={{
+                  rotate: i % 2 === 0 ? 360 : -360,
+                  opacity: [0.12, 0.4, 0.12],
+                  scale: [0.95, 1.03, 0.95],
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 2.5 + i * 0.4,
+                  ease: 'linear',
+                }}
+              />
+            ))}
+          </>
+        )}
+
+        {/* Speaking: gentle expanding concentric waves */}
+        {status === 'speaking' && (
+          <>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <motion.div
+                key={`wave-${i}`}
+                className="absolute rounded-full border border-green-400/20"
+                initial={{ scale: 0.6, opacity: 0.6 }}
+                animate={{
+                  scale: [0.6, 0.9 + i * 0.1, 1.2 + i * 0.05],
+                  opacity: [0.6, 0.25, 0],
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 1.2,
+                  delay: i * 0.1,
+                  ease: 'easeOut',
+                }}
+                style={{ width: '100%', height: '100%' }}
+              />
+            ))}
+          </>
+        )}
+
+        {/* Transcribing: orbital dashes */}
+        {status === 'transcribing' && (
+          <>
+            <motion.div
+              className="absolute w-full h-full rounded-full border-t-2 border-r-2 border-yellow-400/50 border-dashed"
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
+            />
+            <motion.div
+              className="absolute w-[75%] h-[75%] rounded-full border-b-2 border-l-2 border-yellow-300/35 border-dashed"
+              animate={{ rotate: -360 }}
+              transition={{ repeat: Infinity, duration: 5, ease: 'linear' }}
+            />
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Listening waveform bars ──
+function Waveform({ amplitude = 0 }: { amplitude?: number }) {
+  return (
+    <div className="absolute bottom-[-28px] left-1/2 -translate-x-1/2 flex items-end gap-[3px] h-5">
+      {Array.from({ length: 7 }).map((_, i) => (
         <motion.div
           key={i}
-          className="w-[3px] rounded-full bg-primary/60"
+          className="w-[2.5px] rounded-full"
+          style={{ background: 'rgba(0, 122, 255, 0.5)' }}
           animate={{
-            height: ['4px', `${8 + Math.sin(i * 0.8) * 10 + 4}px`, '4px'],
+            height: [
+              `${4 * (1 - amplitude * 0.3)}px`,
+              `${(8 + Math.sin(i * 0.8) * 6 + 4) * (0.5 + amplitude * 0.5)}px`,
+              `${4 * (1 - amplitude * 0.3)}px`,
+            ],
           }}
           transition={{
             repeat: Infinity,
-            duration: 0.6 + i * 0.05,
-            delay: i * 0.06,
+            duration: 0.5 + i * 0.03,
+            delay: i * 0.05,
             ease: 'easeInOut',
           }}
         />
@@ -80,228 +231,97 @@ function Waveform() {
   );
 }
 
-export function Orb({ status, onClick }: OrbProps) {
+export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
   const isBusy = status === 'thinking' || status === 'transcribing';
-  const isActive = status !== 'idle';
+  const isActive = status !== 'idle' && status !== 'wake';
 
-  // State-based color accents
+  // Apple-blue base with state tinting
   const glowColor =
-    status === 'recording' ? 'rgba(255,80,80,0.7)' :
-    status === 'speaking' ? 'rgba(80,255,180,0.7)' :
-    status === 'thinking' || status === 'transcribing' ? 'rgba(255,200,0,0.5)' :
-    'rgba(0,212,255,0.6)';
-
-  const innerGlow =
-    status === 'recording' ? 'inset 0 0 70px rgba(255,80,80,0.6), 0 0 50px rgba(255,80,80,0.2)' :
-    status === 'speaking' ? 'inset 0 0 60px rgba(80,255,180,0.5), 0 0 40px rgba(80,255,180,0.15)' :
-    isBusy ? 'inset 0 0 50px rgba(255,200,0,0.4), 0 0 40px rgba(255,200,0,0.1)' :
-    'inset 0 0 30px rgba(0,212,255,0.4), 0 0 20px rgba(0,212,255,0.1)';
+    status === 'recording' ? 'rgba(255, 80, 80, 0.6)' :
+    status === 'speaking' ? 'rgba(80, 255, 180, 0.6)' :
+    status === 'thinking' || status === 'transcribing' ? 'rgba(255, 200, 80, 0.4)' :
+    'rgba(0, 122, 255, 0.5)';
 
   return (
-    // #10: onPointerDown fires immediately on touch without the 300ms iOS tap delay.
-    // touch-action: manipulation disables double-tap zoom, removing the browser delay.
     <div
-      className="relative flex items-center justify-center w-[280px] h-[280px] sm:w-[300px] sm:h-[300px] cursor-pointer group select-none"
+      className="relative flex items-center justify-center w-[260px] h-[260px] sm:w-[280px] sm:h-[280px] cursor-pointer group select-none"
       onPointerDown={onClick}
       style={{ touchAction: 'manipulation' }}
       aria-label={status}
       role="button"
     >
-      {/* Deep ambient glow — breathing with state color */}
+      {/* Ambient glow backdrop */}
       <motion.div
-        className="absolute inset-0 rounded-full blur-[72px] pointer-events-none"
-        style={{ background: glowColor }}
+        className="absolute inset-0 rounded-full pointer-events-none"
+        style={{ background: glowColor, filter: 'blur(80px)' }}
         animate={{
-          scale: status === 'recording' || status === 'speaking' ? [1, 1.3, 1] : status === 'wake' ? [1, 1.1, 1] : [1, 1.05, 1],
-          opacity: status === 'idle' ? [0.15, 0.28, 0.15] : status === 'wake' ? [0.25, 0.45, 0.25] : [0.5, 0.8, 0.5],
+          scale: isActive ? [1, 1.2, 1] : [1, 1.05, 1],
+          opacity: status === 'idle' ? 0.12 : isActive ? 0.5 : 0.2,
         }}
         transition={{
           repeat: Infinity,
-          duration: status === 'recording' ? 1.0 : status === 'speaking' ? 0.8 : status === 'wake' ? 2.2 : 4,
+          duration: isActive ? 2 : 4,
           ease: 'easeInOut',
         }}
       />
 
-      {/* Secondary color accent ring */}
-      <AnimatePresence>
-        {isActive && (
-          <motion.div
-            key="accent"
-            className="absolute rounded-full pointer-events-none"
-            style={{
-              width: '88%', height: '88%',
-              boxShadow: `0 0 0 1px ${glowColor}`,
-              filter: 'blur(1px)',
-            }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: [0.3, 0.7, 0.3], scale: [0.9, 1.0, 0.9] }}
-            exit={{ opacity: 0 }}
-            transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-          />
-        )}
-      </AnimatePresence>
+      {/* Particle ring */}
+      <ParticleRing status={status} amplitude={amplitude} />
 
-      {/* Outer status rings */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <AnimatePresence>
-          {(status === 'recording' || status === 'wake') && (
-            <>
-              {[1, 2, 3].map((i) => (
-                <motion.div
-                  key={`ring-${i}`}
-                  className={`absolute w-full h-full rounded-full border ${status === 'wake' ? 'border-primary/25' : 'border-red-400/50'}`}
-                  initial={{ scale: status === 'wake' ? 0.9 : 0.85, opacity: status === 'wake' ? 0.5 : 0.9 }}
-                  animate={{ scale: status === 'wake' ? 1.7 : 2.3, opacity: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: status === 'wake' ? 3.5 : 2.2,
-                    delay: i * (status === 'wake' ? 1.2 : 0.75),
-                    ease: 'easeOut',
-                  }}
-                />
-              ))}
-            </>
-          )}
+      {/* Status rings */}
+      <StatusRings status={status} />
 
-          {status === 'transcribing' && (
-            <>
-              <motion.div
-                className="absolute w-full h-full rounded-full border-t-[3px] border-r-[3px] border-yellow-400/60 border-dashed"
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 2.5, ease: 'linear' }}
-              />
-              <motion.div
-                className="absolute w-[78%] h-[78%] rounded-full border-b-[2px] border-l-[2px] border-yellow-300/40 border-dashed"
-                animate={{ rotate: -360 }}
-                transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
-              />
-              <motion.div
-                className="absolute w-[55%] h-[55%] rounded-full border-t-[2px] border-yellow-500/30"
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 6, ease: 'linear' }}
-              />
-            </>
-          )}
-
-          {status === 'thinking' && (
-            <>
-              {[0, 1, 2, 3].map((i) => (
-                <motion.div
-                  key={`think-${i}`}
-                  className="absolute rounded-full border border-yellow-400/40"
-                  style={{ width: `${60 + i * 15}%`, height: `${60 + i * 15}%` }}
-                  animate={{
-                    rotate: i % 2 === 0 ? 360 : -360,
-                    opacity: [0.15, 0.5, 0.15],
-                    scale: [0.95, 1.05, 0.95],
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 2.0 + i * 0.5,
-                    ease: 'linear',
-                  }}
-                />
-              ))}
-            </>
-          )}
-
-          {status === 'speaking' && (
-            <>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <motion.div
-                  key={`wave-${i}`}
-                  className="absolute rounded-full border border-green-400/30"
-                  initial={{ scale: 0.7, opacity: 0.7 }}
-                  animate={{
-                    scale: [0.7, 1.0 + i * 0.14, 1.3 + i * 0.06],
-                    opacity: [0.7, 0.4, 0],
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 1.0,
-                    delay: i * 0.12,
-                    ease: 'easeOut',
-                  }}
-                  style={{ width: '100%', height: '100%' }}
-                />
-              ))}
-            </>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Floating particles for active states — #29: reduced counts for low-end device performance */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <AnimatePresence>
-          {(status === 'speaking' || status === 'thinking' || status === 'recording') && (
-            <motion.div
-              key="particles"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              <Particles
-                count={status === 'speaking' ? 6 : 4}
-                color={
-                  status === 'speaking' ? 'rgba(80,255,180,0.6)' :
-                  status === 'recording' ? 'rgba(255,100,100,0.6)' :
-                  'rgba(255,200,0,0.5)'
-                }
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Core sphere with liquid light */}
+      {/* Core sphere — Apple-style glass with minimal border */}
       <motion.div
-        className="relative z-10 w-[180px] h-[180px] sm:w-[200px] sm:h-[200px] rounded-full bg-gradient-to-br from-primary/40 via-primary/10 to-background border border-primary/60 backdrop-blur-md flex items-center justify-center overflow-hidden transition-shadow duration-300 group-hover:border-primary/90"
+        className="relative z-10 w-[160px] h-[160px] sm:w-[180px] sm:h-[180px] rounded-full flex items-center justify-center overflow-hidden"
+        style={{
+          background: isActive
+            ? `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.15) 0%, hsl(var(--card)) 90%)`
+            : `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.08) 0%, hsl(var(--card)) 90%)`,
+          boxShadow: isActive
+            ? `0 0 0 1px ${glowColor.replace('0.6', '0.2')}, 0 8px 32px ${glowColor.replace('0.6', '0.08')}`
+            : `0 0 0 1px hsl(var(--border)), 0 4px 16px hsl(0 0% 0% / 0.04)`,
+        }}
         animate={{
-          scale: status === 'recording' ? [0.94, 0.97, 0.94] : status === 'speaking' ? [1, 1.02, 1] : [1, 1.01, 1],
-          boxShadow: innerGlow,
+          scale: status === 'recording' ? [0.95, 0.98, 0.95]
+            : status === 'speaking' ? [1, 1.015, 1]
+            : [1, 1.005, 1],
         }}
         transition={{
-          scale: { repeat: Infinity, duration: status === 'recording' ? 0.9 : 2, ease: 'easeInOut' },
-          boxShadow: { duration: 0.35 },
+          repeat: Infinity,
+          duration: status === 'recording' ? 0.9 : status === 'speaking' ? 1.5 : 3,
+          ease: 'easeInOut',
         }}
       >
-        {/* Inner radial sheen */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(0,212,255,0.55)_0%,transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(0,120,255,0.25)_0%,transparent_50%)]" />
+        {/* Subtle inner highlight */}
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: 'radial-gradient(circle at 30% 25%, rgba(255,255,255,0.12) 0%, transparent 60%)',
+          }}
+        />
 
-        {/* State-tinted overlay */}
+        {/* State-tinted inner glow */}
         <motion.div
           className="absolute inset-0 rounded-full"
           animate={{
             background:
-              status === 'recording' ? 'radial-gradient(circle at 50% 50%, rgba(255,80,80,0.15) 0%, transparent 70%)' :
-              status === 'speaking' ? 'radial-gradient(circle at 50% 50%, rgba(80,255,180,0.12) 0%, transparent 70%)' :
-              isBusy ? 'radial-gradient(circle at 50% 50%, rgba(255,200,0,0.10) 0%, transparent 70%)' :
-              'radial-gradient(circle at 50% 50%, rgba(0,212,255,0.05) 0%, transparent 70%)',
+              status === 'recording' ? 'radial-gradient(circle at 50% 50%, rgba(255,80,80,0.10) 0%, transparent 70%)' :
+              status === 'speaking' ? 'radial-gradient(circle at 50% 50%, rgba(80,255,180,0.08) 0%, transparent 70%)' :
+              isBusy ? 'radial-gradient(circle at 50% 50%, rgba(255,200,80,0.08) 0%, transparent 70%)' :
+              'radial-gradient(circle at 50% 50%, rgba(0,122,255,0.04) 0%, transparent 70%)',
           }}
           transition={{ duration: 0.5 }}
         />
 
-        {/* Slow drifting liquid highlight */}
+        {/* Liquid-gleam highlight */}
         <motion.div
-          className="absolute inset-[-40%] opacity-30 bg-[conic-gradient(from_0deg,transparent_0deg,rgba(0,212,255,0.5)_60deg,transparent_120deg,rgba(0,180,255,0.35)_180deg,transparent_240deg,rgba(0,212,255,0.5)_300deg,transparent_360deg)]"
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: status === 'thinking' ? 4 : 10, ease: 'linear' }}
-        />
-
-        {/* Subtle scanline */}
-        <div className="absolute inset-0 opacity-[0.10] bg-[linear-gradient(rgba(0,212,255,0.9)_1px,transparent_1px)] bg-[length:100%_3px]" />
-
-        {/* Aurora shimmer */}
-        <motion.div
-          className="absolute inset-[-20%] opacity-20"
+          className="absolute inset-[-30%] opacity-20"
           style={{
-            background: 'linear-gradient(45deg, transparent 30%, rgba(0,212,255,0.4) 50%, transparent 70%)',
+            background: 'conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.25) 60deg, transparent 120deg, rgba(255,255,255,0.1) 180deg, transparent 240deg, rgba(255,255,255,0.2) 300deg, transparent 360deg)',
           }}
-          animate={{ x: ['-100%', '200%'] }}
-          transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut', repeatDelay: 2 }}
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 12, ease: 'linear' }}
         />
 
         {/* Icon */}
@@ -312,9 +332,10 @@ export function Orb({ status, onClick }: OrbProps) {
               initial={{ opacity: 0, scale: 0.7 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.7 }}
-              className="relative z-20 text-red-400/90"
+              className="relative z-20"
+              style={{ color: 'rgba(255, 80, 80, 0.8)' }}
             >
-              <Square className="w-8 h-8 fill-current" />
+              <Square className="w-7 h-7 fill-current" />
             </motion.div>
           ) : (
             <motion.div
@@ -322,9 +343,10 @@ export function Orb({ status, onClick }: OrbProps) {
               initial={{ opacity: 0, scale: 0.7 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.7 }}
-              className="relative z-20 text-primary/70 group-hover:text-primary transition-colors"
+              className="relative z-20 transition-colors"
+              style={{ color: isActive ? 'rgba(0, 122, 255, 0.7)' : 'hsl(var(--muted-foreground))' }}
             >
-              <Mic className="w-8 h-8" />
+              <Mic className="w-7 h-7" />
             </motion.div>
           )}
         </AnimatePresence>
@@ -337,10 +359,10 @@ export function Orb({ status, onClick }: OrbProps) {
             key="waveform"
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 0, y: -5 }}
             className="absolute bottom-0"
           >
-            <Waveform />
+            <Waveform amplitude={amplitude} />
           </motion.div>
         )}
       </AnimatePresence>

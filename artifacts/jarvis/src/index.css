@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Orbitron:wght@400;500;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
@@ -41,126 +41,16 @@
   --color-destructive-border: var(--destructive-border);
 
   --font-sans: var(--app-font-sans);
-  --font-display: var(--app-font-display);
+  --font-display: var(--app-font-sans);
   --font-mono: var(--app-font-mono);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-}
 
-/* ── Dark theme (default) ────────────────────────── */
-:root, .dark {
-  --button-outline: rgba(0, 212, 255, 0.2);
-  --badge-outline: rgba(0, 212, 255, 0.1);
-  --opaque-button-border-intensity: 0;
-  --elevate-1: rgba(0, 212, 255, 0.05);
-  --elevate-2: rgba(0, 212, 255, 0.1);
-
-  --background: 240 20% 3%;
-  --foreground: 190 80% 85%;
-  --card: 240 20% 5%;
-  --card-foreground: 190 80% 85%;
-  --card-border: 190 100% 50% / 0.1;
-  --popover: 240 20% 5%;
-  --popover-foreground: 190 80% 85%;
-  --popover-border: 190 100% 50% / 0.1;
-  --primary: 190 100% 50%;
-  --primary-foreground: 240 20% 3%;
-  --secondary: 240 20% 10%;
-  --secondary-foreground: 190 100% 70%;
-  --muted: 240 20% 8%;
-  --muted-foreground: 190 50% 50%;
-  --accent: 190 100% 50% / 0.15;
-  --accent-foreground: 190 100% 50%;
-  --destructive: 0 100% 50%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 190 100% 50% / 0.15;
-  --input: 190 100% 50% / 0.15;
-  --ring: 190 100% 50%;
-
-  --app-font-sans: 'Inter', sans-serif;
-  --app-font-display: 'Orbitron', sans-serif;
-  --app-font-mono: 'Space Mono', monospace;
-  --radius: 0.5rem;
-}
-
-/* ── Light theme ─────────────────────────────────── */
-.light {
-  --button-outline: rgba(0, 120, 150, 0.2);
-  --badge-outline: rgba(0, 120, 150, 0.1);
-  --opaque-button-border-intensity: 0;
-  --elevate-1: rgba(0, 120, 150, 0.04);
-  --elevate-2: rgba(0, 120, 150, 0.08);
-
-  --background: 210 20% 96%;
-  --foreground: 220 25% 15%;
-  --card: 0 0% 100%;
-  --card-foreground: 220 25% 15%;
-  --card-border: 190 60% 40% / 0.15;
-  --popover: 0 0% 100%;
-  --popover-foreground: 220 25% 15%;
-  --popover-border: 190 60% 40% / 0.15;
-  --primary: 190 80% 32%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 220 15% 90%;
-  --secondary-foreground: 220 25% 30%;
-  --muted: 220 15% 91%;
-  --muted-foreground: 220 12% 48%;
-  --accent: 190 60% 32% / 0.1;
-  --accent-foreground: 190 80% 28%;
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 220 15% 82%;
-  --input: 220 15% 82%;
-  --ring: 190 80% 32%;
-}
-
-@layer base {
-  * { @apply border-border; }
-
-  body {
-    @apply font-sans antialiased bg-background text-foreground;
-  }
-
-  /* Scanline grid only in dark mode */
-  .dark body {
-    background-image:
-      linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
-    background-size: 2px 2px;
-  }
-}
-
-/* Scrollbar — WebKit */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: hsl(var(--primary) / 0.25); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.5); }
-
-/* #38: Scrollbar — Firefox + Android Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: hsl(var(--primary) / 0.25) transparent;
-}
-
-/* #35: Safe-area insets for notched iPhones and Dynamic Island.
-   Combine with padding-bottom: env(safe-area-inset-bottom) on sticky bars.
-   CSS custom properties so components can reference them. */
-:root {
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-}
-
-/* Glow only in dark mode */
-.dark .glow-text { text-shadow: 0 0 10px hsl(var(--primary) / 0.5); }
-.light .glow-text { text-shadow: none; }
-
-/* ── Animation tokens ─────────────────────────────── */
-@theme inline {
+  /* Apple-inspired animation tokens */
+  --ease-spring: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
@@ -169,20 +59,171 @@
   --duration-slow: 400ms;
 }
 
-/* ── Reduced motion ───────────────────────────────── */
+/* ── Apple-inspired Light theme (default) ────────── */
+:root, .light {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 10%;
+  --card-border: 0 0% 0% / 0.08;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 10%;
+  --popover-border: 0 0% 0% / 0.1;
+  --primary: 211 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 30%;
+  --muted: 0 0% 95%;
+  --muted-foreground: 0 0% 55%;
+  --accent: 211 100% 50% / 0.08;
+  --accent-foreground: 211 100% 45%;
+  --destructive: 0 70% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 0% / 0.08;
+  --input: 0 0% 0% / 0.08;
+  --ring: 211 100% 50% / 0.3;
+
+  --app-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+  --app-font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  --radius: 0.75rem;
+}
+
+/* ── Dark theme ──────────────────────────────────── */
+.dark {
+  --background: 0 0% 7%;
+  --foreground: 0 0% 93%;
+  --card: 0 0% 10%;
+  --card-foreground: 0 0% 93%;
+  --card-border: 0 0% 100% / 0.08;
+  --popover: 0 0% 10%;
+  --popover-foreground: 0 0% 93%;
+  --popover-border: 0 0% 100% / 0.1;
+  --primary: 211 100% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 15%;
+  --secondary-foreground: 0 0% 65%;
+  --muted: 0 0% 14%;
+  --muted-foreground: 0 0% 50%;
+  --accent: 211 100% 60% / 0.12;
+  --accent-foreground: 211 100% 60%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 100% / 0.1;
+  --input: 0 0% 100% / 0.1;
+  --ring: 211 100% 60% / 0.3;
+
+  --app-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+  --app-font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * { @apply border-border; }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Subtle noise texture for depth */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+    pointer-events: none;
+    z-index: 9999;
+  }
+}
+
+/* Scrollbar — Apple-style thin */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--foreground) / 0.15); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--foreground) / 0.3); }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--foreground) / 0.15) transparent;
+}
+
+/* Safe-area insets for notched devices */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+/* Apple-style frosted glass helpers */
+.glass {
+  background: hsl(var(--background) / 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.glass-dark {
+  background: hsl(var(--card) / 0.7);
+  backdrop-filter: blur(30px) saturate(200%);
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+}
+
+.glass-toolbar {
+  background: hsl(var(--background) / 0.65);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+}
+
+/* Apple-style shadow tokens */
+.shadow-apple-sm {
+  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.04), 0 1px 2px hsl(0 0% 0% / 0.06);
+}
+
+.shadow-apple-md {
+  box-shadow: 0 4px 6px hsl(0 0% 0% / 0.04), 0 2px 4px hsl(0 0% 0% / 0.06);
+}
+
+.shadow-apple-lg {
+  box-shadow: 0 10px 15px hsl(0 0% 0% / 0.05), 0 4px 6px hsl(0 0% 0% / 0.05);
+}
+
+.shadow-apple-xl {
+  box-shadow: 0 20px 25px hsl(0 0% 0% / 0.06), 0 10px 10px hsl(0 0% 0% / 0.04);
+}
+
+/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  [data-framer-motion] {
-    animation: none !important;
-    transition: none !important;
+}
+
+/* Reduced transparency */
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-dark, .glass-toolbar {
+    background: hsl(var(--background));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 
-/* ── Press feedback ───────────────────────────────── */
+/* Press feedback for interactive elements */
 @media (hover: hover) and (pointer: fine) {
-  button:active, a:active { transform: scale(0.97); transition: transform 100ms ease-out; }
+  .press-scale:active {
+    transform: scale(0.97);
+    transition: transform 100ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+}
+
+/* Apple-style focus ring */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: var(--radius);
 }

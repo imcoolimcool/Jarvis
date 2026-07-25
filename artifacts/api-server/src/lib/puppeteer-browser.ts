@@ -249,7 +249,7 @@ export class JarvisBrowser extends EventEmitter {
   /** Get the current page content as text */
   async getContent(maxLength = 8000): Promise<string> {
     if (!this.page) return "";
-    const text = await this.page.evaluate("document.body?.innerText ?? ''");
+    const text = (await this.page.evaluate("document.body?.innerText ?? ''")) as string;
     return text.slice(0, maxLength);
   }
 

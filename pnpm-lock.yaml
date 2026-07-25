@@ -164,6 +164,9 @@ importers:
       prettier:
         specifier: ^3.9.5
         version: 3.9.5
+      puppeteer:
+        specifier: ^25.3.0
+        version: 25.3.0
       typescript:
         specifier: ~5.9.3
         version: 5.9.3

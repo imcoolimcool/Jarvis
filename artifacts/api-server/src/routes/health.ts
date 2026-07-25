@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { sql } from "drizzle-orm";
 import { HealthCheckResponse } from "@workspace/api-zod";
 import { db } from "@workspace/db";
 
@@ -9,7 +10,7 @@ router.get("/healthz", async (_req, res) => {
   const start = Date.now();
   try {
     // Quick DB ping — SELECT 1
-    await db.execute({ sql: "SELECT 1" as any });
+    await db.execute(sql`SELECT 1`);
     const dbMs = Date.now() - start;
     const data = HealthCheckResponse.parse({ status: "ok" });
     res.json({

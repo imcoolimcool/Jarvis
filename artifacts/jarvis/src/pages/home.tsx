@@ -9,7 +9,7 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe, SlidersHorizontal, AlarmClock, Plus, Camera, Bug, Image as ImageIcon, Monitor, Bot, Webcam } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe, SlidersHorizontal, AlarmClock, Plus, Camera, Bug, Image as ImageIcon, Monitor, Bot, Webcam, Minimize2, Maximize2 } from 'lucide-react';
 import type { Widget } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget } from '@/components/widgets';
 import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
@@ -817,12 +817,12 @@ export default function Home() {
   // ── Image generation ────────────────────────────────────────────
 
   const handleImageCancel = useCallback(() => {
-    setImageConfirmation(null);
+    setMessages(prev => prev.filter(m => !m.pendingImage));
     setStatus('idle');
   }, []);
 
   const handleGenerateImage = useCallback(async (prompt: string) => {
-    setImageConfirmation(null);
+    setMessages(prev => prev.filter(m => !m.pendingImage));
     setGeneratingImage(true);
     setGeneratingImagePrompt(prompt);
     setStatus('thinking');
@@ -947,7 +947,7 @@ export default function Home() {
         if (isChatMode) {
           inputRef.current?.focus();
         } else {
-          setIsChatMode(true);
+          setMode('chat');
           setTimeout(() => inputRef.current?.focus(), 100);
         }
         return;
@@ -1015,38 +1015,47 @@ export default function Home() {
   return (
     <div className={`${theme} h-dvh bg-background text-foreground flex flex-col overflow-hidden`}>
 
-      {/* ── Header ───────────────────────────────── */}
+      {/* ── Backend offline banner ── */}
       {!backendOnline && (
-        <div className="px-4 py-2 bg-destructive/20 border-b border-destructive/30 flex items-center justify-center gap-2 flex-shrink-0">
-          <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse flex-shrink-0" />
-          <p className="text-[11px] font-mono text-destructive tracking-wider">
+        <div className="px-4 py-2 bg-destructive/5 border-b border-destructive/20 flex items-center justify-center gap-2 flex-shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-destructive flex-shrink-0" />
+          <p className="text-[11px] font-mono text-destructive/80">
             Backend offline — API server may not be running
           </p>
         </div>
       )}
-      <header className="px-4 py-3 flex items-center gap-3 border-b border-border/50 bg-background/80 backdrop-blur-md relative z-50 flex-shrink-0">
+
+      {/* ── Header: Apple-style translucent toolbar ── */}
+      <header className="glass-toolbar px-4 py-3 flex items-center gap-3 border-b border-border/50 relative z-50 flex-shrink-0">
         <div className="flex items-center gap-3 flex-1 min-w-0">
+          {/* Mobile hamburger */}
           <button
             onClick={() => setMobileSidebarOpen(true)}
-            className="lg:hidden p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            className="lg:hidden p-1.5 -ml-1 text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Open history"
           >
             <Menu className="w-5 h-5" />
           </button>
+          {/* Logo and title */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse flex-shrink-0" />
-            <h1 className="font-display font-bold tracking-[0.15em] text-base sm:text-lg glow-text truncate">JARVIS</h1>
-            {/* Connection quality indicator */}
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #007AFF, #5856D6)' }}
+            >
+              <span className="text-white text-[9px] font-bold tracking-wider">J</span>
+            </div>
+            <h1 className="font-sans font-semibold text-base tracking-tight truncate">Jarvis</h1>
+            {/* Connection quality */}
             {latencyMs !== null && (
-              <span className={`hidden sm:inline-flex items-center gap-1 text-[9px] font-mono tracking-widest px-1.5 py-0.5 rounded-full ${
-                latencyMs < 1500 ? 'text-green-400/70 bg-green-400/5' :
-                latencyMs < 3500 ? 'text-yellow-400/70 bg-yellow-400/5' :
-                'text-red-400/70 bg-red-400/5'
+              <span className={`hidden sm:inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
+                latencyMs < 1500 ? 'text-green-600 dark:text-green-400 bg-green-500/8' :
+                latencyMs < 3500 ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/8' :
+                'text-red-600 dark:text-red-400 bg-red-500/8'
               }`}>
                 <span className={`w-1 h-1 rounded-full ${
-                  latencyMs < 1500 ? 'bg-green-400' :
-                  latencyMs < 3500 ? 'bg-yellow-400' :
-                  'bg-red-400'
+                  latencyMs < 1500 ? 'bg-green-500' :
+                  latencyMs < 3500 ? 'bg-yellow-500' :
+                  'bg-red-500'
                 }`} />
                 {latencyMs < 1000 ? '<1s' : `${Math.round(latencyMs / 100) / 10}s`}
               </span>
@@ -1054,47 +1063,71 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Personality selector — centered in header */}
-        <div className="absolute left-1/2 -translate-x-1/2">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Mode picker — Apple segmented control style */}
+          <div
+            className="flex items-center p-0.5 rounded-lg"
+            style={{ background: 'hsl(var(--secondary))' }}
+          >
+            {([
+              { id: 'voice' as const, label: 'Voice', icon: Mic },
+              { id: 'chat' as const, label: 'Chat', icon: MessageSquare },
+            ]).map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setMode(id)}
+                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-[7px] text-[11px] font-medium transition-all duration-200 ${
+                  mode === id
+                    ? 'bg-white dark:bg-[#1a1a2e] text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {mode === id && (
+                  <motion.div
+                    layoutId="mode-pill"
+                    className="absolute inset-0 rounded-[7px] bg-white dark:bg-[#1a1a2e] shadow-sm"
+                    transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-1.5">
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Personality button */}
           <div className="relative">
             <button
               onClick={() => setPersonalityMenuOpen(o => !o)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/50 bg-card/50 text-[11px] font-display tracking-wider text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all"
               aria-label="Change personality"
             >
-              {personality === 'auto' && <Sparkles className="w-3 h-3" />}
-              {personality === 'balanced' && <MessageCircle className="w-3 h-3" />}
-              {personality === 'talkative' && <Sparkles className="w-3 h-3" />}
-              {personality === 'helpful' && <Briefcase className="w-3 h-3" />}
-              {personality === 'concise' && <Zap className="w-3 h-3" />}
-              {personality === 'custom' && <SlidersHorizontal className="w-3 h-3" />}
-              <span className="hidden sm:inline">
-                {personality === 'auto' && 'Auto'}
-                {personality === 'balanced' && 'Balanced'}
-                {personality === 'talkative' && 'Talkative'}
-                {personality === 'helpful' && 'Helpful'}
-                {personality === 'concise' && 'Just gets it done'}
-                {personality === 'custom' && 'Custom'}
-              </span>
-              <ChevronDown className={`w-3 h-3 transition-transform ${personalityMenuOpen ? 'rotate-180' : ''}`} />
+              {personality === 'auto' && <Sparkles className="w-4 h-4" />}
+              {personality === 'balanced' && <MessageCircle className="w-4 h-4" />}
+              {personality === 'talkative' && <Sparkles className="w-4 h-4" />}
+              {personality === 'helpful' && <Briefcase className="w-4 h-4" />}
+              {personality === 'concise' && <Zap className="w-4 h-4" />}
+              {personality === 'custom' && <SlidersHorizontal className="w-4 h-4" />}
             </button>
 
             {personalityMenuOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setPersonalityMenuOpen(false)} />
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 min-w-[11rem] p-1 rounded-xl border border-border/50 bg-card shadow-xl overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 z-50 min-w-[12rem] p-1.5 rounded-xl border border-border/60 bg-card shadow-apple-xl overflow-hidden">
                   {[
                     { value: 'auto', label: 'Auto (AI decides)', icon: Sparkles },
                     { value: 'balanced', label: 'Balanced', icon: MessageCircle },
                     { value: 'talkative', label: 'Talkative', icon: Sparkles },
                     { value: 'helpful', label: 'Helpful', icon: Briefcase },
                     { value: 'concise', label: 'Just gets it done', icon: Zap },
-                    { value: 'custom', label: 'Custom (needs setup)', icon: SlidersHorizontal },
+                    { value: 'custom', label: 'Custom', icon: SlidersHorizontal },
                   ].map(({ value, label, icon: Icon }) => (
                     <button
                       key={value}
                       onClick={() => handleSetPersonality(value)}
-                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-display tracking-wider transition-colors ${
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[11px] font-medium transition-colors ${
                         personality === value
                           ? 'bg-primary/10 text-primary'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -1112,53 +1145,31 @@ export default function Home() {
             {customPromptOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setCustomPromptOpen(false)} />
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-72 p-3 rounded-xl border border-primary/30 bg-card shadow-xl space-y-2">
-                  <p className="text-[10px] font-display tracking-widest text-primary/70">CUSTOM PERSONALITY</p>
+                <div className="absolute right-0 top-full mt-2 z-50 w-72 p-4 rounded-xl border border-border/60 bg-card shadow-apple-xl space-y-3">
+                  <p className="text-[10px] font-medium text-muted-foreground tracking-wider uppercase">Custom Personality</p>
                   <textarea
                     value={customPrompt}
                     onChange={e => setCustomPrompt(e.target.value)}
-                    placeholder="Describe how you want Jarvis to behave… e.g. 'Speak like a pirate but stay helpful.'"
-                    className="w-full h-28 bg-background border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-[11px] px-3 py-2 rounded-lg outline-none focus:border-primary/60 resize-none"
+                    placeholder="Describe how you want Jarvis to behave…"
+                    className="w-full h-28 bg-background border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-[11px] px-3 py-2 rounded-lg outline-none focus:border-primary/50 resize-none"
                   />
                   <button
                     onClick={handleSaveCustomPrompt}
-                    className="w-full py-1.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-display tracking-widest hover:opacity-90 transition-opacity"
+                    className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-[11px] font-medium hover:opacity-90 transition-opacity"
                   >
-                    SAVE
+                    Save
                   </button>
                 </div>
               </>
             )}
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Mode selector — chat / voice */}
-          <div className="flex items-center gap-1 bg-card/50 border border-border/50 rounded-md p-0.5">
-            {([
-              { id: 'voice' as const, label: 'VOICE', icon: Mic },
-              { id: 'chat' as const, label: 'CHAT', icon: MessageSquare },
-            ]).map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setMode(id)}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-display tracking-wider transition-all ${
-                  mode === id
-                    ? 'bg-primary/15 text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Icon className="w-3 h-3" />
-                <span className="hidden sm:inline">{label}</span>
-              </button>
-            ))}
-          </div>
           <button onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            className="p-1.5 rounded-md border border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all">
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all">
             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
           <button onClick={() => setSettingsOpen(true)} title="Settings"
-            className="p-1.5 rounded-md border border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all">
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all">
             <Settings className="w-4 h-4" />
           </button>
         </div>
@@ -1182,9 +1193,8 @@ export default function Home() {
             <div className="flex-1 flex flex-col min-h-0 relative">
               <div className="dark:block hidden absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
 
-              {/* Orb + status — centred in the available space above subtitles */}
+              {/* Orb + status */}
               <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 min-h-0">
-                {/* Compact timer / alarm above orb */}
                 {(activeWidget?.type === 'alarm' || activeWidget?.type === 'timer') && (
                   <div className="mb-4 flex flex-col items-center">
                     {activeWidget.type === 'alarm' && (
@@ -1198,36 +1208,36 @@ export default function Home() {
                 <Orb status={status} onClick={handleToggleRecording} />
 
                 {/* PiP toggles — agent + browser + camera */}
-                <div className="flex items-center gap-2 mt-4">
+                <div className="flex items-center gap-2 mt-3">
                   <button
                     onClick={() => { setAgentModeActive(a => !a); if (!agentModeActive) setPipBrowserOpen(true); setPipFullscreen(null); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono tracking-wider transition-all ${
-                      agentModeActive ? 'border-primary bg-primary/10 text-primary' : 'border-border/30 text-muted-foreground/50 hover:text-foreground'
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      agentModeActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
-                    <Bot className="w-3 h-3" />
-                    {agentModeActive ? 'AGENT ON' : 'AGENT'}
+                    <Bot className="w-3 h-3 inline mr-1" />
+                    {agentModeActive ? 'Agent On' : 'Agent'}
                   </button>
                   <button
                     onClick={() => { setPipBrowserOpen(b => !b); setPipFullscreen(null); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono tracking-wider transition-all ${
-                      pipBrowserOpen ? 'border-cyan-400/50 bg-cyan-500/10 text-cyan-300' : 'border-border/30 text-muted-foreground/50 hover:text-foreground'
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      pipBrowserOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
-                    <Globe className="w-3 h-3" />
-                    {pipBrowserOpen ? 'BROWSER ON' : 'BROWSER'}
+                    <Globe className="w-3 h-3 inline mr-1" />
+                    {pipBrowserOpen ? 'Browser On' : 'Browser'}
                   </button>
                   <button
                     onClick={() => { setPipCameraOpen(c => !c); setPipFullscreen(null); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono tracking-wider transition-all ${
-                      pipCameraOpen ? 'border-purple-400/50 bg-purple-500/10 text-purple-300' : 'border-border/30 text-muted-foreground/50 hover:text-foreground'
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      pipCameraOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
-                    <Webcam className="w-3 h-3" />
-                    {pipCameraOpen ? 'CAM ON' : 'CAM'}
+                    <Webcam className="w-3 h-3 inline mr-1" />
+                    {pipCameraOpen ? 'Cam On' : 'Cam'}
                   </button>
                 </div>
-                <div className="mt-8 text-center space-y-2">
+                <div className="mt-6 text-center space-y-2">
                   <AnimatePresence mode="wait">
                     <motion.h2
                       key={status}
@@ -1235,11 +1245,11 @@ export default function Home() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.2 }}
-                      className={`font-display text-xl font-bold tracking-widest glow-text ${
-                        status === 'recording' ? 'text-red-400' :
-                        status === 'speaking' ? 'text-green-400' :
-                        status === 'thinking' || status === 'transcribing' ? 'text-yellow-400' :
-                        'text-primary'
+                      className={`text-lg font-semibold tracking-tight ${
+                        status === 'recording' ? 'text-red-500 dark:text-red-400' :
+                        status === 'speaking' ? 'text-green-500 dark:text-green-400' :
+                        status === 'thinking' || status === 'transcribing' ? 'text-amber-500 dark:text-amber-400' :
+                        'text-foreground'
                       }`}
                     >
                       {statusLabels[status]}
@@ -1252,7 +1262,7 @@ export default function Home() {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.25 }}
-                      className="font-mono text-xs text-muted-foreground tracking-wide"
+                      className="text-xs text-muted-foreground"
                     >
                       {statusHint}
                     </motion.p>
@@ -1262,8 +1272,8 @@ export default function Home() {
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       onClick={handleStopSpeaking}
-                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md border border-primary/50 text-primary hover:bg-primary/10 transition-colors font-display tracking-widest text-xs">
-                      <Square className="w-3 h-3 fill-current" /> STOP
+                      className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/60 text-foreground/70 hover:bg-secondary/80 transition-colors text-xs font-medium">
+                      <Square className="w-3 h-3 fill-current" /> Stop
                     </motion.button>
                   )}
                 </div>
@@ -1327,9 +1337,7 @@ export default function Home() {
           {mode === 'chat' && (
             <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
               {/* Orb panel */}
-              <div className="hidden lg:flex flex-shrink-0 lg:w-72 xl:w-80 flex-col items-center justify-center p-6 border-r border-border/20 relative overflow-y-auto">
-                <div className="dark:block hidden absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
-                {/* Compact alarm above orb in chat mode */}
+              <div className="hidden lg:flex flex-shrink-0 lg:w-72 xl:w-80 flex-col items-center justify-center p-6 border-r border-border/30 relative overflow-y-auto">
                 {activeWidget?.type === 'alarm' && (
                   <div className="mb-3 flex flex-col items-center gap-1">
                     <AlarmClock className="w-5 h-5 text-primary/70" />
@@ -1338,14 +1346,13 @@ export default function Home() {
                 )}
                 <Orb status={status} />
                 <div className="mt-6 text-center space-y-2">
-                  <h2 className="font-display text-xl font-bold tracking-widest text-primary glow-text">
+                  <h2 className="text-base font-semibold tracking-tight text-foreground">
                     {statusLabels[status]}
                   </h2>
-                  <p className="font-mono text-xs text-muted-foreground tracking-wide max-w-[180px]">
+                  <p className="text-xs text-muted-foreground max-w-[160px]">
                     {statusHint}
                   </p>
                 </div>
-                {/* Widget strip in chat mode — below orb */}
                 {activeWidget && activeWidget.type !== 'alarm' && (
                   <div className="mt-4 w-full space-y-3">
                     {activeWidget.type === 'clock'    && <ClockWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
@@ -1356,33 +1363,33 @@ export default function Home() {
                 )}
 
                 {/* PiP toggles — agent + browser + camera */}
-                <div className="flex items-center gap-2 mt-4">
+                <div className="flex items-center gap-2 mt-3">
                   <button
                     onClick={() => { setAgentModeActive(a => !a); if (!agentModeActive) setPipBrowserOpen(true); setPipFullscreen(null); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono tracking-wider transition-all ${
-                      agentModeActive ? 'border-primary bg-primary/10 text-primary' : 'border-border/30 text-muted-foreground/50 hover:text-foreground'
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      agentModeActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
-                    <Bot className="w-3 h-3" />
-                    {agentModeActive ? 'AGENT ON' : 'AGENT'}
+                    <Bot className="w-3 h-3 inline mr-1" />
+                    {agentModeActive ? 'Agent On' : 'Agent'}
                   </button>
                   <button
                     onClick={() => { setPipBrowserOpen(b => !b); setPipFullscreen(null); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono tracking-wider transition-all ${
-                      pipBrowserOpen ? 'border-cyan-400/50 bg-cyan-500/10 text-cyan-300' : 'border-border/30 text-muted-foreground/50 hover:text-foreground'
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      pipBrowserOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
-                    <Globe className="w-3 h-3" />
-                    {pipBrowserOpen ? 'BROWSER ON' : 'BROWSER'}
+                    <Globe className="w-3 h-3 inline mr-1" />
+                    {pipBrowserOpen ? 'Browser On' : 'Browser'}
                   </button>
                   <button
                     onClick={() => { setPipCameraOpen(c => !c); setPipFullscreen(null); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono tracking-wider transition-all ${
-                      pipCameraOpen ? 'border-purple-400/50 bg-purple-500/10 text-purple-300' : 'border-border/30 text-muted-foreground/50 hover:text-foreground'
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      pipCameraOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
-                    <Webcam className="w-3 h-3" />
-                    {pipCameraOpen ? 'CAM ON' : 'CAM'}
+                    <Webcam className="w-3 h-3 inline mr-1" />
+                    {pipCameraOpen ? 'Cam On' : 'Cam'}
                   </button>
                 </div>
               </div>
@@ -1717,43 +1724,43 @@ export default function Home() {
         <AnimatePresence>
           {pipBrowserOpen && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-              className={`fixed z-50 bg-card border border-border/50 rounded-xl shadow-2xl overflow-hidden flex flex-col ${
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+              className={`fixed z-50 bg-card border border-border/50 rounded-xl shadow-apple-lg overflow-hidden flex flex-col ${
                 pipFullscreen === 'browser'
                   ? 'inset-4'
                   : 'bottom-20 right-4 w-80 h-60'
               }`}
             >
-              <div className="flex items-center justify-between px-2 py-1 bg-muted/30 border-b border-border/30 flex-shrink-0">
-                <div className="flex items-center gap-1.5">
-                  <Globe className="w-3 h-3 text-cyan-400" />
-                  <span className="text-[10px] font-mono text-muted-foreground tracking-wider">AGENT BROWSER</span>
+              <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-primary/60" />
+                  <span className="text-[10px] font-medium text-muted-foreground">Browser</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => setPipFullscreen(f => f === 'browser' ? null : 'browser')} className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground transition-colors">
+                  <button onClick={() => setPipFullscreen(f => f === 'browser' ? null : 'browser')} className="p-1 rounded hover:bg-secondary/80 text-muted-foreground transition-colors">
                     {pipFullscreen === 'browser' ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
                   </button>
-                  <button onClick={() => { setPipBrowserOpen(false); setPipFullscreen(null); }} className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground transition-colors">
+                  <button onClick={() => { setPipBrowserOpen(false); setPipFullscreen(null); }} className="p-1 rounded hover:bg-secondary/80 text-muted-foreground transition-colors">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
               </div>
               <div className="flex-1 min-h-0">
-                <JarvisBrowser className="h-full border-0" />
+                <JarvisBrowser className="h-full border-0 rounded-b-xl" />
               </div>
             </motion.div>
           )}
 
           {pipCameraOpen && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-              className={`fixed z-50 bg-card border border-border/50 rounded-xl shadow-2xl overflow-hidden flex flex-col ${
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+              className={`fixed z-50 bg-card border border-border/50 rounded-xl shadow-apple-lg overflow-hidden flex flex-col ${
                 pipFullscreen === 'camera'
                   ? 'inset-4'
                   : pipBrowserOpen
@@ -1761,29 +1768,28 @@ export default function Home() {
                     : 'bottom-20 right-4 w-64 h-48'
               }`}
             >
-              <div className="flex items-center justify-between px-2 py-1 bg-muted/30 border-b border-border/30 flex-shrink-0">
-                <div className="flex items-center gap-1.5">
-                  <Webcam className="w-3 h-3 text-purple-400" />
-                  <span className="text-[10px] font-mono text-muted-foreground tracking-wider">CAMERA</span>
+              <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Webcam className="w-3.5 h-3.5 text-primary/60" />
+                  <span className="text-[10px] font-medium text-muted-foreground">Camera</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => setPipFullscreen(f => f === 'camera' ? null : 'camera')} className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground transition-colors">
+                  <button onClick={() => setPipFullscreen(f => f === 'camera' ? null : 'camera')} className="p-1 rounded hover:bg-secondary/80 text-muted-foreground transition-colors">
                     {pipFullscreen === 'camera' ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
                   </button>
-                  <button onClick={() => { setPipCameraOpen(false); setPipFullscreen(null); }} className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground transition-colors">
+                  <button onClick={() => { setPipCameraOpen(false); setPipFullscreen(null); }} className="p-1 rounded hover:bg-secondary/80 text-muted-foreground transition-colors">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
               </div>
               <div className="flex-1 min-h-0">
-                <CameraFeed className="h-full" enableDetection />
+                <CameraFeed className="h-full rounded-b-xl" enableDetection />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      <div className="dark:block hidden pointer-events-none fixed inset-0 z-30 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(5,5,8,0.7)_100%)]" />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       {/* Error Detail Panel — slides up from bottom when an error occurs */}
