@@ -1027,7 +1027,7 @@ export default function Home() {
 
       {/* ── Header: Apple-style translucent toolbar ── */}
       <header className="glass-toolbar px-4 py-3 flex items-center gap-3 border-b border-border/50 relative z-50 flex-shrink-0">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileSidebarOpen(true)}
@@ -1037,14 +1037,14 @@ export default function Home() {
             <Menu className="w-5 h-5" />
           </button>
           {/* Logo and title */}
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
               style={{ background: 'linear-gradient(135deg, #007AFF, #5856D6)' }}
             >
               <span className="text-white text-[9px] font-bold tracking-wider">J</span>
             </div>
-            <h1 className="font-sans font-semibold text-base tracking-tight truncate">Jarvis</h1>
+            <h1 className="font-sans font-semibold text-base tracking-tight whitespace-nowrap">Jarvis</h1>
             {/* Connection quality */}
             {latencyMs !== null && (
               <span className={`hidden sm:inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
@@ -1076,7 +1076,7 @@ export default function Home() {
               <button
                 key={id}
                 onClick={() => setMode(id)}
-                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-[7px] text-[11px] font-medium transition-all duration-200 ${
+                className={`relative flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-[7px] text-[11px] font-medium transition-all duration-200 ${
                   mode === id
                     ? 'bg-white dark:bg-[#1a1a2e] text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
@@ -1091,7 +1091,7 @@ export default function Home() {
                 )}
                 <span className="relative z-10 flex items-center gap-1.5">
                   <Icon className="w-3.5 h-3.5" />
-                  {label}
+                  <span className="hidden sm:inline">{label}</span>
                 </span>
               </button>
             ))}

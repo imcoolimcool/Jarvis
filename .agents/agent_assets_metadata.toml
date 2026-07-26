@@ -1,0 +1,20 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "lVzjCZSiLrhZQ9uj_M6Jb"
+uri = "file://screenshots/jarvis-home-mobile-402.jpg"
+type = "image"
+title = "Jarvis mobile home (after layout fixes)"
+
+[[outputs]]
+id = "KzoLzhW0o9bwHzvRghLQl"
+uri = "file://screenshots/jarvis-home-desktop-1280.jpg"
+type = "image"
+title = "Jarvis desktop home (after layout fixes)"
+
+[[outputs]]
+id = "kAomwkktcEeD-kfpoVK38"
+uri = "file://screenshots/jarvis-home-desktop-after-title.jpg"
+type = "image"
+title = "Jarvis conversation sidebar (clean titles)"

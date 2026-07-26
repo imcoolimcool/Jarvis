@@ -266,7 +266,7 @@ export function ConversationFeed({
         )}
       </AnimatePresence>
       {isEmpty && (
-        <div className="m-auto text-center flex flex-col items-center gap-8 py-8 px-4 max-w-2xl w-full">
+        <div className="m-auto text-center flex flex-col items-center gap-6 sm:gap-8 py-6 sm:py-8 px-4 max-w-2xl w-full">
           {/* Animated logo mark */}
           <div className="flex flex-col items-center gap-3">
             <div className="relative w-16 h-16">
@@ -285,7 +285,7 @@ export function ConversationFeed({
           </div>
 
           {/* Capability cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3 w-full">
             {[
               { icon: Mic, title: 'Voice Chat', desc: 'Speak naturally — Jarvis listens and responds', color: 'text-green-400' },
               { icon: Globe, title: 'Web Search', desc: 'Search the web in real-time for any topic', color: 'text-blue-400' },
@@ -300,17 +300,19 @@ export function ConversationFeed({
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.15 + i * 0.06 }}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border/40 bg-card/30 hover:border-primary/30 hover:bg-card/50 transition-all cursor-default group"
+                className="flex flex-row sm:flex-col items-center gap-3 sm:gap-2 p-3 sm:p-4 rounded-xl border border-border/40 bg-card/30 hover:border-primary/30 hover:bg-card/50 transition-all cursor-default group"
               >
-                <Icon className={`w-5 h-5 ${color} opacity-70 group-hover:opacity-100 transition-opacity`} />
-                <p className="text-[11px] font-display font-semibold tracking-wider text-foreground">{title}</p>
-                <p className="text-[10px] font-mono text-muted-foreground/60 leading-snug">{desc}</p>
+                <Icon className={`w-5 h-5 ${color} opacity-70 group-hover:opacity-100 transition-opacity flex-shrink-0`} />
+                <div className="flex-1 min-w-0 text-left sm:text-center">
+                  <p className="text-[11px] font-display font-semibold tracking-wider text-foreground">{title}</p>
+                  <p className="text-[10px] font-mono text-muted-foreground/60 leading-snug hidden sm:block">{desc}</p>
+                </div>
               </motion.div>
             ))}
           </div>
 
           {/* Suggestion chips */}
-          <div className="flex flex-wrap justify-center gap-2">
+          <div className="flex flex-wrap justify-start sm:justify-center gap-2 w-full">
             {[
               "What's the weather right now?",
               "Search the web for something interesting",
@@ -323,7 +325,7 @@ export function ConversationFeed({
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 + i * 0.07 }}
                 onClick={() => onSuggestionClick?.(s)}
-                className="px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-[11px] font-mono hover:bg-primary/15 hover:border-primary/40 transition-all active:scale-95"
+                className="px-2.5 sm:px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-[10px] sm:text-[11px] font-mono hover:bg-primary/15 hover:border-primary/40 transition-all active:scale-95 text-center whitespace-normal"
               >
                 {s}
               </motion.button>
@@ -489,7 +491,7 @@ export function ConversationFeed({
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.07 }}
                 onClick={() => onSuggestionClick?.(s)}
-                className="px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-xs font-mono hover:bg-primary/15 hover:border-primary/60 transition-all active:scale-95"
+                className="px-2.5 sm:px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-mono hover:bg-primary/15 hover:border-primary/60 transition-all active:scale-95 text-center whitespace-normal"
               >
                 {s}
               </motion.button>

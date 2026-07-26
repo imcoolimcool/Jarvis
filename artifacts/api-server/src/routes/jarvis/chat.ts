@@ -351,7 +351,29 @@ async function generateConversationTitle(
     });
 
     const raw = completion.choices[0]?.message?.content?.trim() ?? "";
-    const cleaned = raw.replace(/^["']|["']$/g, "").replace(/^```.*\n?|```$/g, "").trim();
+    let cleaned = raw.replace(/^```json\s*|^```.*\n?|```$/g, "").trim();
+    cleaned = cleaned.replace(/^["']|["']$/g, "").trim();
+
+    // Some models return a JSON object or single-quoted pseudo-JSON even when asked for a plain string.
+    if ((cleaned.startsWith("{") && cleaned.endsWith("}")) || (cleaned.startsWith("[") && cleaned.endsWith("]"))) {
+      // Try lenient field extraction first (handles single-quoted keys/values).
+      const fieldMatch = cleaned.match(/['"]?(text|title|message|content)['"]?\s*[:=]\s*['"]([^'"]+)['"]/i);
+      if (fieldMatch?.[2]) {
+        cleaned = fieldMatch[2];
+      } else {
+        try {
+          const parsed = JSON.parse(cleaned);
+          if (typeof parsed === "string") {
+            cleaned = parsed;
+          } else if (parsed && typeof parsed === "object") {
+            const text = parsed.text || parsed.title || parsed.message || parsed.content;
+            cleaned = typeof text === "string" ? text : cleaned;
+          }
+        } catch { /* keep cleaned as-is */ }
+      }
+    }
+
+    cleaned = cleaned.replace(/^["']|["']$/g, "").trim();
     return cleaned.length > 0 && cleaned.length < 100 ? cleaned : null;
   } catch {
     return null;

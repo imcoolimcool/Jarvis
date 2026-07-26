@@ -25,6 +25,31 @@ function formatRelativeTime(dateStr: string): string {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
+/** Render a human-readable title, recovering from accidental JSON blobs. */
+function formatConversationTitle(title: string | undefined | null): string {
+  if (!title || title.trim() === '') return 'New Conversation';
+  let trimmed = title.trim().replace(/^```json\s*|^```.*\n?|```$/g, '').trim();
+
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    // Some LLM outputs use single quotes (invalid JSON). Try a lenient field extraction first.
+    const fieldMatch = trimmed.match(/['"]?(text|title|message|content)['"]?\s*[:=]\s*['"]([^'"]+)['"]/i);
+    if (fieldMatch?.[2]) {
+      return fieldMatch[2].trim();
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (typeof parsed === 'string') return parsed.trim() || 'New Conversation';
+      if (parsed && typeof parsed === 'object') {
+        const text = parsed.text || parsed.title || parsed.message || parsed.content;
+        if (typeof text === 'string' && text.trim()) return text.trim();
+      }
+    } catch { /* fall through to raw title */ }
+  }
+
+  trimmed = trimmed.replace(/^["']|["']$/g, '').trim();
+  return trimmed || 'New Conversation';
+}
+
 function groupByDate(conversations: ConversationSummary[]): { label: string; items: ConversationSummary[] }[] {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -139,7 +164,7 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
                   <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 opacity-50" />
                   <div className="flex-1 min-w-0">
                     <span className="leading-snug line-clamp-2 break-words block pr-5">
-                      {conv.title}
+                      {formatConversationTitle(conv.title)}
                     </span>
                     <span className="text-[9px] text-muted-foreground/40 mt-0.5 block">
                       {formatRelativeTime(conv.updatedAt)}
@@ -327,7 +352,7 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="lg:hidden fixed left-0 top-0 h-full w-72 z-50 bg-background border-r border-border/30 shadow-apple-xl"
+              className="lg:hidden fixed left-0 top-0 h-full w-[85vw] max-w-[320px] z-50 bg-background border-r border-border/30 shadow-apple-xl"
             >
               <SidebarContent {...sharedProps} />
             </motion.div>

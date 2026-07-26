@@ -1,3 +1,4 @@
 - [OAuth redirect URI stability](oauth-redirect-uri.md) — `REPLIT_DEV_DOMAIN` rotates, so use a stable `GOOGLE_REDIRECT_URI` env var for production OAuth flows.
 - [PDF text extraction in Node.js](pdf-text-extraction-node.md) — `pdf-parse` v2 is a different package and requires `@napi-rs/canvas` for its pdfjs-dist backend; named `PDFParse` class, not default export.
 - [SpeechRecognition types in Vite](speech-recognition-types.md) — install `@types/dom-speech-recognition` and add `"dom-speech-recognition"` to the `types` array in tsconfig because `types` disables auto-include of all @types packages.
+- [LLM pseudo-JSON titles](llm-pseudo-json.md) — LLM outputs may use single-quoted pseudo-JSON; use a lenient field-extraction regex before `JSON.parse` when deriving display strings.
