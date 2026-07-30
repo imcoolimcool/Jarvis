@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Add sbin directories to PATH (needed for swapon, etc.)
+export PATH="/sbin:/usr/sbin:$PATH"
+
 # ───────────────────────────────────────────────
 # Crostini Crash Fix Script
 # For cheap Chromebooks — prevents OOM kills,
@@ -19,15 +22,19 @@ echo "   ✓ Done"
 
 # ── 2. Swap file (if none exists) ─────────────────
 echo "▶ [2/8] Ensuring swap file..."
-if ! swapon --show | grep -q /swapfile; then
-  sudo fallocate -l 2G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048 status=progress
+if ! swapon --show 2>/dev/null | grep -q /swapfile; then
+  sudo fallocate -l 2G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048 status=progress 2>/dev/null
   sudo chmod 600 /swapfile
-  sudo mkswap /swapfile
-  sudo swapon /swapfile
-  if ! grep -q /swapfile /etc/fstab; then
-    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab > /dev/null
+  sudo mkswap 2>/dev/null /swapfile
+  if sudo swapon /swapfile 2>/dev/null; then
+    if ! grep -q /swapfile /etc/fstab 2>/dev/null; then
+      echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab > /dev/null
+    fi
+    echo "   ✓ 2G swap created & enabled"
+  else
+    echo "   ⚠ Swap file not supported in this container (using zram only)"
+    sudo rm -f /swapfile
   fi
-  echo "   ✓ 2G swap created & enabled"
 else
   echo "   ✓ Swap already exists"
 fi
