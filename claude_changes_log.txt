@@ -1,0 +1,19 @@
+# Claude Changes Log
+
+## 2026-07-27 - Localhost Server Setup
+- Created .env file at root and artifacts/api-server/ with DATABASE_URL pointing to Neon.tech PostgreSQL database
+- Installed all project dependencies via pnpm install
+- Started API server on port 8080 (Express backend)
+- Started Vite dev server on port 5173 (React frontend with proxy to API server)
+- API server confirmed running at http://localhost:8080/
+- Vite frontend confirmed running at http://localhost:5173/
+
+## 2026-07-30 - API Keys Configuration
+- Updated artifacts/api-server/.env with all API keys:
+  - OPENAI_LLM_API_KEY (NVIDIA NIM — llama-3.2-11b-vision-instruct for LLM chat)
+  - NVIDIA_IMAGE_API_KEY (NVIDIA NIM — Flux for image generation)
+  - OPENAI_WHISPER_API_KEY (NVIDIA NIM — Whisper large-v3 for speech-to-text)
+  - ELEVENLABS_API_KEY (ElevenLabs TTS)
+  - TAVILY_API_KEY (Tavily web search)
+  - SPOTIFY_CLIENT_ID + SPOTIFY_CLIENT_SECRET (Spotify OAuth)
+  - GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (Gmail/Calendar OAuth)
