@@ -33,7 +33,10 @@
 - STATUS: WAITING FOR USER "go" SIGNAL TO START
 
 ## 2026-07-31 - Crash-Proof Auto-Resume System
-- Created `.session_state.md` — granular step-by-step checklist with every single action tracked as [ ] checkboxes. Source of truth for all work.
-- Created `jarvis-launch.sh` — auto-restart wrapper script that sources omniroute, launches Claude, and auto-restarts up to 50 times on crash
-- Updated CLAUDE.md: session_state.md is now read FIRST (before claude_changes_log.txt), update checkboxes as work progresses, update timestamps every turn
-- All files pushed to GitHub for backup
+- Created `.session_state.md` — granular 106-step checklist with every single action tracked as [ ] checkboxes. Source of truth for all work.
+- Created `jarvis-launch.sh` — FULL tmux-based auto-resume: creates tmux session, types "omniroute" in terminal, launches claude, types "go" automatically. 9999 restart cycles on crash.
+- Created `.cron_watchdog.sh` — cron safety net that runs every 5 min, checks if work is pending but nothing running, auto-launches
+- Created `.tmux_runner.sh` — inner tmux script that keeps claude running in an endless loop
+- Installed cron job: `*/5 * * * * bash ~/jarvis/.cron_watchdog.sh`
+- Updated CLAUDE.md: autonomous mode instructions, session_state.md read first, "go" triggers immediate work
+- Total: 106 steps, triple redundancy (tmux + watchdog + cron), 9999 restart cycles

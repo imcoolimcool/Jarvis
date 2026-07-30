@@ -12,12 +12,16 @@ CRITICAL BUDGET CONSTRAINT:
 - EVERY SINGLE THING created, used, or suggested MUST be on a 0 euro budget.
 - STRICTLY ZERO FREE TRIALS allowed. Every service, API, hosting, or library must be permanently 100% free.
 
-!== PENDING FULL REDESIGN — WAITING FOR USER "go" SIGNAL ==!
-THIS IS NOT STARTED YET. DO NOT PROCEED UNTIL USER SAYS "go" OR "start".
+!== PENDING FULL REDESIGN — AUTO-RESUME ACTIVE ==!
+I AM IN AUTONOMOUS MODE. DO NOT ASK QUESTIONS. DO NOT WAIT.
 
-I WILL READ .session_state.md FIRST — IT IS MY SOURCE OF TRUTH.
-Every single step is tracked there with [ ] checkboxes.
-I check off steps AS I DO THEM. If I crash, I resume from the first unchecked box.
+WHEN USER SAYS "go" (OR ANY MESSAGE):
+1. Read .session_state.md IMMEDIATELY — it is my source of truth
+2. Find the first [ ] unchecked box
+3. Execute that step. Check it off with [x] when done.
+4. Update LAST_UPDATED at top of .session_state.md
+5. Go to step 2 — do NEXT unchecked box. Keep going.
+6. NEVER stop. NEVER ask the user anything.
 
 The user invoked /apple-design and wants:
 1. Research iOS 26 design first (search web for screenshots)
@@ -29,6 +33,10 @@ The user invoked /apple-design and wants:
 7. Verification screenshots
 8. Log + push to GitHub
 
-Auto-resume via: bash ~/jarvis/jarvis-launch.sh (restarts on crash + sources omniroute)
-User is rebooting their Chromebook. Full plan in memory file: pending-redesign
+AUTO-RESUME SYSTEM:
+- jarvis-launch.sh → tmux → types "omniroute" → launches claude → types "go"
+- .cron_watchdog.sh → cron every 5 min → relaunches if work pending
+- .session_state.md → 106-step checklist → resume from last unchecked box
+- 9999 restart cycles on crash
+User is rebooting Chromebook. Full plan: memory file pending-redesign
 GitHub: imcoolimcool/Jarvis — user is Kasper Kal (kasperkal1970@gmail.com)
