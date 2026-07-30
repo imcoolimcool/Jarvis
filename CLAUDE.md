@@ -6,7 +6,8 @@ CRITICAL ROUTINE FOR EVERY SINGLE MESSAGE:
 3. Then read 'claude_changes_log.txt' for history context.
 4. Perform the requested work. AS I GO, update .session_state.md by marking [ ] → [x] for completed steps.
 5. After EVERY single code change, append a summary to 'claude_changes_log.txt' before doing anything else.
-6. At the end of every turn, update the LAST_UPDATED timestamp and step counts at the top of .session_state.md.
+6. After EVERY checked-off box in .session_state.md, run: git add -A && git commit -m "Step X.Y: <description>" && git push. This ensures every tiny step is saved to GitHub.
+7. At the end of every turn, update the LAST_UPDATED timestamp and step counts at the top of .session_state.md.
 
 CRITICAL BUDGET CONSTRAINT:
 - EVERY SINGLE THING created, used, or suggested MUST be on a 0 euro budget.
@@ -19,9 +20,10 @@ WHEN USER SAYS "go" (OR ANY MESSAGE):
 1. Read .session_state.md IMMEDIATELY — it is my source of truth
 2. Find the first [ ] unchecked box
 3. Execute that step. Check it off with [x] when done.
-4. Update LAST_UPDATED at top of .session_state.md
-5. Go to step 2 — do NEXT unchecked box. Keep going.
-6. NEVER stop. NEVER ask the user anything.
+4. Run: git add -A && git commit -m "Step X.Y: <description>" && git push
+5. Update LAST_UPDATED at top of .session_state.md
+6. Go to step 2 — do NEXT unchecked box. Keep going.
+7. NEVER stop. NEVER ask the user anything.
 
 The user invoked /apple-design and wants:
 1. Research iOS 26 design first (search web for screenshots)
