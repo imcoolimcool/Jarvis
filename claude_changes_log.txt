@@ -17,3 +17,17 @@
   - TAVILY_API_KEY (Tavily web search)
   - SPOTIFY_CLIENT_ID + SPOTIFY_CLIENT_SECRET (Spotify OAuth)
   - GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (Gmail/Calendar OAuth)
+
+## 2026-07-30 - GitHub Setup & Push
+- Initialized git repo, set user identity (Kasper Kal)
+- Generated ED25519 SSH key and added to GitHub (imcoolimcool)
+- Set remote origin to github.com:imcoolimcool/Jarvis.git
+- Created merged .gitignore (local + remote)
+- Pushed all 284 files to GitHub main branch
+
+## 2026-07-30 - Pre-Redesign Setup (NOT YET EXECUTED)
+- Wrote `crostini-fix.sh` — Crostini crash fix script (memory overcommit, swap, zram, powersave, etc.)
+- Wrote comprehensive memory file with full redesign plan (pending-redesign.md)
+- Updated CLAUDE.md with explicit pending-work banner
+- Decisions made: ElevenLabs for British male TTS (NOT Web Speech), fix camera + agent mode, Apple Design + iOS 26 visual style
+- STATUS: WAITING FOR USER "go" SIGNAL TO START
