@@ -31,3 +31,9 @@
 - Updated CLAUDE.md with explicit pending-work banner
 - Decisions made: ElevenLabs for British male TTS (NOT Web Speech), fix camera + agent mode, Apple Design + iOS 26 visual style
 - STATUS: WAITING FOR USER "go" SIGNAL TO START
+
+## 2026-07-31 - Crash-Proof Auto-Resume System
+- Created `.session_state.md` — granular step-by-step checklist with every single action tracked as [ ] checkboxes. Source of truth for all work.
+- Created `jarvis-launch.sh` — auto-restart wrapper script that sources omniroute, launches Claude, and auto-restarts up to 50 times on crash
+- Updated CLAUDE.md: session_state.md is now read FIRST (before claude_changes_log.txt), update checkboxes as work progresses, update timestamps every turn
+- All files pushed to GitHub for backup
