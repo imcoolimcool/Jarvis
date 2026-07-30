@@ -7,6 +7,10 @@
 # it auto-starts jarvis-launch.sh.
 # ═════════════════════════════════════════════════════════════════
 
+# cron has a minimal PATH — add everything we might need
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.local/bin"
+export HOME="/home/kasperkal1970"
+
 PROJECT_DIR="/home/kasperkal1970/jarvis"
 STATE_FILE="$PROJECT_DIR/.session_state.md"
 LAUNCHER="$PROJECT_DIR/jarvis-launch.sh"

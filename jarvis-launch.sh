@@ -63,38 +63,13 @@ cat > "$RESUME_PROMPT_FILE" << 'RPEOF'
 go
 RPEOF
 
-# ── Step 4: Create the tmux automation script ──────────────────
-# This runs INSIDE tmux, types commands, and monitors Claude
-cat > "$PROJECT_DIR/.tmux_runner.sh" << 'TMUXEOF'
-#!/bin/bash
-LOG_FILE="/home/kasperkal1970/jarvis/.launch.log"
-PROJECT_DIR="/home/kasperkal1970/jarvis"
-RESUME_PROMPT="/home/kasperkal1970/jarvis/.resume_prompt.txt"
-
-echo "$(date) — 🚀 tmux runner started" >> "$LOG_FILE"
-cd "$PROJECT_DIR" || exit 1
-
-# ── Endless restart loop (inside tmux) ──
-MAX_ATTEMPTS=9999
-ATTEMPT=0
-
-while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-  ATTEMPT=$((ATTEMPT + 1))
-  echo "$(date) — Spawn attempt $ATTEMPT" >> "$LOG_FILE"
-
-  # Clear any leftover partial input
-  stty sane 2>/dev/null
-
-  # Launch Claude Code
-  # It will read CLAUDE.md → which tells it to read .session_state.md first
-  claude
-
-  # If claude exits or crashes, log and restart
-  EXIT_CODE=$?
-  echo "$(date) — Claude exited ($EXIT_CODE), restarting in 3s..." >> "$LOG_FILE"
-  sleep 3
-done
-TMUXEOF
+# ── Step 4: Ensure tmux runner script exists ─────────────────
+# .tmux_runner.sh is tracked in git — it runs claude in an
+# endless restart loop inside the tmux session
+if [ ! -f "$PROJECT_DIR/.tmux_runner.sh" ]; then
+  echo "⚠️  .tmux_runner.sh missing — re-clone repo"
+  exit 1
+fi
 chmod +x "$PROJECT_DIR/.tmux_runner.sh"
 
 # ── Step 5: Main loop ──────────────────────────────────────────
