@@ -60,3 +60,9 @@
 - 2.5: Audited all 8 workspaces' imports vs declared deps: 0 missing. All flagged items were subpath imports (react-dom/client, drizzle-orm/pg-core) or Node builtins — base packages all declared
 - mockup-sandbox also verified (60 files, all resolve; @ alias maps to its own src/)
 - No broken imports or missing deps anywhere. Next: 2.6 runtime crash check on API routes
+
+## 2026-07-31 - Phase 2 Audit (steps 2.6-2.9)
+- 2.6: Started audit of API route files for runtime crash potential (chat.ts reviewed fully — robust error handling; remaining 15 files delegated to audit subagent)
+- 2.7: React component crash-pattern audit delegated to parallel subagent
+- 2.8: Frontend console.* scan: only 2 legit console.error calls in catch blocks (jarvis-browser.tsx:134, use-clap-detection.ts:138) — no debug leftovers
+- 2.9: .env audit: all 11 required vars set & non-empty in api-server/.env + root .env
