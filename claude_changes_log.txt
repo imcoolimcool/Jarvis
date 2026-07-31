@@ -66,3 +66,8 @@
 - 2.7: React component crash-pattern audit delegated to parallel subagent
 - 2.8: Frontend console.* scan: only 2 legit console.error calls in catch blocks (jarvis-browser.tsx:134, use-clap-detection.ts:138) — no debug leftovers
 - 2.9: .env audit: all 11 required vars set & non-empty in api-server/.env + root .env
+
+## 2026-07-31 - Phase 2 Audit (step 2.10)
+- Started API server (build ok, listening on 8080, DB connected) + Vite dev server (HTTP 200 on 5173)
+- Exercised endpoints: /api/healthz (db connected), /api/jarvis/settings, /api/jarvis/conversations, /api/jarvis/memories — all HTTP 200
+- Clean startup, no runtime errors. Persistent monitor armed on both logs for error patterns
