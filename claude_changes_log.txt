@@ -53,3 +53,10 @@
 - Only non-TS spec is ./index.css which exists — all imports OK, no broken module paths
 - Verified @assets alias not used anywhere in frontend
 - Next: scanning imports in artifacts/api-server/src (2.3)
+
+## 2026-07-31 - Phase 2 Audit (steps 2.3-2.5)
+- 2.3: Scanned artifacts/api-server/src (22 files): all imports resolve. @workspace/api-zod + @workspace/db resolve via pnpm workspace symlinks (verified present in artifacts/api-server/node_modules/@workspace/)
+- 2.4: Scanned all lib/ packages (api-client-react, api-spec, api-zod, db — 26 source files): all imports resolve
+- 2.5: Audited all 8 workspaces' imports vs declared deps: 0 missing. All flagged items were subpath imports (react-dom/client, drizzle-orm/pg-core) or Node builtins — base packages all declared
+- mockup-sandbox also verified (60 files, all resolve; @ alias maps to its own src/)
+- No broken imports or missing deps anywhere. Next: 2.6 runtime crash check on API routes
