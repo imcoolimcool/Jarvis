@@ -9,15 +9,17 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe, SlidersHorizontal, AlarmClock, Plus, Camera, Bug, Image as ImageIcon, Monitor, Bot, Webcam, Minimize2, Maximize2 } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe, SlidersHorizontal, AlarmClock, Plus, Camera, Bug, Image as ImageIcon, Monitor, Bot, Webcam, Minimize2, Maximize2, AudioWaveform } from 'lucide-react';
 import type { Widget } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget } from '@/components/widgets';
 import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
 import { useScreenShare } from '@/hooks/use-screen-share';
 import { JarvisBrowser } from '@/components/jarvis-browser';
 import { CameraFeed } from '@/components/camera-feed';
+import { useI18n } from '@/lib/i18n';
+import { haptics } from '@/lib/haptics';
 
-type Theme = 'dark' | 'light';
+type Theme = 'dark' | 'light' | 'auto';
 
 interface AttachedFile {
   base64: string;
@@ -31,16 +33,38 @@ function useTheme() {
     try { return (localStorage.getItem('jarvis-theme') as Theme) || 'dark'; }
     catch { return 'dark'; }
   });
+  const [systemDark, setSystemDark] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
+
+  // Follow the OS theme while in 'auto' mode
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  const resolved: 'dark' | 'light' = theme === 'auto' ? (systemDark ? 'dark' : 'light') : theme;
+
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove('dark', 'light');
-    root.classList.add(theme);
+    root.classList.add(resolved);
     try { localStorage.setItem('jarvis-theme', theme); } catch { /* noop */ }
-  }, [theme]);
-  return { theme, toggle: () => setTheme(t => t === 'dark' ? 'light' : 'dark') };
+  }, [theme, resolved]);
+
+  return {
+    theme,
+    resolved,
+    setTheme,
+    /** Pass a target mode, or toggle dark ↔ light when omitted (header quick toggle). */
+    toggle: (next?: Theme) => setTheme(next ?? (resolved === 'dark' ? 'light' : 'dark')),
+  };
 }
 
 export default function Home() {
+  const { t, lang } = useI18n();
   const [status, setStatus] = useState<AppState>('idle');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // #13: Persist modes across iOS Safari tab reloads
@@ -86,10 +110,11 @@ export default function Home() {
   const [pipCameraOpen, setPipCameraOpen] = useState(false);
   const [pipFullscreen, setPipFullscreen] = useState<'browser' | 'camera' | null>(null);
   const [agentModeActive, setAgentModeActive] = useState(false);
+  const [agentGoal, setAgentGoal] = useState<string | null>(null);
   const [plusMenuCoords, setPlusMenuCoords] = useState<{ bottom: number; right: number } | null>(null);
   const plusButtonRef = useRef<HTMLDivElement>(null);
 
-  const { theme, toggle: toggleTheme } = useTheme();
+  const { theme, resolved, toggle: toggleTheme } = useTheme();
   const { toast } = useToast();
 
   // Track the last submitted message for retry
@@ -101,19 +126,6 @@ export default function Home() {
   const latencySamplesRef = useRef<number[]>([]);
   const requestStartRef = useRef<number>(0);
 
-  // Track backend connectivity — show banner when offline
-  const [backendOnline, setBackendOnline] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    const check = () =>
-      fetch('/api/healthz')
-        .then(r => { if (!cancelled) setBackendOnline(r.ok); })
-        .catch(() => { if (!cancelled) setBackendOnline(false); });
-    check();
-    const interval = setInterval(check, 15000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, []);
 
   const messagesRef = useRef<ChatMessage[]>([]);
   const activeConvIdRef = useRef<string | null>(null);
@@ -135,6 +147,7 @@ export default function Home() {
   }, [mode]);
 
   const { start: startListening, stop: stopListening } = useSpeechRecognition({
+    lang: lang === 'nl' ? 'nl-NL' : 'en-US',
     onTranscript: (text) => {
       setStatus('thinking');
       processUserText(text);
@@ -162,6 +175,7 @@ export default function Home() {
   });
 
   const { start: startWakeWord, stop: stopWakeWord, reset: resetWakeWord, suppress: suppressWakeWord, unsuppress: unsuppressWakeWord, activateCommand } = useWakeWord({
+    lang: lang === 'nl' ? 'nl-NL' : 'en-US',
     onWake: () => {
       if (isChatMode) return;
       playWakeSound();
@@ -457,6 +471,7 @@ export default function Home() {
   }, [toast]);
 
   const handleNewChat = useCallback(() => {
+    haptics.light();
     setMessages([]);
     setActiveConversationId(null);
     setSuggestions([]);
@@ -513,7 +528,17 @@ export default function Home() {
               .catch(() => { URL.revokeObjectURL(url); handleError("Audio playback failed"); });
           } catch { handleError("Failed to decode audio"); }
         },
-        onError: () => onDone(),
+        onError: (err) => {
+          // Surface TTS failures instead of silently returning to idle — a
+          // missing/invalid ElevenLabs key otherwise looks like "voice mode
+          // errors when I talk".
+          const detail = (err as any)?.error?.detail as ErrorDetail | undefined;
+          handleError(
+            (err as any)?.error?.error || 'Speech synthesis failed. Check your ElevenLabs API key.',
+            detail,
+          );
+          onDone();
+        },
       }
     );
   }, [synthesizeSpeech, handleError, iosUnlockedAudioRef]);
@@ -618,17 +643,12 @@ export default function Home() {
                 widget = parsed.widget ?? null;
                 break;
               case 'agent_browser_detected':
-                // Auto-open PiP browser and navigate to search
+                // Auto-open PiP browser and kick off the autonomous agent loop
                 setPipBrowserOpen(true);
+                setPipFullscreen(null);
                 setMessages(prev => prev.slice(0, -1)); // remove empty assistant msg
-                // Navigate the browser after a short delay to let it connect
-                setTimeout(() => {
-                  fetch('/api/jarvis/browse/action', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'navigate', payload: `https://www.google.com/search?q=${encodeURIComponent(parsed.searchQuery)}` }),
-                  }).catch(() => {});
-                }, 1000);
+                // Start the vision-driven agent loop (it navigates + clicks itself)
+                setAgentGoal(parsed.searchQuery ? `search for ${parsed.searchQuery}` : 'search the web');
                 break;
               case 'screen_share_detected':
                 // Show screen share confirmation card
@@ -784,23 +804,18 @@ export default function Home() {
     const text = chatInput.trim();
     if (!text && !attachedFile) return;
     if (status === 'thinking' || status === 'transcribing') return;
+    haptics.medium();
     unlockAudioForIOS(); // must be called synchronously from user gesture for iOS Safari
     const file = attachedFile;
     setChatInput('');
     setAttachedFile(null);
 
-    // Agent mode: open browser PiP and search
+    // Agent mode: open browser PiP and start the autonomous agent loop
     if (agentModeActive) {
       setPipBrowserOpen(true);
       setPipFullscreen(null);
-      setMessages(prev => [...prev, { role: 'user', content: text, timestamp: Date.now() }, { role: 'assistant', content: `Searching for "${text}"...`, timestamp: Date.now() }]);
-      setTimeout(() => {
-        fetch('/api/jarvis/browse/action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'navigate', payload: `https://www.google.com/search?q=${encodeURIComponent(text)}` }),
-        }).catch(() => {});
-      }, 1000);
+      setMessages(prev => [...prev, { role: 'user', content: text, timestamp: Date.now() }, { role: 'assistant', content: `Agent mode — searching for "${text}"...`, timestamp: Date.now() }]);
+      setAgentGoal(`search for ${text}`);
       return;
     }
 
@@ -809,6 +824,7 @@ export default function Home() {
   };
 
   const handleSuggestionClick = useCallback((text: string) => {
+    haptics.light();
     setSuggestions([]);
     // Suggestions in chat mode don't speak; in voice mode they do (speak defaults to true).
     processUserText(text, null, !isChatMode);
@@ -886,6 +902,7 @@ export default function Home() {
   }, [screenShareActive, startScreenShare, stopScreenShare, toast]);
 
   const [chatRecording, setChatRecording] = useState(false);
+  const [chatInterim, setChatInterim] = useState('');
   // Ref so the transcript callback can call processUserText without stale closure
   const processUserTextRef = useRef<typeof processUserText | null>(null);
   useEffect(() => { processUserTextRef.current = processUserText; }, [processUserText]);
@@ -899,11 +916,12 @@ export default function Home() {
     el.style.height = Math.min(el.scrollHeight, 160) + 'px';
   }, [chatInput]);
 
+  // Barge-in recognizer — orb tap while Jarvis is speaking in chat mode:
+  // auto-submit + speak back (kept separate from the input-bar dictation).
   const { start: startChatRecording, stop: stopChatRecording } = useSpeechRecognition({
     onTranscript: (text) => {
       setChatRecording(false);
       if (!text.trim()) return;
-      // Auto-submit mic input and speak the response (mic → TTS allowed in chat mode)
       unlockAudioForIOS();
       processUserTextRef.current?.(text.trim(), null, true);
     },
@@ -911,23 +929,52 @@ export default function Home() {
     onEnd: () => setChatRecording(false),
   });
 
+  // In-chat dictation recognizer — Whisper transcribes into the input box and
+  // STAYS in chat mode. Continuous + interim: it keeps listening until the user
+  // taps the square stop button; nothing is auto-submitted while talking.
+  const { start: startChatDictation, stop: stopChatDictation } = useSpeechRecognition({
+    continuous: true,
+    interimResults: true,
+    onTranscript: (text) => {
+      if (!text.trim()) return;
+      setChatInput(prev => prev ? `${prev.trimEnd()} ${text.trim()}` : text.trim());
+      setChatInterim('');
+    },
+    onInterim: (text) => setChatInterim(text),
+    onError: (msg) => { toast({ title: 'Voice input failed', description: msg }); setChatDictating(false); setChatInterim(''); },
+    onEnd: () => { setChatDictating(false); setChatInterim(''); },
+  });
+
+  /** In-chat dictation toggle — mic button beside the input. While active it
+      becomes a square button; tap it to stop recording. Stays in chat mode. */
+  const [chatDictating, setChatDictating] = useState(false);
   const handleChatMicToggle = () => {
-    if (chatRecording) {
-      stopChatRecording();
-      setChatRecording(false);
-    } else {
-      if (!isSpeechRecognitionSupported()) {
-        toast({ title: 'Voice input not supported', description: 'Try Chrome or Edge.' });
-        return;
-      }
-      unlockAudioForIOS(); // gesture-unlock before mic starts
-      vibrate([30, 50, 30]);
-      setChatRecording(true);
-      startChatRecording();
+    if (chatDictating) {
+      haptics.light();
+      stopChatDictation();
+      setChatDictating(false);
+      setChatInterim('');
+      return;
     }
+    if (!isSpeechRecognitionSupported()) {
+      toast({ title: 'Voice input unavailable', description: 'Speech recognition needs Chrome or Edge.' });
+      return;
+    }
+    haptics.heavy();
+    unlockAudioForIOS(); // must run synchronously from the user gesture (iOS)
+    setChatDictating(true);
+    setChatInterim('');
+    startChatDictation();
+  };
+
+  /** The blue circular waveform button — opens the full-screen voice assistant. */
+  const handleOpenVoiceMode = () => {
+    haptics.heavy();
+    setMode('voice');
   };
 
   const handleStopSpeaking = () => {
+    haptics.light();
     activeAudioRef.current?.stop?.();
     activeAudioRef.current = null;
     if (isChatMode) {
@@ -995,46 +1042,30 @@ export default function Home() {
   const isBusy = status === 'thinking' || status === 'transcribing';
 
   const statusLabels: Record<AppState, string> = {
-    idle: 'Ready',
-    wake: 'Ready',
-    recording: 'Listening',
-    transcribing: 'Transcribing',
-    thinking: 'Thinking',
-    speaking: 'Speaking',
+    idle: t('voice.status.idle'),
+    wake: t('voice.status.wake'),
+    recording: t('voice.status.recording'),
+    transcribing: t('voice.status.transcribing'),
+    thinking: t('voice.status.thinking'),
+    speaking: t('voice.status.speaking'),
   };
 
-  const statusHint = isChatMode
-    ? "Type in the chat panel"
-    : status === 'idle' || status === 'wake'
-      ? "Say 'hey Jarvis' or tap orb to talk"
-    : status === 'recording'    ? "Speak now — pausing will send your message"
-    : status === 'speaking'     ? "Tap orb to interrupt"
-    : status === 'transcribing' ? "Got it…"
-    : "Thinking…";
 
   return (
-    <div className={`${theme} h-dvh bg-background text-foreground flex flex-col overflow-hidden`}>
-
-      {/* ── Backend offline banner ── */}
-      {!backendOnline && (
-        <div className="px-4 py-2 bg-destructive/5 border-b border-destructive/20 flex items-center justify-center gap-2 flex-shrink-0">
-          <span className="w-1.5 h-1.5 rounded-full bg-destructive flex-shrink-0" />
-          <p className="text-[11px] font-mono text-destructive/80">
-            Backend offline — API server may not be running
-          </p>
-        </div>
-      )}
+    <div className={`${resolved} h-dvh bg-background text-foreground flex flex-col overflow-hidden`}>
 
       {/* ── Header: Apple-style translucent toolbar ── */}
-      <header className="glass-toolbar px-4 py-3 flex items-center gap-3 border-b border-border/50 relative z-50 flex-shrink-0">
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          {/* Mobile hamburger */}
+      {/* Hidden in voice mode — the orb view takes the full screen. */}
+      <header className={`glass-toolbar px-4 py-3 flex items-center gap-3 border-b border-border/50 relative z-50 flex-shrink-0 ${mode === 'voice' ? 'hidden' : ''}`}>
+        <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+          {/* Mobile hamburger — ChatGPT-style circular button with red badge */}
           <button
             onClick={() => setMobileSidebarOpen(true)}
-            className="lg:hidden p-1.5 -ml-1 text-muted-foreground hover:text-foreground transition-colors"
+            className="relative lg:hidden w-9 h-9 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 text-foreground flex items-center justify-center shadow-sm transition-all hover:bg-secondary/70 active:scale-95"
             aria-label="Open history"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-[18px] h-[18px]" />
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-semibold flex items-center justify-center border border-white/80 leading-none">1</span>
           </button>
           {/* Logo and title */}
           <div className="flex items-center gap-2 sm:gap-2.5">
@@ -1063,19 +1094,19 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {/* Mode picker — Apple segmented control style */}
           <div
             className="flex items-center p-0.5 rounded-lg"
             style={{ background: 'hsl(var(--secondary))' }}
           >
             {([
-              { id: 'voice' as const, label: 'Voice', icon: Mic },
-              { id: 'chat' as const, label: 'Chat', icon: MessageSquare },
+              { id: 'chat' as const, label: t('header.mode.chat'), icon: MessageSquare },
+              { id: 'camera' as const, label: t('header.mode.camera'), icon: Webcam },
             ]).map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                onClick={() => setMode(id)}
+                onClick={() => { haptics.light(); setMode(id); }}
                 className={`relative flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-[7px] text-[11px] font-medium transition-all duration-200 ${
                   mode === id
                     ? 'bg-white dark:bg-[#1a1a2e] text-foreground shadow-sm'
@@ -1097,8 +1128,8 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Personality button */}
-          <div className="relative">
+          {/* Personality button — hidden on small screens to keep the header uncluttered */}
+          <div className="relative hidden sm:block">
             <button
               onClick={() => setPersonalityMenuOpen(o => !o)}
               className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all"
@@ -1164,11 +1195,11 @@ export default function Home() {
             )}
           </div>
 
-          <button onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          <button onClick={() => { haptics.light(); toggleTheme(); }} title={resolved === 'dark' ? t('header.lightMode') : t('header.darkMode')}
             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all">
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {resolved === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
-          <button onClick={() => setSettingsOpen(true)} title="Settings"
+          <button onClick={() => { haptics.light(); setSettingsOpen(true); }} title={t('header.settings')}
             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all">
             <Settings className="w-4 h-4" />
           </button>
@@ -1177,21 +1208,64 @@ export default function Home() {
 
       {/* ── Body ─────────────────────────────────── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <ChatSidebar
-          activeId={activeConversationId}
-          onSelect={loadConversation}
-          onNew={handleNewChat}
-          refreshTick={sidebarRefreshTick}
-          mobileOpen={mobileSidebarOpen}
-          onMobileClose={() => setMobileSidebarOpen(false)}
-        />
+        {/* Sidebar hidden in voice mode — full screen orb experience */}
+        {mode !== 'voice' && (
+          <ChatSidebar
+            activeId={activeConversationId}
+            onSelect={loadConversation}
+            onNew={handleNewChat}
+            refreshTick={sidebarRefreshTick}
+            mobileOpen={mobileSidebarOpen}
+            onMobileClose={() => setMobileSidebarOpen(false)}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
+        )}
 
         <main className="flex-1 flex flex-col h-full min-h-0 overflow-hidden">
 
-          {/* ── VOICE MODE ── */}
+          {/* ── CAMERA MODE — full-screen object detection ── */}
+          {mode === 'camera' && (
+            <div className="flex-1 flex flex-col min-h-0 relative">
+              <div className="flex-1 min-h-0 p-4 sm:p-8 flex flex-col">
+                <div className="liquid-glass-soft rounded-2xl overflow-hidden flex-1 min-h-0 relative">
+                  <CameraFeed className="h-full" enableDetection />
+                </div>
+                <p className="text-center text-xs text-muted-foreground mt-3">
+                  {t('header.mode.camera')} — object detection runs 100% in your browser
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── VOICE MODE — full screen ── */}
           {mode === 'voice' && (
             <div className="flex-1 flex flex-col min-h-0 relative">
-              <div className="dark:block hidden absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.05)_0%,transparent_70%)] pointer-events-none" />
+              {/* Back to chat — header is hidden in voice mode */}
+              <button
+                onClick={() => { haptics.light(); setMode('chat'); }}
+                className="absolute top-3 left-3 z-30 w-9 h-9 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 text-foreground flex items-center justify-center shadow-sm hover:bg-secondary/70 active:scale-95 transition-all"
+                aria-label={t('voice.backToChat')}
+                title={t('voice.backToChat')}
+              >
+                <MessageSquare className="w-[18px] h-[18px]" />
+              </button>
+              {/* Ambient liquid-gradient blobs — iOS 26 liquid feel.
+                  STATIC radial gradients (no blur filter, no animation) so the
+                  paint cost is zero — soft falloff comes from the gradient. */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+                <div
+                  className="absolute -top-24 -left-24 w-[28rem] h-[28rem] rounded-full opacity-25"
+                  style={{ background: 'radial-gradient(circle at 35% 35%, rgba(0,122,255,0.55), transparent 70%)' }}
+                />
+                <div
+                  className="absolute -bottom-32 -right-24 w-[30rem] h-[30rem] rounded-full opacity-20"
+                  style={{ background: 'radial-gradient(circle at 60% 40%, rgba(175,82,222,0.55), transparent 70%)' }}
+                />
+                <div
+                  className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[24rem] h-[24rem] rounded-full opacity-15"
+                  style={{ background: 'radial-gradient(circle at 50% 50%, rgba(52,199,89,0.4), transparent 70%)' }}
+                />
+              </div>
 
               {/* Orb + status */}
               <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 min-h-0">
@@ -1208,33 +1282,33 @@ export default function Home() {
                 <Orb status={status} onClick={handleToggleRecording} />
 
                 {/* PiP toggles — agent + browser + camera */}
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
                   <button
-                    onClick={() => { setAgentModeActive(a => !a); if (!agentModeActive) setPipBrowserOpen(true); setPipFullscreen(null); }}
+                    onClick={() => { haptics.light(); setAgentModeActive(a => !a); if (!agentModeActive) setPipBrowserOpen(true); setPipFullscreen(null); }}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
                       agentModeActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
                     <Bot className="w-3 h-3 inline mr-1" />
-                    {agentModeActive ? 'Agent On' : 'Agent'}
+                    {agentModeActive ? t('voice.agentOn') : t('voice.agent')}
                   </button>
                   <button
-                    onClick={() => { setPipBrowserOpen(b => !b); setPipFullscreen(null); }}
+                    onClick={() => { haptics.light(); setPipBrowserOpen(b => !b); setPipFullscreen(null); }}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
                       pipBrowserOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
                     <Globe className="w-3 h-3 inline mr-1" />
-                    {pipBrowserOpen ? 'Browser On' : 'Browser'}
+                    {pipBrowserOpen ? t('voice.browserOn') : t('voice.browser')}
                   </button>
                   <button
-                    onClick={() => { setPipCameraOpen(c => !c); setPipFullscreen(null); }}
+                    onClick={() => { haptics.light(); setPipCameraOpen(c => !c); setPipFullscreen(null); }}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
                       pipCameraOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
                     <Webcam className="w-3 h-3 inline mr-1" />
-                    {pipCameraOpen ? 'Cam On' : 'Cam'}
+                    {pipCameraOpen ? t('voice.camOn') : t('voice.cam')}
                   </button>
                 </div>
                 <div className="mt-6 text-center space-y-2">
@@ -1254,18 +1328,6 @@ export default function Home() {
                     >
                       {statusLabels[status]}
                     </motion.h2>
-                  </AnimatePresence>
-                  <AnimatePresence mode="wait">
-                    <motion.p
-                      key={statusHint}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                      className="text-xs text-muted-foreground"
-                    >
-                      {statusHint}
-                    </motion.p>
                   </AnimatePresence>
                   {status === 'speaking' && (
                     <motion.button
@@ -1316,13 +1378,13 @@ export default function Home() {
                 ) : (
                   <div className="space-y-2 min-h-[5rem]">
                     {subtitle?.user && (
-                      <p className="text-center font-mono text-sm text-muted-foreground/70 leading-snug">
+                      <p className="text-center text-sm text-muted-foreground/70 leading-snug">
                         <span className="text-[10px] tracking-widest text-muted-foreground/40 block mb-0.5">YOU</span>
                         {subtitle.user}
                       </p>
                     )}
                     {subtitle?.jarvis && (
-                      <p className="text-center font-mono text-sm text-primary/80 leading-snug">
+                      <p className="text-center text-sm text-primary/80 leading-snug">
                         <span className="text-[10px] tracking-widest text-primary/40 block mb-0.5">JARVIS</span>
                         {subtitle.jarvis}
                       </p>
@@ -1349,9 +1411,6 @@ export default function Home() {
                   <h2 className="text-base font-semibold tracking-tight text-foreground">
                     {statusLabels[status]}
                   </h2>
-                  <p className="text-xs text-muted-foreground max-w-[160px]">
-                    {statusHint}
-                  </p>
                 </div>
                 {activeWidget && activeWidget.type !== 'alarm' && (
                   <div className="mt-4 w-full space-y-3">
@@ -1371,7 +1430,7 @@ export default function Home() {
                     }`}
                   >
                     <Bot className="w-3 h-3 inline mr-1" />
-                    {agentModeActive ? 'Agent On' : 'Agent'}
+                    {agentModeActive ? t('voice.agentOn') : t('voice.agent')}
                   </button>
                   <button
                     onClick={() => { setPipBrowserOpen(b => !b); setPipFullscreen(null); }}
@@ -1380,7 +1439,7 @@ export default function Home() {
                     }`}
                   >
                     <Globe className="w-3 h-3 inline mr-1" />
-                    {pipBrowserOpen ? 'Browser On' : 'Browser'}
+                    {pipBrowserOpen ? t('voice.browserOn') : t('voice.browser')}
                   </button>
                   <button
                     onClick={() => { setPipCameraOpen(c => !c); setPipFullscreen(null); }}
@@ -1439,14 +1498,8 @@ export default function Home() {
                     setMessages(prev => prev.filter(m => !m.pendingAgentBrowser));
                     setPipBrowserOpen(true);
                     setPipFullscreen(null);
-                    // Navigate browser to search after PiP opens
-                    setTimeout(() => {
-                      fetch('/api/jarvis/browse/action', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'navigate', payload: `https://www.google.com/search?q=${encodeURIComponent(query)}` }),
-                      }).catch(() => {});
-                    }, 1000);
+                    // Start the autonomous agent loop with the confirmed query
+                    setAgentGoal(`search for ${query}`);
                   }}
                   onAgentBrowserCancel={() => {
                     setMessages(prev => prev.filter(m => !m.pendingAgentBrowser));
@@ -1477,10 +1530,10 @@ export default function Home() {
                       setTimeout(() => setUploadProgress(null), 500);
                       if (attachedFile?.preview) URL.revokeObjectURL(attachedFile.preview);
                       setAttachedFile(result);
-                      toast({ title: 'File attached', description: file.name });
+                      toast({ title: t('input.fileAttached'), description: file.name });
                     } catch {
                       setUploadProgress(null);
-                      toast({ title: 'Could not read file', variant: 'destructive' });
+                      toast({ title: t('input.couldNotRead'), variant: 'destructive' });
                     }
                   }}
                 >
@@ -1493,7 +1546,7 @@ export default function Home() {
                         exit={{ opacity: 0 }}
                         className="absolute inset-0 z-20 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 flex items-center justify-center pointer-events-none"
                       >
-                        <p className="font-display text-sm tracking-widest text-primary/70">DROP FILE HERE</p>
+                        <p className="font-display text-sm tracking-widest text-primary/70">{t('input.dropHere')}</p>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -1534,7 +1587,7 @@ export default function Home() {
                       </div>
                     </div>
                   )}
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-1 px-2 py-1.5 rounded-full border border-border/50 bg-card shadow-md">
                     {/* Hidden file inputs */}
                     <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
                     <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
@@ -1546,17 +1599,17 @@ export default function Home() {
                         onClick={() => plusMenuOpen ? closePlusMenu() : openPlusMenu()}
                         disabled={isBusy}
                         title="Attach, camera, or search"
-                        className={`p-2.5 rounded-lg border transition-all ${
+                        className={`p-2 rounded-full transition-all disabled:opacity-30 ${
                           attachedFile || webSearchEnabled
-                            ? 'border-primary text-primary bg-primary/10'
-                            : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
-                        } disabled:opacity-30`}
+                            ? 'text-primary bg-primary/10'
+                            : 'text-foreground/70 hover:text-foreground hover:bg-secondary/70'
+                        }`}
                       >
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-[18px] h-[18px]" strokeWidth={2} />
                       </button>
                     </div>
 
-                    <div className="relative flex-1">
+                    <div className="relative flex-1 min-w-0">
                       <textarea ref={e => { inputRef.current = e; textareaRef.current = e; }} value={chatInput}
                         onChange={e => setChatInput(e.target.value)}
                         onKeyDown={e => {
@@ -1578,21 +1631,14 @@ export default function Home() {
                         onPaste={handleInputPaste}
                         rows={1}
                         placeholder={
-                          chatRecording ? '🎙 Listening… speak now'
-                          : isBusy ? 'Processing…'
-                          : attachedFile ? 'Add a message…'
-                          : 'Ask Jarvis anything…'
+                          chatDictating
+                            ? (chatInterim || t('input.listening'))
+                            : isBusy ? t('input.processing')
+                            : attachedFile ? t('input.placeholderFile')
+                            : t('input.placeholder')
                         }
                         disabled={isBusy}
-                        className={`w-full bg-card border text-foreground placeholder:text-muted-foreground/50 font-mono text-sm px-4 py-2.5 rounded-lg outline-none focus:ring-2 transition-all disabled:opacity-40 resize-none min-h-[42px] max-h-[160px] ${
-                          chatRecording
-                            ? 'border-red-400/60 focus:border-red-400/80 focus:ring-red-400/10 placeholder:text-red-400/60 animate-pulse'
-                            : status === 'thinking'
-                            ? 'border-yellow-400/40 focus:border-yellow-400/60 focus:ring-yellow-400/10'
-                            : status === 'speaking'
-                            ? 'border-primary/40 focus:border-primary/60 focus:ring-primary/10'
-                            : 'border-border focus:border-primary/60 focus:ring-primary/10'
-                        }`}
+                        className="w-full bg-transparent text-foreground placeholder:text-muted-foreground/60 font-sans text-[15px] px-2 py-2.5 outline-none resize-none min-h-[24px] max-h-[140px]"
                       />
                       {/* Character count */}
                       {chatInput.length > 0 && (
@@ -1602,18 +1648,19 @@ export default function Home() {
                       )}
                     </div>
                     <button onClick={handleChatMicToggle} disabled={isBusy}
-                      title={chatRecording ? 'Stop recording' : 'Voice input — Jarvis will speak back'}
-                      className={`p-2.5 rounded-lg border transition-all flex-shrink-0 ${
-                        chatRecording
-                          ? 'border-red-400/60 text-red-400 bg-red-400/10 animate-pulse'
-                          : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-primary'
-                      } disabled:opacity-30`}>
-                      <Mic className="w-4 h-4" />
+                      title={chatDictating ? t('input.stopDictate') : t('input.dictate')}
+                      className={`p-2 rounded-full transition-all flex-shrink-0 disabled:opacity-30 ${
+                        chatDictating
+                          ? 'text-red-500 bg-red-500/10 animate-pulse'
+                          : 'text-foreground/70 hover:text-foreground hover:bg-secondary/70'
+                      }`}>
+                      {chatDictating ? <Square className="w-[18px] h-[18px] fill-current" /> : <Mic className="w-[18px] h-[18px]" strokeWidth={2} />}
                     </button>
-                    <button onClick={handleChatSubmit} disabled={isBusy || (!chatInput.trim() && !attachedFile)}
-                      className="px-4 py-2.5 rounded-lg border border-primary/50 text-primary hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 font-display tracking-wider text-xs flex-shrink-0">
-                      <Send className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">SEND</span>
+                    {/* Blue circular button — opens full-screen voice mode */}
+                    <button onClick={handleOpenVoiceMode} disabled={isBusy}
+                      title={t('input.voiceMode')}
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:opacity-90 active:scale-95 transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed">
+                      <AudioWaveform className="w-5 h-5" strokeWidth={2} />
                     </button>
                   </div>
 
@@ -1635,14 +1682,14 @@ export default function Home() {
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
                             <Paperclip className="w-3.5 h-3.5 flex-shrink-0" />
-                            Attach file
+                            {t('input.attachFile')}
                           </button>
                           <button
                             onClick={() => { closePlusMenu(); cameraInputRef.current?.click(); }}
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
                             <Camera className="w-3.5 h-3.5 flex-shrink-0" />
-                            Camera
+                            {t('input.camera')}
                           </button>
                           <div className="h-px bg-border/30 my-1" />
                           <button
@@ -1650,7 +1697,7 @@ export default function Home() {
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
                             <ImageIcon className="w-3.5 h-3.5 flex-shrink-0" />
-                            Generate image
+                            {t('input.generateImage')}
                           </button>
                           <button
                             onClick={() => { closePlusMenu(); handleToggleScreenShare(); }}
@@ -1659,7 +1706,7 @@ export default function Home() {
                             }`}
                           >
                             <Monitor className="w-3.5 h-3.5 flex-shrink-0" />
-                            {screenShareActive ? 'Stop sharing' : 'Share screen'}
+                            {screenShareActive ? t('input.stopSharing') : t('input.shareScreen')}
                           </button>
                           <div className="h-px bg-border/30 my-1" />
                           <button
@@ -1669,7 +1716,7 @@ export default function Home() {
                             }`}
                           >
                             <Bot className="w-3.5 h-3.5 flex-shrink-0" />
-                            {agentModeActive ? 'Agent mode ON' : 'Agent mode'}
+                            {agentModeActive ? t('input.agentModeOn') : t('input.agentMode')}
                           </button>
                           <div className="h-px bg-border/30 my-1" />
                           <button
@@ -1679,7 +1726,7 @@ export default function Home() {
                             }`}
                           >
                             <Globe className="w-3.5 h-3.5 flex-shrink-0" />
-                            Web search {webSearchEnabled ? '(on)' : '(off)'}
+                            {t('input.webSearch')} {webSearchEnabled ? '(on)' : '(off)'}
                           </button>
                         </motion.div>
                       </>
@@ -1696,20 +1743,20 @@ export default function Home() {
 
                   {/* Status bar below input */}
                   <div className="min-h-[16px]">
-                    {chatRecording && (
+                    {chatDictating && (
                       <p className="text-[10px] font-mono text-red-400/70 tracking-widest text-center animate-pulse">
-                        ● LISTENING — tap mic to cancel · Jarvis will speak when done
+                        {t('input.listeningStatus')}
                       </p>
                     )}
-                    {status === 'thinking' && !chatRecording && (
+                    {status === 'thinking' && !chatDictating && (
                       <p className="text-[10px] font-mono text-yellow-400/60 tracking-widest text-center animate-pulse">
-                        ◆ THINKING…
+                        {t('input.thinkingStatus')}
                       </p>
                     )}
                     {status === 'speaking' && (
                       <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest text-center">
-                        JARVIS IS SPEAKING —{' '}
-                        <button onClick={handleStopSpeaking} className="text-primary hover:underline">STOP</button>
+                        {t('input.speakingStatus')}
+                        <button onClick={handleStopSpeaking} className="text-primary hover:underline">{t('input.stop')}</button>
                       </p>
                     )}
                   </div>
@@ -1737,7 +1784,7 @@ export default function Home() {
               <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Globe className="w-3.5 h-3.5 text-primary/60" />
-                  <span className="text-[10px] font-medium text-muted-foreground">Browser</span>
+                  <span className="text-[10px] font-medium text-muted-foreground">{t('sidebar.navBrowser')}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={() => setPipFullscreen(f => f === 'browser' ? null : 'browser')} className="p-1 rounded hover:bg-secondary/80 text-muted-foreground transition-colors">
@@ -1749,7 +1796,11 @@ export default function Home() {
                 </div>
               </div>
               <div className="flex-1 min-h-0">
-                <JarvisBrowser className="h-full border-0 rounded-b-xl" />
+                <JarvisBrowser
+                  className="h-full border-0 rounded-b-xl"
+                  autoRunGoal={agentGoal}
+                  onGoalHandled={() => setAgentGoal(null)}
+                />
               </div>
             </motion.div>
           )}
@@ -1771,7 +1822,7 @@ export default function Home() {
               <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Webcam className="w-3.5 h-3.5 text-primary/60" />
-                  <span className="text-[10px] font-medium text-muted-foreground">Camera</span>
+                  <span className="text-[10px] font-medium text-muted-foreground">{t('header.mode.camera')}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={() => setPipFullscreen(f => f === 'camera' ? null : 'camera')} className="p-1 rounded hover:bg-secondary/80 text-muted-foreground transition-colors">
@@ -1790,7 +1841,12 @@ export default function Home() {
         </AnimatePresence>
       </div>
 
-      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
 
       {/* Error Detail Panel — slides up from bottom when an error occurs */}
       <AnimatePresence>

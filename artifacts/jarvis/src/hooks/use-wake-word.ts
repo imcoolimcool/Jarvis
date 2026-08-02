@@ -48,6 +48,8 @@ interface UseWakeWordOptions {
    */
   onCommand: (text: string) => void;
   onError?: (msg: string) => void;
+  /** BCP-47 speech-recognition language, e.g. "nl-NL" or "en-US". */
+  lang?: string;
   /**
    * Called when the recognizer was in direct-command mode (after activateCommand)
    * but timed out with no speech. Home can use this to revert UI back to wake state.
@@ -55,7 +57,7 @@ interface UseWakeWordOptions {
   onCommandTimeout?: () => void;
 }
 
-export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: UseWakeWordOptions) {
+export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang = 'en-US' }: UseWakeWordOptions) {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const activeRef = useRef(false);
 
@@ -102,7 +104,7 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
     wakeResultIndexRef.current = -1;
 
     const recognition = new SR();
-    recognition.lang = 'en-US';
+    recognition.lang = langRef.current;
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
@@ -224,6 +226,9 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout }: Us
 
   // Always keep startRef pointing at start so the onend fallback can call it.
   startRef.current = start;
+  // Keep lang in a ref so `start` never needs to recreate its closure.
+  const langRef = useRef(lang);
+  langRef.current = lang;
 
   // #11: Restart the recognizer if it died while the tab was hidden (tab switch / lock screen).
   // Without this, "hey Jarvis" stops working after the user backgrounds the app on iOS/Android.

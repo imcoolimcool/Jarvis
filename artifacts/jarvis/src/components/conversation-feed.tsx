@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { FileText, Copy, Check, RotateCcw, Pencil, X, Send, Mic, Globe, Camera, Monitor, Globe2, Timer, ChevronDown, Image } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
+import { haptics } from '@/lib/haptics';
 import type { Widget } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget } from '@/components/widgets';
 import { ImageConfirmationCard, ImageGeneratingCard, ScreenShareConfirmationCard, AgentBrowserConfirmationCard } from '@/components/image-confirmation-card';
@@ -105,6 +107,7 @@ function MessageActions({ content, isUser, onCopy, onRegenerate, onEdit }: {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
+    haptics.light();
     navigator.clipboard.writeText(content).then(() => {
       setCopied(true);
       onCopy();
@@ -123,7 +126,7 @@ function MessageActions({ content, isUser, onCopy, onRegenerate, onEdit }: {
       </button>
       {!isUser && onRegenerate && (
         <button
-          onClick={onRegenerate}
+          onClick={() => { haptics.light(); onRegenerate(); }}
           title="Regenerate response"
           className="p-1 rounded text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
         >
@@ -132,7 +135,7 @@ function MessageActions({ content, isUser, onCopy, onRegenerate, onEdit }: {
       )}
       {isUser && onEdit && (
         <button
-          onClick={onEdit}
+          onClick={() => { haptics.light(); onEdit(); }}
           title="Edit message"
           className="p-1 rounded text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
         >
@@ -202,6 +205,7 @@ export function ConversationFeed({
   onAgentBrowserConfirm,
   onAgentBrowserCancel,
 }: ConversationFeedProps) {
+  const { t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
@@ -257,7 +261,7 @@ export function ConversationFeed({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            onClick={scrollToBottom}
+            onClick={() => { haptics.light(); scrollToBottom(); }}
             className="sticky bottom-0 z-20 mx-auto -mb-4 flex items-center gap-1 px-3 py-1.5 rounded-full border border-primary/30 bg-background/90 backdrop-blur-sm text-primary text-[10px] font-mono tracking-wider hover:bg-primary/10 transition-all shadow-lg"
           >
             <ChevronDown className="w-3 h-3" />
@@ -266,68 +270,42 @@ export function ConversationFeed({
         )}
       </AnimatePresence>
       {isEmpty && (
-        <div className="m-auto text-center flex flex-col items-center gap-6 sm:gap-8 py-6 sm:py-8 px-4 max-w-2xl w-full">
-          {/* Animated logo mark */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="relative w-16 h-16">
+        <div className="m-auto flex flex-col items-stretch justify-center gap-6 py-6 sm:py-8 px-4 w-full max-w-xl">
+          {/* Compact brand mark */}
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="relative w-12 h-12">
               <div className="absolute inset-0 rounded-full border border-primary/20 animate-ping" style={{ animationDuration: '3s' }} />
-              <div className="absolute inset-2 rounded-full border border-primary/30" />
+              <div className="absolute inset-1.5 rounded-full border border-primary/30" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-3 h-3 bg-primary rounded-full animate-pulse" />
+                <div className="w-2.5 h-2.5 bg-primary rounded-full animate-pulse" />
               </div>
             </div>
-            <div className="space-y-1">
-              <h2 className="font-display text-xl font-bold tracking-[0.2em] glow-text">JARVIS</h2>
-              <p className="text-[11px] font-mono text-muted-foreground tracking-wider">
-                What can I help you with?
-              </p>
-            </div>
+            <p className="text-[11px] font-mono text-muted-foreground tracking-wider">
+              {t('header.title')}
+            </p>
           </div>
 
-          {/* Capability cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3 w-full">
+          {/* Quick actions — ChatGPT-style suggestion rows */}
+          <div className="space-y-1.5 w-full">
             {[
-              { icon: Mic, title: 'Voice Chat', desc: 'Speak naturally — Jarvis listens and responds', color: 'text-green-400' },
-              { icon: Globe, title: 'Web Search', desc: 'Search the web in real-time for any topic', color: 'text-blue-400' },
-              { icon: Camera, title: 'Camera Vision', desc: 'See and identify objects through your camera', color: 'text-purple-400' },
-              { icon: Monitor, title: 'Screen Share', desc: 'Share your screen for real-time analysis', color: 'text-orange-400' },
-              { icon: Globe2, title: 'Browse Web', desc: 'Jarvis can browse any website for you', color: 'text-cyan-400' },
-              { icon: Timer, title: 'Timers & Alarms', desc: 'Set timers, alarms, and check your calendar', color: 'text-yellow-400' },
-              { icon: Image, title: 'Image Gen', desc: 'Generate images from text descriptions with Flux', color: 'text-purple-400' },
-            ].map(({ icon: Icon, title, desc, color }, i) => (
-              <motion.div
-                key={title}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.15 + i * 0.06 }}
-                className="flex flex-row sm:flex-col items-center gap-3 sm:gap-2 p-3 sm:p-4 rounded-xl border border-border/40 bg-card/30 hover:border-primary/30 hover:bg-card/50 transition-all cursor-default group"
-              >
-                <Icon className={`w-5 h-5 ${color} opacity-70 group-hover:opacity-100 transition-opacity flex-shrink-0`} />
-                <div className="flex-1 min-w-0 text-left sm:text-center">
-                  <p className="text-[11px] font-display font-semibold tracking-wider text-foreground">{title}</p>
-                  <p className="text-[10px] font-mono text-muted-foreground/60 leading-snug hidden sm:block">{desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Suggestion chips */}
-          <div className="flex flex-wrap justify-start sm:justify-center gap-2 w-full">
-            {[
-              "What's the weather right now?",
-              "Search the web for something interesting",
-              "Set a 5 minute timer",
-              "Draw me a cat in a top hat",
-            ].map((s, i) => (
+              { icon: Image, label: t('home.createImage') },
+              { icon: Pencil, label: t('home.write') },
+              { icon: Globe, label: t('home.searchWeb') },
+            ].map(({ icon: Icon, label }, i) => (
               <motion.button
-                key={i}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3 + i * 0.07 }}
-                onClick={() => onSuggestionClick?.(s)}
-                className="px-2.5 sm:px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-[10px] sm:text-[11px] font-mono hover:bg-primary/15 hover:border-primary/40 transition-all active:scale-95 text-center whitespace-normal"
+                key={label}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: 0.1 + i * 0.05 }}
+                onClick={() => { haptics.light(); onSuggestionClick?.(label); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left border border-transparent hover:border-border/40 hover:bg-card/40 transition-all group"
               >
-                {s}
+                <span className="w-8 h-8 rounded-lg bg-secondary/60 text-muted-foreground group-hover:text-primary flex items-center justify-center transition-colors flex-shrink-0">
+                  <Icon className="w-4 h-4" />
+                </span>
+                <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                  {label}
+                </span>
               </motion.button>
             ))}
           </div>
@@ -426,8 +404,8 @@ export function ConversationFeed({
                   <div
                     className={`px-4 py-3 rounded-2xl text-sm leading-relaxed font-sans ${
                       isUser
-                        ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                        : 'bg-card border border-border text-foreground rounded-tl-sm shadow-sm max-w-[85%]'
+                        ? 'bg-primary text-primary-foreground rounded-br-md shadow-lg shadow-primary/20'
+                        : 'liquid-glass-soft text-foreground rounded-bl-md max-w-[85%]'
                     }`}
                   >
                     {isUser ? (
@@ -490,7 +468,7 @@ export function ConversationFeed({
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.07 }}
-                onClick={() => onSuggestionClick?.(s)}
+                onClick={() => { haptics.light(); onSuggestionClick?.(s); }}
                 className="px-2.5 sm:px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-mono hover:bg-primary/15 hover:border-primary/60 transition-all active:scale-95 text-center whitespace-normal"
               >
                 {s}

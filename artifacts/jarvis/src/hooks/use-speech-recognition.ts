@@ -19,14 +19,28 @@ interface UseSpeechRecognitionOptions {
   onTranscript: (text: string) => void;
   onError: (msg: string) => void;
   onEnd: () => void;
+  /** Called for interim (non-final) results while speaking — live preview. */
+  onInterim?: (text: string) => void;
+  /** Keep listening after a pause instead of stopping automatically. */
+  continuous?: boolean;
+  /** Emit partial results while the user is still talking. */
+  interimResults?: boolean;
+  /** BCP-47 speech-recognition language, e.g. "nl-NL" or "en-US". */
+  lang?: string;
 }
 
 export function useSpeechRecognition({
   onTranscript,
   onError,
   onEnd,
+  onInterim,
+  continuous = false,
+  interimResults = false,
+  lang = 'en-US',
 }: UseSpeechRecognitionOptions) {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const langRef = useRef(lang);
+  langRef.current = lang;
 
   const start = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -36,14 +50,25 @@ export function useSpeechRecognition({
     }
 
     const recognition = new SR();
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.lang = langRef.current;
+    recognition.continuous = continuous;
+    recognition.interimResults = interimResults;
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0]?.[0]?.transcript?.trim() ?? '';
-      if (transcript) onTranscript(transcript);
+      // With continuous + interim enabled, one event can contain multiple
+      // results: walk every result from resultIndex onward and split
+      // finalized chunks from the live interim text.
+      let finalText = '';
+      let interimText = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const chunk = result[0]?.transcript ?? '';
+        if (result.isFinal) finalText += chunk;
+        else interimText += chunk;
+      }
+      if (finalText.trim()) onTranscript(finalText.trim());
+      if (interimText.trim()) onInterim?.(interimText.trim());
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -83,7 +108,7 @@ export function useSpeechRecognition({
         onEnd();
       }
     }
-  }, [onTranscript, onError, onEnd]);
+  }, [onTranscript, onError, onEnd, onInterim, continuous, interimResults, lang]);
 
   const stop = useCallback(() => {
     recognitionRef.current?.stop();

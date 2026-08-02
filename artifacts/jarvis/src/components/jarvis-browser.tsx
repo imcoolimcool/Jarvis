@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Globe, ArrowLeft, ArrowRight, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
+import { Globe, ArrowLeft, ArrowRight, RotateCcw, Maximize2, Minimize2, Bot, Play, Square, Grid3X3, Loader2 } from 'lucide-react';
 
 interface BrowserState {
   url: string;
@@ -11,19 +11,34 @@ interface BrowserState {
   viewportHeight: number;
 }
 
+interface AgentLogEntry {
+  id: number;
+  type: 'start' | 'step' | 'action' | 'done' | 'error';
+  message: string;
+  ok?: boolean;
+}
+
 interface JarvisBrowserProps {
   /** CSS class name */
   className?: string;
   /** Called when a new action is taken (for voice command feedback) */
   onAction?: (action: string) => void;
+  /** When set (non-empty), the agent loop starts automatically with this goal */
+  autoRunGoal?: string | null;
+  /** Called after autoRunGoal has been consumed (so the parent can reset it) */
+  onGoalHandled?: () => void;
 }
 
 /**
  * Jarvis's Personal Browser component.
  * Displays live screenshots from the Puppeteer browser on the backend.
  * The user can see exactly what Jarvis is browsing, and take control.
+ *
+ * Includes the autonomous agent mode: give Jarvis a goal and the vision LLM
+ * drives the browser using a fine-grained grid (tiny cubes) so even small
+ * buttons can be clicked precisely.
  */
-export function JarvisBrowser({ className = '', onAction }: JarvisBrowserProps) {
+export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHandled }: JarvisBrowserProps) {
   const [state, setState] = useState<BrowserState | null>(null);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
@@ -36,17 +51,66 @@ export function JarvisBrowser({ className = '', onAction }: JarvisBrowserProps) 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Agent mode state ────────────────────────────────────────────
+  const [agentGoal, setAgentGoal] = useState('');
+  const [agentRunning, setAgentRunning] = useState(false);
+  const [agentLog, setAgentLog] = useState<AgentLogEntry[]>([]);
+  const [agentError, setAgentError] = useState<string | null>(null);
+  const [showGrid, setShowGrid] = useState(false);
+  const [cellSize, setCellSize] = useState(24);
+  const [imgRect, setImgRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const agentAbortRef = useRef<AbortController | null>(null);
+  const logIdRef = useRef(0);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
+  const addLog = useCallback((type: AgentLogEntry['type'], message: string, ok?: boolean) => {
+    const id = ++logIdRef.current;
+    setAgentLog((prev) => [...prev, { id, type, message, ok }]);
+  }, []);
+
+  // ── Compute the displayed image rect so the grid overlay aligns ──
+  useEffect(() => {
+    const container = viewportRef.current;
+    const img = imgRef.current;
+    if (!container || !img) {
+      setImgRect(null);
+      return;
+    }
+    const compute = () => {
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      const nw = img.naturalWidth || 1280;
+      const nh = img.naturalHeight || 720;
+      const scale = Math.min(cw / nw, ch / nh);
+      const w = nw * scale;
+      const h = nh * scale;
+      setImgRect({ left: (cw - w) / 2, top: (ch - h) / 2, width: w, height: h });
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [screenshot, fullscreen]);
+
   // Get WebSocket URL from backend
   useEffect(() => {
     fetch('/api/jarvis/browse/ws-url')
       .then((r) => r.json())
       .then((data) => {
-        setWsUrl(data.url);
+        // If the server returned an internal/local URL (e.g. behind a proxy
+        // that rewrites the Host header), prefer this page's own origin — the
+        // browser WebSocket is always served on the same origin via /browser-ws.
+        const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const own = `${proto}//${window.location.host}/browser-ws`;
+        const url = data.url;
+        const isLocal = url && /localhost|127\.0\.0\.1|0\.0\.0\.0|:\d*8080/.test(url);
+        setWsUrl(isLocal ? own : url);
       })
       .catch(() => {
-        // Fallback: derive from current location
+        // Fallback: derive from current location (same-origin /browser-ws path)
         const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        setWsUrl(`${proto}//${window.location.hostname}:3002`);
+        setWsUrl(`${proto}//${window.location.host}/browser-ws`);
       });
   }, []);
 
@@ -116,6 +180,115 @@ export function JarvisBrowser({ className = '', onAction }: JarvisBrowserProps) 
       }
     };
   }, [connectWs]);
+
+  // ── Agent loop: consume the auto-run goal, then stream SSE events ──
+  const startAgentRun = useCallback(async (goalText?: string) => {
+    const goal = (goalText ?? agentGoal).trim();
+    if (!goal || agentRunning) return;
+
+    if (agentAbortRef.current) agentAbortRef.current.abort();
+    const controller = new AbortController();
+    agentAbortRef.current = controller;
+    setAgentRunning(true);
+    setAgentError(null);
+    setAgentLog([]);
+    logIdRef.current = 0;
+    addLog('start', `Goal: ${goal}`);
+
+    try {
+      const res = await fetch('/api/jarvis/browse/agent-run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal, maxSteps: 20, cellSize }),
+        signal: controller.signal,
+      });
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No response stream');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+          try {
+            const msg = JSON.parse(data);
+            handleAgentEvent(msg);
+          } catch {
+            // Ignore malformed lines
+          }
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        const message = (err as Error).message;
+        setAgentError(message);
+        addLog('error', `Run failed: ${message}`);
+      }
+    } finally {
+      setAgentRunning(false);
+      agentAbortRef.current = null;
+    }
+  }, [agentGoal, agentRunning, cellSize, addLog]);
+
+  const handleAgentEvent = useCallback((msg: any) => {
+    switch (msg.type) {
+      case 'start':
+        break; // already logged
+      case 'step': {
+        let detail = `${msg.action}`;
+        if (msg.action === 'click' && msg.x && msg.y) detail += ` cell (${msg.x}, ${msg.y})`;
+        if (msg.action === 'type') detail += ` "${msg.text ?? ''}"${msg.enter ? ' + Enter' : ''}`;
+        if (msg.action === 'navigate') detail += ` ${msg.url}`;
+        if (msg.action === 'scroll') detail += ` ${msg.dy ?? ''}px`;
+        addLog('step', `Step ${msg.step}: ${detail}${msg.reason ? ` — ${msg.reason}` : ''}`);
+        break;
+      }
+      case 'action':
+        addLog('action', msg.success ? `✓ ${msg.action} done` : `✗ ${msg.action} failed: ${msg.error ?? 'unknown'}`, msg.success);
+        break;
+      case 'done':
+        addLog('done', `✔ ${msg.summary ?? 'Task complete.'}`);
+        setAgentRunning(false);
+        break;
+      case 'error':
+        addLog('error', `⚠ ${msg.message ?? 'Unknown error'}`);
+        break;
+    }
+  }, [addLog]);
+
+  const stopAgentRun = useCallback(() => {
+    agentAbortRef.current?.abort();
+    setAgentRunning(false);
+    addLog('error', 'Run stopped by user');
+  }, [addLog]);
+
+  // Auto-start when the parent sets a goal (agent mode / search detection)
+  useEffect(() => {
+    if (autoRunGoal && autoRunGoal.trim()) {
+      setAgentGoal(autoRunGoal);
+      const goal = autoRunGoal.trim();
+      // Slight delay so the WebSocket/screenshot stream is ready.
+      const t = setTimeout(() => {
+        startAgentRun(goal);
+        onGoalHandled?.();
+      }, 1200);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [autoRunGoal, startAgentRun, onGoalHandled]);
+
+  // Abort any running agent loop on unmount
+  useEffect(() => {
+    return () => agentAbortRef.current?.abort();
+  }, []);
 
   // Execute a browser action via the REST API
   const executeAction = useCallback(async (action: string, payload?: any) => {
@@ -229,6 +402,15 @@ export function JarvisBrowser({ className = '', onAction }: JarvisBrowserProps) 
         {/* Connection indicator */}
         <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'} flex-shrink-0`} title={connected ? 'Connected' : 'Disconnected'} />
 
+        {/* Grid overlay toggle — the tiny cubes the agent clicks */}
+        <button
+          onClick={() => setShowGrid(g => !g)}
+          className={`p-1 rounded hover:bg-muted/50 transition-colors ${showGrid ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+          title={showGrid ? 'Hide click grid' : 'Show click grid (tiny cubes)'}
+        >
+          <Grid3X3 className="w-3.5 h-3.5" />
+        </button>
+
         {/* Minimize button */}
         <button
           onClick={() => setMinimized(true)}
@@ -247,8 +429,79 @@ export function JarvisBrowser({ className = '', onAction }: JarvisBrowserProps) 
         </button>
       </div>
 
+      {/* Agent control bar */}
+      <div className="flex items-center gap-1.5 px-2 py-1.5 bg-primary/5 border-b border-border/30">
+        <Bot className={`w-3.5 h-3.5 flex-shrink-0 ${agentRunning ? 'text-primary animate-pulse' : 'text-primary/70'}`} />
+        <input
+          type="text"
+          value={agentGoal}
+          onChange={(e) => setAgentGoal(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') startAgentRun(); }}
+          placeholder="Give Jarvis a goal — it will browse and click for you…"
+          disabled={agentRunning}
+          className="flex-1 bg-transparent text-[11px] font-mono py-1 outline-none text-foreground placeholder:text-muted-foreground/50 disabled:opacity-50"
+        />
+        <select
+          value={cellSize}
+          onChange={(e) => setCellSize(Number(e.target.value))}
+          disabled={agentRunning}
+          className="bg-background border border-border/30 rounded text-[10px] font-mono text-muted-foreground px-1 py-0.5 outline-none disabled:opacity-50"
+          title="Grid cell size (px) — smaller = more precise for tiny buttons"
+        >
+          <option value={16}>16px</option>
+          <option value={24}>24px</option>
+          <option value={32}>32px</option>
+        </select>
+        {agentRunning ? (
+          <button
+            onClick={stopAgentRun}
+            className="flex items-center gap-1 px-2 py-1 rounded bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors text-[10px] font-mono"
+            title="Stop the agent"
+          >
+            <Square className="w-3 h-3" /> Stop
+          </button>
+        ) : (
+          <button
+            onClick={() => startAgentRun()}
+            className="flex items-center gap-1 px-2 py-1 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors text-[10px] font-mono"
+            title="Start the agent"
+          >
+            <Play className="w-3 h-3" /> Run
+          </button>
+        )}
+      </div>
+
+      {/* Live agent log */}
+      {agentLog.length > 0 && (
+        <div className="max-h-24 overflow-y-auto px-2 py-1.5 bg-black/40 border-b border-border/30 font-mono text-[9px] space-y-0.5">
+          {agentLog.map((entry) => (
+            <div
+              key={entry.id}
+              className={`flex items-start gap-1 ${
+                entry.type === 'error' ? 'text-red-400'
+                : entry.type === 'done' ? 'text-green-400'
+                : entry.type === 'action' ? (entry.ok ? 'text-emerald-300/90' : 'text-red-300/90')
+                : entry.type === 'step' ? 'text-primary/90'
+                : 'text-muted-foreground'
+              }`}
+            >
+              <span className="flex-shrink-0 select-none">
+                {entry.type === 'start' ? '▸' : entry.type === 'done' ? '★' : entry.type === 'error' ? '!' : entry.type === 'action' ? '·' : '›'}
+              </span>
+              <span className="break-words">{entry.message}</span>
+            </div>
+          ))}
+          {agentRunning && (
+            <div className="flex items-center gap-1 text-muted-foreground/70">
+              <Loader2 className="w-2.5 h-2.5 animate-spin" /> thinking…
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Browser viewport */}
       <div
+        ref={viewportRef}
         className={`relative cursor-crosshair overflow-hidden ${fullscreen ? 'flex-1' : ''} ${screenshot ? 'bg-black' : 'bg-card'}`}
         style={{ minHeight: 300, maxHeight: fullscreen ? 'none' : 500 }}
         onClick={handleCanvasClick}
@@ -256,11 +509,26 @@ export function JarvisBrowser({ className = '', onAction }: JarvisBrowserProps) 
         {screenshot ? (
           <>
             <img
+              ref={imgRef}
               src={screenshot}
               alt="Jarvis's Browser"
               className="w-full h-full object-contain"
               draggable={false}
             />
+            {/* Tiny-cube click grid overlay (aligned to the displayed image) */}
+            {showGrid && imgRect && (
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  left: imgRect.left,
+                  top: imgRect.top,
+                  width: imgRect.width,
+                  height: imgRect.height,
+                  backgroundImage: `repeating-linear-gradient(to right, rgba(255,90,150,0.5) 0px, rgba(255,90,150,0.5) 1px, transparent 1px, transparent ${(cellSize / 1280) * imgRect.width}px), repeating-linear-gradient(to bottom, rgba(90,220,255,0.5) 0px, rgba(90,220,255,0.5) 1px, transparent 1px, transparent ${(cellSize / 720) * imgRect.height}px)`,
+                  backgroundSize: `${(cellSize / 1280) * imgRect.width}px ${(cellSize / 720) * imgRect.height}px`,
+                }}
+              />
+            )}
             {/* Cursor indicator */}
             {state && (
               <div

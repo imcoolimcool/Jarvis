@@ -16,4 +16,9 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  // NOTE: The Puppeteer browser is intentionally NOT launched at startup.
+  // It is lazy-initialized on first browse/screenshot request (see getBrowser()
+  // in routes/jarvis/browse.ts). Eagerly launching a full Chrome instance at
+  // boot was pushing the sandbox over its memory limit, causing OOM restarts
+  // that killed the API server mid-conversation (voice mode errors).
 });

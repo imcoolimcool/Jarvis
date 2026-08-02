@@ -58,7 +58,17 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: process.env.API_SERVER_URL || 'http://localhost:8080',
-        changeOrigin: true,
+        // Keep the original Host header so the backend can build correct
+        // absolute URLs (OAuth redirects, browser WebSocket URL) from
+        // req.headers.host — e.g. the public preview domain.
+        changeOrigin: false,
+      },
+      // Jarvis's personal browser — live screenshots over WebSocket.
+      // Forwards to the Puppeteer WS server so the client connects to the
+      // same origin (works behind the preview proxy without opening ports).
+      '/browser-ws': {
+        target: `ws://localhost:${process.env.BROWSER_WS_PORT || '3002'}`,
+        ws: true,
       },
     },
   },

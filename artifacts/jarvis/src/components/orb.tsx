@@ -36,7 +36,7 @@ function useParticles(count = 120) {
 }
 
 function ParticleRing({ status, amplitude = 0 }: { status: AppState; amplitude?: number }) {
-  const particles = useParticles(120);
+  const particles = useParticles(48);
   const isActive = status === 'speaking' || status === 'recording' || status === 'thinking';
 
   const color =
@@ -250,10 +250,11 @@ export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
       aria-label={status}
       role="button"
     >
-      {/* Ambient glow backdrop */}
+      {/* Ambient glow backdrop — radial gradient instead of blur(80px): the
+          filter was repainted every frame; a gradient fades on its own. */}
       <motion.div
         className="absolute inset-0 rounded-full pointer-events-none"
-        style={{ background: glowColor, filter: 'blur(80px)' }}
+        style={{ background: `radial-gradient(circle, ${glowColor} 0%, transparent 70%)` }}
         animate={{
           scale: isActive ? [1, 1.2, 1] : [1, 1.05, 1],
           opacity: status === 'idle' ? 0.12 : isActive ? 0.5 : 0.2,

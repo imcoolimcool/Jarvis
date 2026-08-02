@@ -1,6 +1,26 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, MessageSquare, X, AlertTriangle, Search, Download } from 'lucide-react';
+import { haptics } from '@/lib/haptics';
+import {
+  Plus,
+  Trash2,
+  MessageSquare,
+  X,
+  AlertTriangle,
+  Search,
+  Download,
+  Library,
+  FolderKanban,
+  Puzzle,
+  MoreHorizontal,
+  Pencil,
+  Settings,
+  Globe,
+  Webcam,
+} from 'lucide-react';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
+
+type TFunc = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
 export interface ConversationSummary {
   id: string;
@@ -9,7 +29,7 @@ export interface ConversationSummary {
   updatedAt: string;
 }
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string, t: TFunc): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -17,11 +37,11 @@ function formatRelativeTime(dateStr: string): string {
   const diffHr = Math.floor(diffMs / 3600000);
   const diffDay = Math.floor(diffMs / 86400000);
 
-  if (diffMin < 1) return 'just now';
-  if (diffMin < 60) return `${diffMin}m ago`;
-  if (diffHr < 24) return `${diffHr}h ago`;
-  if (diffDay === 1) return 'Yesterday';
-  if (diffDay < 7) return `${diffDay}d ago`;
+  if (diffMin < 1) return t('time.justNow');
+  if (diffMin < 60) return t('time.mAgo', { n: diffMin });
+  if (diffHr < 24) return t('time.hAgo', { n: diffHr });
+  if (diffDay === 1) return t('time.yesterday');
+  if (diffDay < 7) return t('time.dAgo', { n: diffDay });
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
@@ -31,7 +51,6 @@ function formatConversationTitle(title: string | undefined | null): string {
   let trimmed = title.trim().replace(/^```json\s*|^```.*\n?|```$/g, '').trim();
 
   if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-    // Some LLM outputs use single quotes (invalid JSON). Try a lenient field extraction first.
     const fieldMatch = trimmed.match(/['"]?(text|title|message|content)['"]?\s*[:=]\s*['"]([^'"]+)['"]/i);
     if (fieldMatch?.[2]) {
       return fieldMatch[2].trim();
@@ -50,22 +69,25 @@ function formatConversationTitle(title: string | undefined | null): string {
   return trimmed || 'New Conversation';
 }
 
-function groupByDate(conversations: ConversationSummary[]): { label: string; items: ConversationSummary[] }[] {
+function groupByDate(conversations: ConversationSummary[], t: TFunc): { label: string; items: ConversationSummary[] }[] {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
   const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 7);
 
   const groups: Record<string, ConversationSummary[]> = {
-    'Today': [], 'Yesterday': [], 'Previous 7 Days': [], 'Older': [],
+    [t('sidebar.today')]: [],
+    [t('sidebar.yesterday')]: [],
+    [t('sidebar.previous7Days')]: [],
+    [t('sidebar.older')]: [],
   };
 
   for (const conv of conversations) {
     const d = new Date(conv.updatedAt);
-    if (d >= today) groups['Today'].push(conv);
-    else if (d >= yesterday) groups['Yesterday'].push(conv);
-    else if (d >= weekAgo) groups['Previous 7 Days'].push(conv);
-    else groups['Older'].push(conv);
+    if (d >= today) groups[t('sidebar.today')].push(conv);
+    else if (d >= yesterday) groups[t('sidebar.yesterday')].push(conv);
+    else if (d >= weekAgo) groups[t('sidebar.previous7Days')].push(conv);
+    else groups[t('sidebar.older')].push(conv);
   }
 
   return Object.entries(groups)
@@ -85,63 +107,91 @@ interface SidebarContentProps {
   onSearchChange?: (query: string) => void;
   onClearAll?: () => void;
   onMobileClose?: () => void;
+  onOpenSettings?: () => void;
 }
 
-function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew, onSelect, onDelete, onExport, onSearchChange, onClearAll, onMobileClose }: SidebarContentProps) {
-  const groups = groupByDate(conversations);
+function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew, onSelect, onDelete, onExport, onSearchChange, onClearAll, onMobileClose, onOpenSettings }: SidebarContentProps) {
+  const { t } = useI18n();
+  const groups = groupByDate(conversations, t);
+
+  const navItems = [
+    { icon: Library, label: t('sidebar.chat'), active: true },
+    { icon: Globe, label: t('sidebar.navBrowser'), active: false },
+    { icon: Webcam, label: t('sidebar.navCamera'), active: false },
+    { icon: Puzzle, label: t('sidebar.navPlugins'), active: false },
+  ];
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-3 border-b border-border/20 flex-shrink-0 space-y-2">
-        <div className="flex items-center gap-2">
+      {/* Header — ChatGPT style title + circular search */}
+      <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+        <h2 className="text-lg font-bold tracking-tight text-foreground">{t('header.title')}</h2>
+        <button
+          onClick={() => document.querySelector<HTMLInputElement>('.sidebar-search-input')?.focus()}
+          className="w-8 h-8 rounded-full bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors"
+          aria-label={t('header.search')}
+        >
+          <Search className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Nav links */}
+      <nav className="px-2 space-y-0.5">
+        {navItems.map(({ icon: Icon, label, active }) => (
           <button
-            onClick={onNew}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border/60 text-foreground hover:bg-secondary/80 transition-colors text-[11px] font-medium"
+            key={label}
+            onClick={() => { haptics.light(); onNew(); }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+              active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            <Plus className="w-3.5 h-3.5" />
-            New Chat
+            <Icon className="w-[18px] h-[18px]" strokeWidth={1.8} />
+            {label}
           </button>
-          {onMobileClose && (
-            <button
-              onClick={onMobileClose}
-              className="lg:hidden p-2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-        {/* Search */}
+        ))}
+        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <MoreHorizontal className="w-[18px] h-[18px]" strokeWidth={1.8} />
+          <span className="hidden">more</span>
+        </button>
+      </nav>
+
+      {/* Search */}
+      <div className="px-4 pt-3 pb-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/40 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => onSearchChange?.(e.target.value)}
-            placeholder="Search conversations…"
-            className="sidebar-search-input w-full bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground/40 text-[11px] pl-7 pr-2 py-1.5 rounded-lg outline-none focus:border-primary/40 transition-all"
+            placeholder={t('sidebar.searchPlaceholder')}
+            className="sidebar-search-input w-full bg-secondary/50 border border-transparent focus:border-border/60 text-foreground placeholder:text-muted-foreground/50 text-[13px] pl-9 pr-8 py-2 rounded-full outline-none transition-all"
           />
           {searchQuery && (
             <button
               onClick={() => onSearchChange?.('')}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground/50 hover:text-foreground transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground/50 hover:text-foreground transition-colors"
             >
-              <X className="w-2.5 h-2.5" />
+              <X className="w-3 h-3" />
             </button>
           )}
         </div>
       </div>
 
+      {/* Recent items */}
+      <div className="px-4 pt-1 pb-1">
+        <p className="text-[11px] font-semibold text-muted-foreground/60 tracking-tight">{t('sidebar.recentItems')}</p>
+      </div>
+
       {/* List */}
-      <div className="flex-1 overflow-y-auto py-2 space-y-3 px-2">
+      <div className="flex-1 overflow-y-auto py-1 space-y-3 px-2">
         {conversations.length === 0 && (
-          <p className="text-center text-[10px] text-muted-foreground/40 mt-6 px-2">
-            No conversations yet
+          <p className="text-center text-[11px] text-muted-foreground/40 mt-6 px-2">
+            {t('sidebar.noConversations')}
           </p>
         )}
         {groups.map(group => (
           <div key={group.label}>
-            <p className="text-[9px] font-medium text-muted-foreground/50 px-3 mb-1 uppercase tracking-wider">
+            <p className="text-[10px] font-semibold text-muted-foreground/40 px-3 mb-1 tracking-wide">
               {group.label}
             </p>
             <div className="space-y-0.5">
@@ -151,31 +201,31 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
                   layout
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  onClick={() => onSelect(conv.id)}
+                  onClick={() => { haptics.light(); onSelect(conv.id); }}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && onSelect(conv.id)}
-                  className={`w-full text-left px-3 py-2.5 flex items-start gap-2.5 group transition-all text-[11px] relative cursor-pointer rounded-lg ${
+                  className={`w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ${
                     activeId === conv.id
                       ? 'bg-primary/10 text-foreground'
                       : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground'
                   }`}
                 >
-                  <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 opacity-50" />
+                  <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 opacity-40" />
                   <div className="flex-1 min-w-0">
                     <span className="leading-snug line-clamp-2 break-words block pr-5">
                       {formatConversationTitle(conv.title)}
                     </span>
-                    <span className="text-[9px] text-muted-foreground/40 mt-0.5 block">
-                      {formatRelativeTime(conv.updatedAt)}
+                    <span className="text-[10px] text-muted-foreground/40 mt-0.5 block">
+                      {formatRelativeTime(conv.updatedAt, t)}
                     </span>
                   </div>
                   <span
                     role="button"
                     tabIndex={0}
-                    onClick={(e) => { e.stopPropagation(); onExport?.(conv.id); }}
+                    onClick={(e) => { haptics.light(); e.stopPropagation(); onExport?.(conv.id); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onExport?.(conv.id); }}}
-                    className="absolute right-6 top-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground cursor-pointer"
+                    className="absolute right-6 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground cursor-pointer"
                     title="Export as text"
                   >
                     <Download className="w-3 h-3" />
@@ -183,10 +233,10 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
                   <span
                     role="button"
                     tabIndex={0}
-                    onClick={(e) => onDelete(e, conv.id)}
+                    onClick={(e) => { haptics.medium(); onDelete(e, conv.id); }}
                     onKeyDown={(e) => e.key === 'Enter' && onDelete(e, conv.id)}
                     aria-disabled={deleting === conv.id}
-                    className="absolute right-2 top-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500 aria-disabled:opacity-30 cursor-pointer"
+                    className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500 aria-disabled:opacity-30 cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" />
                   </span>
@@ -197,18 +247,34 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
         ))}
       </div>
 
-      {/* Footer */}
+      {/* Footer — blue Chat pill + settings gear (ChatGPT style) */}
       <div className="p-3 border-t border-border/20 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { haptics.light(); onNew(); }}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity text-sm font-semibold shadow-sm"
+          >
+            <Pencil className="w-4 h-4" strokeWidth={2} />
+            {t('sidebar.chat')}
+          </button>
+          <button
+            onClick={() => { haptics.light(); onOpenSettings?.(); }}
+            className="w-10 h-10 rounded-full border border-border/50 text-muted-foreground hover:text-foreground hover:bg-secondary/70 flex items-center justify-center transition-colors"
+            aria-label={t('header.settings')}
+          >
+            <Settings className="w-[18px] h-[18px]" strokeWidth={1.8} />
+          </button>
+        </div>
         {conversations.length > 0 && onClearAll ? (
           <button
-            onClick={onClearAll}
-            className="w-full text-[9px] font-medium text-muted-foreground/40 tracking-wider text-center hover:text-red-500/60 transition-colors py-1"
+            onClick={() => { haptics.medium(); onClearAll(); }}
+            className="w-full text-[10px] font-medium text-muted-foreground/40 tracking-wider text-center hover:text-red-500/60 transition-colors py-1.5 mt-1"
           >
-            Clear All
+            {t('sidebar.clearAll')}
           </button>
         ) : (
-          <p className="text-[9px] font-medium text-muted-foreground/30 tracking-wider text-center">
-            Memory Active
+          <p className="text-[10px] font-medium text-muted-foreground/30 tracking-wider text-center py-1.5 mt-1">
+            {t('sidebar.memoryActive')}
           </p>
         )}
       </div>
@@ -223,9 +289,11 @@ interface ChatSidebarProps {
   refreshTick: number;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  onOpenSettings?: () => void;
 }
 
-export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen, onMobileClose }: ChatSidebarProps) {
+export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen, onMobileClose, onOpenSettings }: ChatSidebarProps) {
+  const { t } = useI18n();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
@@ -327,12 +395,13 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen
     onSearchChange: setSearchQuery,
     onClearAll: () => setConfirmClearAll(true),
     onMobileClose,
+    onOpenSettings,
   };
 
   return (
     <>
       {/* Desktop */}
-      <div className="hidden lg:flex flex-col w-60 border-r border-border/20 bg-background flex-shrink-0">
+      <div className="hidden lg:flex flex-col w-64 border-r border-border/30 bg-background/70 backdrop-blur-2xl flex-shrink-0">
         <SidebarContent {...sharedProps} />
       </div>
 
@@ -352,7 +421,7 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="lg:hidden fixed left-0 top-0 h-full w-[85vw] max-w-[320px] z-50 bg-background border-r border-border/30 shadow-apple-xl"
+              className="lg:hidden fixed left-0 top-0 h-full w-[85vw] max-w-[320px] z-50 liquid-glass shadow-apple-xl"
             >
               <SidebarContent {...sharedProps} />
             </motion.div>
@@ -380,9 +449,9 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Delete all conversations?</p>
+                  <p className="text-sm font-semibold text-foreground">{t('sidebar.deleteAllTitle')}</p>
                   <p className="text-[11px] text-muted-foreground/70 mt-1 leading-relaxed">
-                    This will permanently remove every conversation. This action cannot be undone.
+                    {t('sidebar.deleteAllDesc')}
                   </p>
                 </div>
               </div>
@@ -391,13 +460,13 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen
                   onClick={() => setConfirmClearAll(false)}
                   className="px-4 py-2 rounded-lg border border-border/50 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors"
                 >
-                  Cancel
+                  {t('sidebar.cancel')}
                 </button>
                 <button
                   onClick={handleClearAll}
                   className="px-4 py-2 rounded-lg bg-red-500 text-white text-[11px] font-medium hover:opacity-90 transition-opacity"
                 >
-                  Delete all
+                  {t('sidebar.deleteAll')}
                 </button>
               </div>
             </motion.div>
