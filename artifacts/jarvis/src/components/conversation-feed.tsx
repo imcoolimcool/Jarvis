@@ -2,12 +2,12 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { FileText, Copy, Check, RotateCcw, Pencil, X, Send, Mic, Globe, Camera, Monitor, Globe2, Timer, ChevronDown, Image } from 'lucide-react';
+import { FileText, Copy, Check, RotateCcw, Pencil, X, Send, Globe, Timer, ChevronDown, Image, Eye, EyeOff, Sunrise, BrainCircuit, Volume2, ThumbsUp, ThumbsDown, Share, MoreHorizontal } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { haptics } from '@/lib/haptics';
 import type { Widget } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget } from '@/components/widgets';
-import { ImageConfirmationCard, ImageGeneratingCard, ScreenShareConfirmationCard, AgentBrowserConfirmationCard } from '@/components/image-confirmation-card';
+import { ImageConfirmationCard, ImageGeneratingCard, ScreenShareConfirmationCard, AgentBrowserConfirmationCard, SourceCodeConfirmationCard } from '@/components/image-confirmation-card';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -24,6 +24,11 @@ export interface ChatMessage {
   pendingAgentBrowser?: { // agent browser prompt waiting for user query
     confirmationMessage: string;
   };
+  pendingSourceCode?: { // "Use code for this answer?" confirmation
+    userText: string;
+  };
+  /** Thinking mode — private reasoning chain shown in a collapsible block. */
+  reasoning?: string;
 }
 
 interface ConversationFeedProps {
@@ -33,6 +38,8 @@ interface ConversationFeedProps {
   onSuggestionClick?: (text: string) => void;
   onRegenerate?: (messageIndex: number) => void;
   onEditMessage?: (messageIndex: number, newContent: string) => void;
+  /** Read a message aloud (TTS) from the action row. */
+  onSpeak?: (text: string) => void;
   onImageConfirm?: (prompt: string) => void;
   onImageCancel?: () => void;
   generatingImage?: boolean;
@@ -41,6 +48,43 @@ interface ConversationFeedProps {
   onScreenShareCancel?: () => void;
   onAgentBrowserConfirm?: (query: string) => void;
   onAgentBrowserCancel?: () => void;
+  onSourceCodeConfirm?: () => void;
+  onSourceCodeCancel?: () => void;
+}
+
+/** Collapsible "Thinking" block — shows Jarvis's private reasoning pass.
+ *  Collapsed: a quiet row with a right-pointing chevron. Expanded: the chevron
+ *  turns downward (⌄) and the reasoning text slides open. */
+function ThinkingBlock({ reasoning, label }: { reasoning: string; label: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-border/40 bg-muted/25 overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/40 active:bg-muted/50"
+      >
+        <BrainCircuit className="w-3.5 h-3.5 text-muted-foreground/70 flex-shrink-0" strokeWidth={2} />
+        <span className="text-[11px] font-medium text-muted-foreground tracking-wide flex-1">{label}</span>
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-200 ${open ? '' : '-rotate-90'}`}
+        />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            <div className="px-3 pt-2 pb-3 text-xs leading-relaxed text-muted-foreground/80 whitespace-pre-wrap border-t border-border/25">
+              {reasoning}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 function TypingIndicator() {
@@ -51,20 +95,18 @@ function TypingIndicator() {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 6, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="max-w-[85%] self-start"
+      className="self-start px-1"
     >
-      <div className="px-4 py-3.5 rounded-2xl rounded-tl-sm bg-card border border-border/60 shadow-sm">
-        <div className="flex items-end gap-[3px] h-5">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <motion.span
-              key={i}
-              className="w-[3px] rounded-full bg-primary"
+      <div className="flex items-end gap-[3px] h-5">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <motion.span
+            key={i}
+            className="w-[3px] rounded-full bg-foreground/35"
               animate={{ height: [6, 18, 6], opacity: [0.4, 0.9, 0.4] }}
               transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.1, ease: 'easeInOut' }}
             />
           ))}
         </div>
-      </div>
     </motion.div>
   );
 }
@@ -86,61 +128,158 @@ function InlineWidget({ widget }: { widget: Widget }) {
   }
 }
 
-/** Format a timestamp into a short relative or absolute time string */
-function formatTimestamp(ts?: number): string {
-  if (!ts) return '';
-  const diff = Date.now() - ts;
-  if (diff < 60_000) return 'just now';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+/**
+ * Extract the first HTML code block (```html ... ```) from a message.
+ * Returns null when there is no renderable HTML snippet.
+ */
+function extractHtmlBlock(content: string): string | null {
+  const match = content.match(/```html\s*\n([\s\S]*?)```/i);
+  if (!match || !match[1]?.trim()) return null;
+  const html = match[1].trim();
+  // Only treat it as an artifact when it clearly looks like a document/app,
+  // not a one-line fragment.
+  if (html.length < 40 || (!/^\s*<!doctype/i.test(html) && !/<(html|body|div|h1|h2|h3|p|button|input|table|ul|ol|style|script|svg)[\s>]/i.test(html))) {
+    return null;
+  }
+  return html;
 }
 
-/** Floating action bar that appears on hover for a message */
-function MessageActions({ content, isUser, onCopy, onRegenerate, onEdit }: {
+/** ChatGPT-style always-visible action row under a message. */
+function ChatActionRow({ content, isUser, onSpeak, onRegenerate, onEdit }: {
   content: string;
   isUser: boolean;
-  onCopy: () => void;
+  onSpeak?: (text: string) => void;
   onRegenerate?: () => void;
   onEdit?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleCopy = useCallback(() => {
     haptics.light();
     navigator.clipboard.writeText(content).then(() => {
       setCopied(true);
-      onCopy();
       setTimeout(() => setCopied(false), 1500);
     });
-  }, [content, onCopy]);
+  }, [content]);
+
+  const handleShare = useCallback(() => {
+    haptics.light();
+    if (typeof navigator.share === 'function') {
+      navigator.share({ text: content }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(content).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      });
+    }
+  }, [content]);
+
+  const iconBtn = "p-1.5 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors active:scale-90";
 
   return (
-    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-      <button
-        onClick={handleCopy}
-        title="Copy message"
-        className="p-1 rounded text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
-      >
-        {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+    <div className="flex items-center gap-0.5 mt-1.5">
+      <button onClick={handleCopy} title="Copy" className={iconBtn}>
+        {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
       </button>
-      {!isUser && onRegenerate && (
-        <button
-          onClick={() => { haptics.light(); onRegenerate(); }}
-          title="Regenerate response"
-          className="p-1 rounded text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
-        >
-          <RotateCcw className="w-3 h-3" />
+      {!isUser && onSpeak && (
+        <button onClick={() => onSpeak(content)} title="Read aloud" className={iconBtn}>
+          <Volume2 className="w-4 h-4" />
         </button>
       )}
-      {isUser && onEdit && (
-        <button
-          onClick={() => { haptics.light(); onEdit(); }}
-          title="Edit message"
-          className="p-1 rounded text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
-        >
-          <Pencil className="w-3 h-3" />
+      <button
+        onClick={() => { haptics.light(); setFeedback(f => f === 'up' ? null : 'up'); }}
+        title="Good response"
+        className={`${iconBtn} ${feedback === 'up' ? 'text-primary' : ''}`}
+      >
+        <ThumbsUp className={`w-4 h-4 ${feedback === 'up' ? 'fill-current' : ''}`} />
+      </button>
+      <button
+        onClick={() => { haptics.light(); setFeedback(f => f === 'down' ? null : 'down'); }}
+        title="Bad response"
+        className={`${iconBtn} ${feedback === 'down' ? 'text-primary' : ''}`}
+      >
+        <ThumbsDown className={`w-4 h-4 ${feedback === 'down' ? 'fill-current' : ''}`} />
+      </button>
+      <button onClick={handleShare} title="Share" className={iconBtn}>
+        <Share className="w-4 h-4" />
+      </button>
+      <div className="relative">
+        <button onClick={() => { haptics.light(); setMenuOpen(o => !o); }} title="More" className={iconBtn}>
+          <MoreHorizontal className="w-4 h-4" />
         </button>
+        <AnimatePresence>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+              <motion.div
+                initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                transition={{ duration: 0.12 }}
+                className="absolute left-0 bottom-full mb-1 z-40 w-40 p-1 rounded-xl border border-border/50 bg-background shadow-apple-lg overflow-hidden"
+              >
+                {isUser && onEdit && (
+                  <button
+                    onClick={() => { setMenuOpen(false); onEdit(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-muted/60 transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-muted-foreground" /> Edit message
+                  </button>
+                )}
+                {!isUser && onRegenerate && (
+                  <button
+                    onClick={() => { setMenuOpen(false); onRegenerate(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-muted/60 transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" /> Regenerate
+                  </button>
+                )}
+                <button
+                  onClick={() => { setMenuOpen(false); handleCopy(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-muted/60 transition-colors"
+                >
+                  <Copy className="w-3.5 h-3.5 text-muted-foreground" /> Copy
+                </button>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+/** Artifact preview — renders an HTML code block in a sandboxed iframe. */
+function ArtifactPreview({ html }: { html: string }) {
+  const [open, setOpen] = useState(false);
+  const srcDoc = `<!doctype html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box;margin:0}body{font-family:-apple-system,'SF Pro Display',system-ui,sans-serif;padding:16px;color:#1c1c1e;background:#fff}</style></head><body>${html}</body></html>`;
+  return (
+    <div className="w-full max-w-xl mt-1">
+      <button
+        onClick={() => { haptics.light(); setOpen(o => !o); }}
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-primary/25 bg-primary/5 text-primary text-[10px] font-mono hover:bg-primary/15 transition-all active:scale-95"
+      >
+        {open ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+        {open ? 'Hide preview' : 'Preview'}
+      </button>
+      {open && (
+        <div className="mt-1.5 rounded-xl overflow-hidden border border-border/60 shadow-apple-md">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-muted/40 border-b border-border/30">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400/70" />
+            <span className="w-2.5 h-2.5 rounded-full bg-green-400/70" />
+            <span className="ml-2 text-[9px] font-mono text-muted-foreground/60">artifact.html</span>
+          </div>
+          <iframe
+            title="HTML artifact preview"
+            srcDoc={srcDoc}
+            sandbox="allow-scripts"
+            className="w-full bg-white"
+            style={{ height: 320 }}
+          />
+        </div>
       )}
     </div>
   );
@@ -196,6 +335,7 @@ export function ConversationFeed({
   onSuggestionClick,
   onRegenerate,
   onEditMessage,
+  onSpeak,
   onImageConfirm,
   onImageCancel,
   generatingImage = false,
@@ -204,6 +344,8 @@ export function ConversationFeed({
   onScreenShareCancel,
   onAgentBrowserConfirm,
   onAgentBrowserCancel,
+  onSourceCodeConfirm,
+  onSourceCodeCancel,
 }: ConversationFeedProps) {
   const { t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -288,19 +430,28 @@ export function ConversationFeed({
           {/* Quick actions — ChatGPT-style suggestion rows */}
           <div className="space-y-1.5 w-full">
             {[
+              { icon: Sunrise, label: t('home.goodMorning'), primary: true },
               { icon: Image, label: t('home.createImage') },
               { icon: Pencil, label: t('home.write') },
               { icon: Globe, label: t('home.searchWeb') },
-            ].map(({ icon: Icon, label }, i) => (
+            ].map(({ icon: Icon, label, primary }: { icon: any; label: string; primary?: boolean }, i) => (
               <motion.button
                 key={label}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: 0.1 + i * 0.05 }}
                 onClick={() => { haptics.light(); onSuggestionClick?.(label); }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left border border-transparent hover:border-border/40 hover:bg-card/40 transition-all group"
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left border transition-all group ${
+                  primary
+                    ? 'border-primary/20 bg-primary/5 hover:border-primary/40 hover:bg-primary/10'
+                    : 'border-transparent hover:border-border/40 hover:bg-card/40'
+                }`}
               >
-                <span className="w-8 h-8 rounded-lg bg-secondary/60 text-muted-foreground group-hover:text-primary flex items-center justify-center transition-colors flex-shrink-0">
+                <span className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors flex-shrink-0 ${
+                  primary
+                    ? 'bg-primary/15 text-primary'
+                    : 'bg-secondary/60 text-muted-foreground group-hover:text-primary'
+                }`}>
                   <Icon className="w-4 h-4" />
                 </span>
                 <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
@@ -316,7 +467,6 @@ export function ConversationFeed({
         {messages.map((msg, idx) => {
           const isUser = msg.role === 'user';
           const isEditing = editingIdx === idx;
-          const ts = msg.timestamp;
 
           return (
             <motion.div
@@ -328,18 +478,6 @@ export function ConversationFeed({
                 isUser ? 'max-w-[85%] self-end items-end' : 'w-full self-start items-start'
               }`}
             >
-              {/* Role label + timestamp */}
-              <div className="flex items-center gap-2 px-1">
-                <span className="text-[10px] font-mono text-muted-foreground/50 tracking-widest">
-                  {isUser ? 'YOU' : 'JARVIS'}
-                </span>
-                {ts && (
-                  <span className="text-[9px] font-mono text-muted-foreground/30">
-                    {formatTimestamp(ts)}
-                  </span>
-                )}
-              </div>
-
               {/* File preview (user attachments) */}
               {msg.file && (
                 <div className={`flex items-center gap-2.5 p-2.5 rounded-2xl border border-border bg-card max-w-[260px] ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}>
@@ -380,6 +518,15 @@ export function ConversationFeed({
                 />
               )}
 
+              {/* "Use code for this answer?" confirmation card */}
+              {msg.pendingSourceCode && onSourceCodeConfirm && onSourceCodeCancel && (
+                <SourceCodeConfirmationCard
+                  userText={msg.pendingSourceCode.userText}
+                  onConfirm={onSourceCodeConfirm}
+                  onCancel={onSourceCodeCancel}
+                />
+              )}
+
               {/* Generated image display */}
               {msg.image && (
                 <div className={`rounded-2xl overflow-hidden border border-purple-400/20 bg-card max-w-[360px] ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}>
@@ -399,39 +546,52 @@ export function ConversationFeed({
                   onSave={(newText) => { setEditingIdx(null); onEditMessage?.(idx, newText); }}
                   onCancel={() => setEditingIdx(null)}
                 />
-              ) : msg.content && (
+              ) : (
                 <div className="relative">
+                  {/* Thinking mode — collapsible private reasoning above the answer */}
+                  {!isUser && msg.reasoning && (
+                    <div className="mb-2">
+                      <ThinkingBlock reasoning={msg.reasoning} label={t('feed.thinking')} />
+                    </div>
+                  )}
+                  {msg.content && (
                   <div
-                    className={`px-4 py-3 rounded-2xl text-sm leading-relaxed font-sans ${
+                    className={`text-[15px] leading-relaxed font-sans ${
                       isUser
-                        ? 'bg-primary text-primary-foreground rounded-br-md shadow-lg shadow-primary/20'
-                        : 'liquid-glass-soft text-foreground rounded-bl-md max-w-[85%]'
+                        ? 'bg-[#e9f1fc] dark:bg-primary/25 text-foreground rounded-2xl rounded-br-md px-4 py-2.5 max-w-[85%]'
+                        : 'text-foreground max-w-full'
                     }`}
                   >
                     {isUser ? (
-                      <div className="text-primary-foreground prose prose-sm max-w-none prose-invert prose-a:text-primary-foreground/80 prose-code:bg-white/20 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-[12px] prose-headings:text-primary-foreground prose-strong:text-primary-foreground [&_p]:text-primary-foreground [&_*]:text-primary-foreground">
+                      <div className="prose prose-sm max-w-none dark:prose-invert prose-a:text-primary prose-code:bg-muted/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-[12px] prose-headings:text-foreground prose-strong:text-foreground [&_*]:text-foreground">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {msg.content}
                         </ReactMarkdown>
                       </div>
                     ) : (
-                      <div className="prose prose-sm max-w-none prose-invert prose-a:text-primary prose-code:bg-muted/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-[12px] prose-pre:bg-muted/50 prose-pre:border prose-pre:border-border/50 prose-headings:text-foreground prose-strong:text-foreground prose-strong:font-semibold">
+                      <div className="prose prose-sm max-w-none dark:prose-invert prose-a:text-primary prose-code:bg-muted/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-[12px] prose-pre:bg-muted/50 prose-pre:border prose-pre:border-border/50 prose-headings:text-foreground prose-strong:text-foreground prose-strong:font-semibold">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {msg.content}
                         </ReactMarkdown>
                       </div>
                     )}
                   </div>
+                  )}
 
-                  {/* Action buttons — visible on hover */}
-                  <MessageActions
+                  {/* ChatGPT-style action row */}
+                  <ChatActionRow
                     content={msg.content}
                     isUser={isUser}
-                    onCopy={() => {}}
+                    onSpeak={!isUser ? onSpeak : undefined}
                     onRegenerate={!isUser ? () => onRegenerate?.(idx) : undefined}
                     onEdit={isUser ? () => setEditingIdx(idx) : undefined}
                   />
                 </div>
+              )}
+
+              {/* Artifact preview — HTML code blocks render in a sandboxed iframe */}
+              {!isUser && msg.content && extractHtmlBlock(msg.content) && (
+                <ArtifactPreview html={extractHtmlBlock(msg.content)!} />
               )}
 
               {/* Widget — only for assistant messages */}

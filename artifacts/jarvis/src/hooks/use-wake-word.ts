@@ -1,4 +1,5 @@
 import { useRef, useCallback, useEffect } from 'react';
+import { detectSpeechLanguage, toSpeechLangTag } from '@/lib/speech-lang';
 
 // Extend window for webkit prefix
 declare global {
@@ -50,6 +51,10 @@ interface UseWakeWordOptions {
   onError?: (msg: string) => void;
   /** BCP-47 speech-recognition language, e.g. "nl-NL" or "en-US". */
   lang?: string;
+  /** Auto-detect Dutch vs English and adapt the recognizer language. */
+  autoDetectLang?: boolean;
+  /** Fired when auto-detection flips the language. */
+  onLangChange?: (lang: string) => void;
   /**
    * Called when the recognizer was in direct-command mode (after activateCommand)
    * but timed out with no speech. Home can use this to revert UI back to wake state.
@@ -57,7 +62,7 @@ interface UseWakeWordOptions {
   onCommandTimeout?: () => void;
 }
 
-export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang = 'en-US' }: UseWakeWordOptions) {
+export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang = 'en-US', autoDetectLang = false, onLangChange }: UseWakeWordOptions) {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const activeRef = useRef(false);
 
@@ -82,11 +87,13 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang
   const onCommandRef = useRef(onCommand);
   const onErrorRef = useRef(onError);
   const onCommandTimeoutRef = useRef(onCommandTimeout);
+  const onLangChangeRef = useRef(onLangChange);
 
   onWakeRef.current = onWake;
   onCommandRef.current = onCommand;
   onErrorRef.current = onError;
   onCommandTimeoutRef.current = onCommandTimeout;
+  onLangChangeRef.current = onLangChange;
 
   // Ref so the onend fallback can call start() without a stale closure.
   const startRef = useRef<() => void>(() => {});
@@ -122,6 +129,15 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang
         if (!cmd) return;
         commandModeRef.current = false;
         wakeResultIndexRef.current = -1;
+        // Auto-adapt language before handing the command over — the next
+        // utterance should be recognized in the language the user just used.
+        if (autoDetectLang) {
+          const next = toSpeechLangTag(detectSpeechLanguage(cmd), langRef.current);
+          if (next !== langRef.current) {
+            langRef.current = next;
+            onLangChangeRef.current?.(next);
+          }
+        }
         onCommandRef.current(cmd);
       }, 900);
     };
@@ -205,6 +221,8 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang
       // (WKWebView) and throws "not allowed". If the same instance can't restart
       // (e.g. audio session conflict while TTS is playing), we stop gracefully
       // and let the home page know so it can revert to wake-mode UI.
+      // Re-apply the (possibly auto-detected) language before restarting.
+      recognition.lang = langRef.current;
       try {
         recognition.start();
       } catch {

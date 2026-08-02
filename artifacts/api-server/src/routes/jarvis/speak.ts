@@ -42,9 +42,17 @@ router.post("/speak", async (req, res) => {
     if (!response.ok) {
       const errText = await response.text();
       req.log.error({ status: response.status, errText }, "ElevenLabs TTS failed");
-      const err = new Error(`ElevenLabs API returned ${response.status}: ${errText.slice(0, 200)}`);
+      // Pull the human-readable reason out of ElevenLabs' JSON error body so
+      // the frontend can tell the user *why* (invalid key, quota, voice not
+      // found, model retired, etc.) instead of a generic "please try again".
+      let reason = `ElevenLabs returned HTTP ${response.status}`;
+      try {
+        const parsed = JSON.parse(errText) as { detail?: { message?: string }; message?: string };
+        reason = parsed.detail?.message ?? parsed.message ?? reason;
+      } catch { /* keep default */ }
+      const err = new Error(`ElevenLabs TTS failed (${response.status}): ${reason}`);
       const detail = buildErrorDetail(err, req, 500, startMs);
-      res.status(500).json({ error: "Speech synthesis failed. Please try again.", detail });
+      res.status(500).json({ error: `Speech synthesis failed — ${reason}`, detail });
       return;
     }
 

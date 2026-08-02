@@ -2,25 +2,24 @@
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
 
-/* ── Graphik — self-hosted (Trial) ─────────────────────────────── */
-@font-face { font-family: 'Graphik'; font-style: normal; font-weight: 100; font-display: swap; src: url('/fonts/Graphik-Thin-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: italic; font-weight: 100; font-display: swap; src: url('/fonts/Graphik-ThinItalic-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: normal; font-weight: 200; font-display: swap; src: url('/fonts/Graphik-Extralight-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: italic; font-weight: 200; font-display: swap; src: url('/fonts/Graphik-ExtralightItalic-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: normal; font-weight: 300; font-display: swap; src: url('/fonts/Graphik-Light-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: italic; font-weight: 300; font-display: swap; src: url('/fonts/Graphik-LightItalic-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/Graphik-Regular-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: italic; font-weight: 400; font-display: swap; src: url('/fonts/Graphik-RegularItalic-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/Graphik-Medium-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: italic; font-weight: 500; font-display: swap; src: url('/fonts/Graphik-MediumItalic-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/Graphik-Semibold-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: italic; font-weight: 600; font-display: swap; src: url('/fonts/Graphik-SemiboldItalic-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/Graphik-Bold-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: italic; font-weight: 700; font-display: swap; src: url('/fonts/Graphik-BoldItalic-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: normal; font-weight: 800; font-display: swap; src: url('/fonts/Graphik-Black-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: italic; font-weight: 800; font-display: swap; src: url('/fonts/Graphik-BlackItalic-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: normal; font-weight: 900; font-display: swap; src: url('/fonts/Graphik-Super-Trial.otf') format('opentype'); }
-@font-face { font-family: 'Graphik'; font-style: italic; font-weight: 900; font-display: swap; src: url('/fonts/Graphik-SuperItalic-Trial.otf') format('opentype'); }
+/* ── SF Pro — self-hosted (Display + Rounded, woff2 subsets) ───── */
+@font-face { font-family: 'SF Pro Display'; font-style: normal; font-weight: 100; font-display: swap; src: url('/fonts/SFProDisplay-Thin.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Display'; font-style: normal; font-weight: 200; font-display: swap; src: url('/fonts/SFProDisplay-Ultralight.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Display'; font-style: normal; font-weight: 300; font-display: swap; src: url('/fonts/SFProDisplay-Light.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Display'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/SFProDisplay-Regular.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Display'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/SFProDisplay-Medium.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Display'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/SFProDisplay-Semibold.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Display'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/SFProDisplay-Bold.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Display'; font-style: normal; font-weight: 800; font-display: swap; src: url('/fonts/SFProDisplay-Heavy.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Display'; font-style: normal; font-weight: 900; font-display: swap; src: url('/fonts/SFProDisplay-Black.woff2') format('woff2'); }
+
+@font-face { font-family: 'SF Pro Rounded'; font-style: normal; font-weight: 100; font-display: swap; src: url('/fonts/SFProRounded-Thin.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Rounded'; font-style: normal; font-weight: 200; font-display: swap; src: url('/fonts/SFProRounded-Ultralight.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Rounded'; font-style: normal; font-weight: 300; font-display: swap; src: url('/fonts/SFProRounded-Light.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Rounded'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/SFProRounded-Regular.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Rounded'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/SFProRounded-Medium.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Rounded'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/SFProRounded-Semibold.woff2') format('woff2'); }
+@font-face { font-family: 'SF Pro Rounded'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/SFProRounded-Bold.woff2') format('woff2'); }
 
 @custom-variant dark (&:is(.dark *));
 
@@ -61,6 +60,7 @@
 
   --font-sans: var(--app-font-sans);
   --font-display: var(--app-font-sans);
+  --font-rounded: var(--app-font-rounded);
   --font-mono: var(--app-font-mono);
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -102,8 +102,9 @@
   --input: 0 0% 0% / 0.08;
   --ring: 211 100% 50% / 0.3;
 
-  --app-font-sans: 'Graphik', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
-  --app-font-mono: 'Graphik', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+  --app-font-sans: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --app-font-rounded: 'SF Pro Rounded', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --app-font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
   --radius: 0.75rem;
 }
 
@@ -131,14 +132,16 @@
   --input: 0 0% 100% / 0.1;
   --ring: 211 100% 60% / 0.3;
 
-  --app-font-sans: 'Graphik', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
-  --app-font-mono: 'Graphik', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+  --app-font-sans: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --app-font-rounded: 'SF Pro Rounded', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --app-font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
   --radius: 0.75rem;
 }
 
-/* ── Apple devices (iOS/macOS) → SF Pro instead of self-hosted Graphik ── */
+/* ── Apple devices (iOS/macOS) → system SF Pro (no download needed, crispest) ── */
 .platform-apple {
   --app-font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+  --app-font-rounded: 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
   --app-font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
 }
 

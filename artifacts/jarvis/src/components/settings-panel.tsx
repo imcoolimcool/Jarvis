@@ -20,22 +20,18 @@ import {
   AlertTriangle,
   Smile,
   BookOpen,
-  Puzzle,
   Sun,
   Moon,
-  Bell,
-  Mic,
-  Shield,
-  HardDrive,
-  Database,
-  Flag,
-  HelpCircle,
   ChevronRight,
   Languages,
   Palette,
-  Users,
-  UserCheck,
   KeyRound,
+  Loader2,
+  Zap,
+  Sparkles,
+  MessageCircle,
+  Briefcase,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/lib/i18n';
@@ -56,6 +52,8 @@ interface Settings {
   web_search_enabled: string;
   google_calendar_enabled: string;
   user_profile: string;
+  personality: string;
+  custom_personality_prompt: string;
 }
 
 const EMPTY: Settings = {
@@ -73,9 +71,26 @@ const EMPTY: Settings = {
   web_search_enabled: 'false',
   google_calendar_enabled: 'true',
   user_profile: '',
+  personality: 'balanced',
+  custom_personality_prompt: '',
 };
 
-type View = 'home' | 'personalization' | 'memory' | 'language' | 'gmail' | 'spotify' | 'app' | 'about' | 'accent';
+interface LlmKeyItem {
+  id: string;
+  name: string;
+  baseUrl: string;
+  model: string;
+  enabled: boolean;
+  priority: number;
+  source: 'env' | 'db';
+  status: 'healthy' | 'cooling' | 'quarantined';
+  coolDownUntil: number | null;
+  uses: number;
+  failures: number;
+  maskedKey: string;
+}
+
+type View = 'home' | 'personalization' | 'memory' | 'language' | 'gmail' | 'spotify' | 'app' | 'llm' | 'about' | 'accent';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -181,6 +196,10 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
   const [dirty, setDirty] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [visibleSlots, setVisibleSlots] = useState(1);
+  const [llmKeys, setLlmKeys] = useState<LlmKeyItem[]>([]);
+  const [llmForm, setLlmForm] = useState({ name: '', baseUrl: 'https://integrate.api.nvidia.com/v1', apiKey: '', model: '', priority: 0 });
+  const [llmBusy, setLlmBusy] = useState(false);
+  const [llmTesting, setLlmTesting] = useState<string | null>(null);
   const profile = getProfile();
 
   // Accent color — persisted, applied as theme-aware CSS variables
@@ -270,6 +289,84 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
     }
   };
 
+  const fetchLlmKeys = useCallback(async () => {
+    try {
+      const res = await fetch('/api/jarvis/llm-keys');
+      if (!res.ok) return;
+      const data = await res.json();
+      setLlmKeys(Array.isArray(data) ? data : []);
+    } catch { /* server may not have the route yet */ }
+  }, []);
+
+  const addLlmKey = async () => {
+    if (!llmForm.name.trim() || !llmForm.apiKey.trim() || !llmForm.baseUrl.trim()) {
+      toast({ title: t('settings.llmKeysMissing'), variant: 'destructive' });
+      return;
+    }
+    setLlmBusy(true);
+    try {
+      const res = await fetch('/api/jarvis/llm-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: llmForm.name,
+          baseUrl: llmForm.baseUrl,
+          apiKey: llmForm.apiKey,
+          model: llmForm.model || undefined,
+          priority: llmForm.priority,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => null);
+        toast({ title: t('settings.couldNotAddKey'), description: d?.error, variant: 'destructive' });
+        return;
+      }
+      setLlmForm(f => ({ ...f, name: '', apiKey: '', model: '' }));
+      haptics.light();
+      toast({ title: t('settings.keyAdded') });
+      fetchLlmKeys();
+    } catch {
+      toast({ title: t('settings.couldNotAddKey'), variant: 'destructive' });
+    } finally {
+      setLlmBusy(false);
+    }
+  };
+
+  const toggleLlmKey = async (item: LlmKeyItem) => {
+    if (item.source !== 'db') return;
+    await fetch(`/api/jarvis/llm-keys/${item.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: !item.enabled }),
+    }).catch(() => {});
+    fetchLlmKeys();
+  };
+
+  const deleteLlmKey = async (item: LlmKeyItem) => {
+    if (item.source !== 'db') return;
+    await fetch(`/api/jarvis/llm-keys/${item.id}`, { method: 'DELETE' }).catch(() => {});
+    fetchLlmKeys();
+  };
+
+  const testLlmKey = async (item: LlmKeyItem) => {
+    setLlmTesting(item.id);
+    try {
+      const res = await fetch(`/api/jarvis/llm-keys/${item.id}/test`, { method: 'POST' });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.ok) {
+        haptics.light();
+        toast({ title: t('settings.keyOk'), description: `${data.model} · ${data.latencyMs}ms` });
+      } else {
+        toast({ title: t('settings.keyTestFailed'), description: data?.error, variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: t('settings.keyTestFailed'), variant: 'destructive' });
+    } finally {
+      setLlmTesting(null);
+    }
+    fetchLlmKeys();
+  };
+
   useEffect(() => {
     if (!open) return;
     fetch('/api/jarvis/settings')
@@ -285,7 +382,8 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
     fetchGmailStatus();
     fetchSpotifyStatus();
     fetchMemories();
-  }, [open, fetchGmailStatus, fetchSpotifyStatus, fetchMemories]);
+    fetchLlmKeys();
+  }, [open, fetchGmailStatus, fetchSpotifyStatus, fetchMemories, fetchLlmKeys]);
 
   useEffect(() => {
     if (!open) { setView('home'); return; }
@@ -425,18 +523,6 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
     setVisibleSlots(v => Math.max(1, v - 1));
   };
 
-  const appSettingsRows = [
-    { icon: <HardDrive className="w-4 h-4" />, title: t('settings.general') },
-    { icon: <Bell className="w-4 h-4" />, title: t('settings.notifications') },
-    { icon: <Mic className="w-4 h-4" />, title: t('settings.speech') },
-    { icon: <Users className="w-4 h-4" />, title: t('settings.parentalControls') },
-    { icon: <UserCheck className="w-4 h-4" />, title: t('settings.trustedContact') },
-    { icon: <Shield className="w-4 h-4" />, title: t('settings.safety') },
-    { icon: <KeyRound className="w-4 h-4" />, title: t('settings.securityLogin') },
-    { icon: <Database className="w-4 h-4" />, title: t('settings.storage') },
-    { icon: <Cloud className="w-4 h-4" />, title: t('settings.dataManagement') },
-  ];
-
   const accentLabels: Record<string, string> = {
     blue: t('settings.accent.blue'),
     green: t('settings.accent.green'),
@@ -548,11 +634,7 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                         }
                         onClick={() => setView('language')}
                       />
-                      <SettingsRow
-                        icon={<Puzzle className="w-4 h-4" />}
-                        title={t('sidebar.navPlugins')}
-                        onClick={() => {}}
-                      />
+
                     </div>
 
                     {/* Account */}
@@ -620,27 +702,28 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                       />
                     </div>
 
-                    {/* App Settings */}
+                    {/* Web Search & Data — the only real "app settings" page */}
                     <SectionLabel>{t('settings.section.app')}</SectionLabel>
                     <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30">
-                      {appSettingsRows.map(row => (
-                        <SettingsRow key={row.title} icon={row.icon} title={row.title} onClick={() => setView('app')} />
-                      ))}
+                      <SettingsRow
+                        icon={<Globe className="w-4 h-4" />}
+                        title={t('settings.webSearchData')}
+                        subtitle={t('settings.webSearchDataDesc')}
+                        right={<ChevronRight className="w-4 h-4 text-muted-foreground/40" />}
+                        onClick={() => setView('app')}
+                      />
+                      <SettingsRow
+                        icon={<KeyRound className="w-4 h-4" />}
+                        title={t('settings.llmKeys')}
+                        subtitle={t('settings.llmKeysDesc')}
+                        right={<ChevronRight className="w-4 h-4 text-muted-foreground/40" />}
+                        onClick={() => setView('llm')}
+                      />
                     </div>
 
                     {/* Help */}
                     <SectionLabel>{t('settings.section.help')}</SectionLabel>
                     <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30">
-                      <SettingsRow
-                        icon={<Flag className="w-4 h-4" />}
-                        title={t('settings.reportProblem')}
-                        onClick={() => {}}
-                      />
-                      <SettingsRow
-                        icon={<HelpCircle className="w-4 h-4" />}
-                        title={t('settings.helpCenter')}
-                        onClick={() => {}}
-                      />
                       <SettingsRow
                         icon={<Info className="w-4 h-4" />}
                         title={t('settings.about')}
@@ -648,15 +731,6 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                       />
                     </div>
 
-                    {/* Sign out */}
-                    <div className="mt-6">
-                      <button
-                        type="button"
-                        className="w-full py-3 rounded-2xl text-[15px] font-medium text-red-500 hover:bg-red-500/5 transition-colors"
-                      >
-                        {t('settings.signOut')}
-                      </button>
-                    </div>
                   </motion.div>
                 )}
 
@@ -801,6 +875,50 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                       <p className="text-[10px] font-mono text-muted-foreground/40 text-right mt-1">
                         {form.user_profile.length}/2000
                       </p>
+                    </div>
+
+                    {/* Personality — how Jarvis talks to you */}
+                    <div className="pt-5 pb-1 border-t border-border/20">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-3.5 h-3.5 text-primary/70" />
+                        <label className="text-[13px] font-semibold text-foreground tracking-tight">{t('settings.personality')}</label>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground/60 mt-1">{t('settings.personalityDesc')}</p>
+                      <div className="mt-3 rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30">
+                        {([
+                          { value: 'auto', label: t('settings.personality.auto'), icon: Sparkles },
+                          { value: 'balanced', label: t('settings.personality.balanced'), icon: MessageCircle },
+                          { value: 'talkative', label: t('settings.personality.talkative'), icon: Sparkles },
+                          { value: 'helpful', label: t('settings.personality.helpful'), icon: Briefcase },
+                          { value: 'concise', label: t('settings.personality.concise'), icon: Zap },
+                          { value: 'custom', label: t('settings.personality.custom'), icon: SlidersHorizontal },
+                        ]).map(({ value, label, icon: Icon }) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => { haptics.light(); setForm(f => ({ ...f, personality: value })); }}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/40 ${form.personality === value ? 'bg-primary/5' : ''}`}
+                          >
+                            <Icon className={`w-4 h-4 flex-shrink-0 ${form.personality === value ? 'text-primary' : 'text-muted-foreground/50'}`} />
+                            <span className={`flex-1 text-[14px] font-medium ${form.personality === value ? 'text-primary' : 'text-foreground'}`}>{label}</span>
+                            {form.personality === value && <Check className="w-4 h-4 text-primary" />}
+                          </button>
+                        ))}
+                      </div>
+                      {form.personality === 'custom' && (
+                        <div className="mt-3">
+                          <label className="text-[12px] font-medium text-foreground tracking-tight">{t('settings.customPromptLabel')}</label>
+                          <p className="text-[11px] text-muted-foreground/60 mt-0.5">{t('settings.customPromptHint')}</p>
+                          <textarea
+                            value={form.custom_personality_prompt}
+                            onChange={e => setForm(f => ({ ...f, custom_personality_prompt: e.target.value }))}
+                            placeholder={t('settings.customPromptPlaceholder')}
+                            rows={4}
+                            maxLength={4000}
+                            className="w-full bg-background border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-[12px] px-3 py-2.5 rounded-xl outline-none focus:border-primary/60 transition-all resize-none mt-2 leading-relaxed"
+                          />
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -1018,6 +1136,154 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                         )}
                         <p className="text-[11px] text-muted-foreground/60 mt-2">{t('settings.spotifyHint')}</p>
                       </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── LLM KEYS VIEW (multi-provider rotation) ── */}
+                {view === 'llm' && (
+                  <motion.div
+                    key="llm"
+                    initial={{ opacity: 0, x: 24 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 24 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setView('home')}
+                      className="flex items-center gap-1.5 text-[13px] text-primary hover:opacity-80 transition-opacity mt-2"
+                    >
+                      <ChevronRight className="w-4 h-4 rotate-180" />
+                      {t('settings.title')}
+                    </button>
+                    <div className="flex flex-col items-center pt-6 pb-4">
+                      <span className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                        <KeyRound className="w-6 h-6 text-primary" />
+                      </span>
+                      <h3 className="mt-3 text-lg font-bold tracking-tight text-foreground">{t('settings.llmKeys')}</h3>
+                      <p className="mt-1 text-[13px] text-muted-foreground/70 text-center px-6">{t('settings.llmKeysDesc')}</p>
+                    </div>
+
+                    {/* Add a key */}
+                    <div className="p-4 border border-border/40 rounded-xl bg-card space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        <Plus className="w-3.5 h-3.5 text-primary/70" />
+                        <label className="text-[13px] font-semibold text-foreground tracking-tight">{t('settings.llmKeysAdd')}</label>
+                      </div>
+                      <input
+                        type="text"
+                        value={llmForm.name}
+                        onChange={e => setLlmForm(f => ({ ...f, name: e.target.value }))}
+                        placeholder={t('settings.llmKeysName')}
+                        className="w-full bg-background border border-border text-foreground placeholder:text-muted-foreground/40 text-[12px] px-3 py-2 rounded-md outline-none focus:border-primary/60 transition-all"
+                      />
+                      <input
+                        type="password"
+                        value={llmForm.apiKey}
+                        onChange={e => setLlmForm(f => ({ ...f, apiKey: e.target.value }))}
+                        placeholder={t('settings.llmKeysSecret')}
+                        className="w-full bg-background border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-[11px] px-3 py-2 rounded-md outline-none focus:border-primary/60 transition-all"
+                      />
+                      <input
+                        type="text"
+                        value={llmForm.baseUrl}
+                        onChange={e => setLlmForm(f => ({ ...f, baseUrl: e.target.value }))}
+                        placeholder={t('settings.llmKeysBaseUrl')}
+                        className="w-full bg-background border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-[11px] px-3 py-2 rounded-md outline-none focus:border-primary/60 transition-all"
+                      />
+                      <input
+                        type="text"
+                        value={llmForm.model}
+                        onChange={e => setLlmForm(f => ({ ...f, model: e.target.value }))}
+                        placeholder={t('settings.llmKeysModel')}
+                        className="w-full bg-background border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-[11px] px-3 py-2 rounded-md outline-none focus:border-primary/60 transition-all"
+                      />
+                      <button
+                        type="button"
+                        disabled={llmBusy}
+                        onClick={addLlmKey}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-[12px] font-semibold hover:opacity-90 active:scale-[0.99] transition-all disabled:opacity-50"
+                      >
+                        {llmBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                        {t('settings.llmKeysAddBtn')}
+                      </button>
+                    </div>
+
+                    {/* Key list */}
+                    <div className="mt-3 space-y-2">
+                      {llmKeys.length === 0 && (
+                        <p className="text-center text-[12px] text-muted-foreground/60 py-6">{t('settings.llmKeysNone')}</p>
+                      )}
+                      {llmKeys.map(item => {
+                        let host = item.baseUrl;
+                        try { host = new URL(item.baseUrl).host; } catch { /* keep raw */ }
+                        const statusColor =
+                          item.status === 'healthy' ? 'bg-emerald-500/10 text-emerald-500' :
+                          item.status === 'cooling' ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500';
+                        return (
+                          <div key={item.id} className="p-3 border border-border/40 rounded-xl bg-card space-y-2">
+                            <div className="flex items-start gap-2.5">
+                              <span className="w-7 h-7 rounded-full bg-secondary/70 flex items-center justify-center flex-shrink-0 text-foreground/60">
+                                <KeyRound className="w-3.5 h-3.5" />
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-[13px] font-semibold text-foreground truncate">{item.name}</p>
+                                  {item.source === 'env' && (
+                                    <span className="px-1.5 py-0.5 rounded bg-secondary text-[9px] font-medium text-muted-foreground uppercase tracking-wide">env</span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] font-mono text-muted-foreground/60 truncate">{host} · {item.model}</p>
+                                <p className="text-[10px] font-mono text-muted-foreground/40 truncate">{item.maskedKey}</p>
+                              </div>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${statusColor}`}>
+                                {t(`settings.llmStatus.${item.status}`)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between pt-1 border-t border-border/20">
+                              <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60">
+                                <span>{item.uses} {t('settings.llmUses')}</span>
+                                <span>{item.failures} {t('settings.llmFailures')}</span>
+                                {item.coolDownUntil && item.coolDownUntil > Date.now() && (
+                                  <span className="text-amber-500/80">{Math.max(1, Math.round((item.coolDownUntil - Date.now()) / 60000))}m</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {item.source === 'db' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleLlmKey(item)}
+                                    aria-label={t('settings.llmToggle')}
+                                    className={`w-9 h-5 rounded-full relative transition-colors ${item.enabled ? 'bg-primary' : 'bg-secondary'}`}
+                                  >
+                                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${item.enabled ? 'left-5' : 'left-0.5'}`} />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => testLlmKey(item)}
+                                  disabled={llmTesting === item.id}
+                                  title={t('settings.llmTest')}
+                                  className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+                                >
+                                  {llmTesting === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                                </button>
+                                {item.source === 'db' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteLlmKey(item)}
+                                    title={t('settings.llmDelete')}
+                                    className="p-1.5 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-500/5 transition-colors"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </motion.div>
                 )}

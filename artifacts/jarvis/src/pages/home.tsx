@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { useSpeechRecognition, isSpeechRecognitionSupported } from '@/hooks/use-speech-recognition';
 import { useWakeWord, isWakeWordSupported } from '@/hooks/use-wake-word';
 import { useClapDetection } from '@/hooks/use-clap-detection';
@@ -9,7 +10,7 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Sun, Moon, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Briefcase, Zap, Globe, SlidersHorizontal, AlarmClock, Plus, Camera, Bug, Image as ImageIcon, Monitor, Bot, Webcam, Minimize2, Maximize2, AudioWaveform } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Globe, AlarmClock, Plus, Camera, Bug, Image as ImageIcon, Monitor, Bot, Webcam, Minimize2, Maximize2, AudioWaveform, BrainCircuit, BarChart3, SquarePen, MoreHorizontal } from 'lucide-react';
 import type { Widget } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget } from '@/components/widgets';
 import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
@@ -17,7 +18,14 @@ import { useScreenShare } from '@/hooks/use-screen-share';
 import { JarvisBrowser } from '@/components/jarvis-browser';
 import { CameraFeed } from '@/components/camera-feed';
 import { useI18n } from '@/lib/i18n';
+import { looksLikeCodeRequest } from '@/lib/code-intent';
 import { haptics } from '@/lib/haptics';
+import { useEmotionDetection, type EmotionLabel } from '@/hooks/use-emotion-detection';
+import { ResearchPanel, type ResearchJob } from '@/components/research-panel';
+import { GemDialog } from '@/components/gem-dialog';
+import { DataLab } from '@/components/data-lab';
+import { CommandPalette } from '@/components/command-palette';
+import { ensurePushSubscription } from '@/lib/push';
 
 type Theme = 'dark' | 'light' | 'auto';
 
@@ -30,8 +38,8 @@ interface AttachedFile {
 
 function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
-    try { return (localStorage.getItem('jarvis-theme') as Theme) || 'dark'; }
-    catch { return 'dark'; }
+    try { return (localStorage.getItem('jarvis-theme') as Theme) || 'light'; }
+    catch { return 'light'; }
   });
   const [systemDark, setSystemDark] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -75,6 +83,14 @@ export default function Home() {
   const isAgentMode = mode === 'agent';
   const isCameraMode = mode === 'camera';
   const [chatInput, setChatInput] = useState('');
+  // Thinking mode — Jarvis streams a private reasoning pass before the answer
+  // (shown in a collapsible "Thinking" block). Persisted across reloads.
+  const [thinkingEnabled, setThinkingEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem('jarvis-thinking') === 'true'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('jarvis-thinking', thinkingEnabled ? 'true' : 'false'); } catch { /* noop */ }
+  }, [thinkingEnabled]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [sidebarRefreshTick, setSidebarRefreshTick] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -92,7 +108,20 @@ export default function Home() {
   const openPlusMenu = useCallback(() => {
     if (plusButtonRef.current) {
       const rect = plusButtonRef.current.getBoundingClientRect();
-      setPlusMenuCoords({ bottom: window.innerHeight - rect.top + 8, right: window.innerWidth - rect.right - 8 });
+      const MENU_W = 224; // w-56
+      const MENU_H = 380; // approximate height (menu is scrollable past this)
+      // Align the menu's right edge with the button's right edge, but never
+      // let it leave the viewport. Portal + fixed positioning means these
+      // coordinates are always viewport-relative regardless of transformed
+      // ancestors (framer-motion wrappers used to break this math).
+      const left = Math.max(8, Math.min(rect.right - MENU_W, window.innerWidth - MENU_W - 8));
+      // Prefer opening upward (above the + button). If there isn't enough
+      // room above, flip it below the button instead.
+      const roomAbove = rect.top - 8;
+      const top = roomAbove >= MENU_H
+        ? rect.top - MENU_H + 8
+        : Math.min(rect.bottom + 8, Math.max(8, window.innerHeight - MENU_H - 8));
+      setPlusMenuCoords({ top, left });
     }
     setPlusMenuOpen(true);
   }, []);
@@ -111,8 +140,21 @@ export default function Home() {
   const [pipFullscreen, setPipFullscreen] = useState<'browser' | 'camera' | null>(null);
   const [agentModeActive, setAgentModeActive] = useState(false);
   const [agentGoal, setAgentGoal] = useState<string | null>(null);
-  const [plusMenuCoords, setPlusMenuCoords] = useState<{ bottom: number; right: number } | null>(null);
+  const [plusMenuCoords, setPlusMenuCoords] = useState<{ top: number; left: number } | null>(null);
   const plusButtonRef = useRef<HTMLDivElement>(null);
+
+  // Deep research — background jobs + gem chats
+  const [researchPanelOpen, setResearchPanelOpen] = useState(false);
+  const [researchJobs, setResearchJobs] = useState<ResearchJob[]>([]);
+  const researchNotifiedRef = useRef<Set<string>>(new Set());
+
+  // Wave 2 — user-defined gems + Data Lab
+  const [gemDialogOpen, setGemDialogOpen] = useState(false);
+  const [dataLabOpen, setDataLabOpen] = useState(false);
+  // Command palette (Cmd+K) — search memory + run anything
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  // Header dots menu (ChatGPT-style)
+  const [dotsMenuOpen, setDotsMenuOpen] = useState(false);
 
   const { theme, resolved, toggle: toggleTheme } = useTheme();
   const { toast } = useToast();
@@ -121,17 +163,15 @@ export default function Home() {
   const lastFailedTextRef = useRef<string | null>(null);
   const lastFailedFileRef = useRef<AttachedFile | null>(null);
 
-  // Track connection quality via time-to-first-token
-  const [latencyMs, setLatencyMs] = useState<number | null>(null);
-  const latencySamplesRef = useRef<number[]>([]);
-  const requestStartRef = useRef<number>(0);
-
 
   const messagesRef = useRef<ChatMessage[]>([]);
   const activeConvIdRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const statusRef = useRef<AppState>('idle');
+  const chatDictatingRef = useRef(false);
+  useEffect(() => { statusRef.current = status; }, [status]);
 
   // Timer tracking for chat mode — timer lives inline in the feed, not in the sidebar
   const chatTimerMsgIdxRef = useRef<number | null>(null);
@@ -148,6 +188,7 @@ export default function Home() {
 
   const { start: startListening, stop: stopListening } = useSpeechRecognition({
     lang: lang === 'nl' ? 'nl-NL' : 'en-US',
+    autoDetectLang: true,
     onTranscript: (text) => {
       setStatus('thinking');
       processUserText(text);
@@ -176,6 +217,7 @@ export default function Home() {
 
   const { start: startWakeWord, stop: stopWakeWord, reset: resetWakeWord, suppress: suppressWakeWord, unsuppress: unsuppressWakeWord, activateCommand } = useWakeWord({
     lang: lang === 'nl' ? 'nl-NL' : 'en-US',
+    autoDetectLang: true,
     onWake: () => {
       if (isChatMode) return;
       playWakeSound();
@@ -217,6 +259,19 @@ export default function Home() {
     try { localStorage.setItem('jarvis-activation-method', activationMethod); } catch { /* noop */ }
   }, [activationMethod]);
   const synthesizeSpeech = useSynthesizeSpeech();
+
+  // Free client-side emotion detection (Web Audio prosody) while recording.
+  // The detected label is sent to the chat endpoint so Jarvis can adapt tone.
+  const [voiceEmotion, setVoiceEmotion] = useState<EmotionLabel>('neutral');
+  const voiceEmotionRef = useRef<EmotionLabel>('neutral');
+  voiceEmotionRef.current = voiceEmotion;
+  useEmotionDetection({
+    enabled: !isChatMode && status === 'recording',
+    onEmotion: setVoiceEmotion,
+  });
+  useEffect(() => {
+    if (status !== 'recording') setVoiceEmotion('neutral');
+  }, [status]);
 
   // Screen share — start/stop + track active state + latest frame for AI
   const { start: startScreenShare, stop: stopScreenShare, latestFrame: screenFrame } = useScreenShare({
@@ -267,6 +322,14 @@ export default function Home() {
     return () => { if (attachedFile?.preview) URL.revokeObjectURL(attachedFile.preview); };
   }, [attachedFile]);
 
+  // Register for real push notifications if the user already allowed them
+  // (silent — no prompt; keeps the subscription fresh across sessions).
+  useEffect(() => {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      ensurePushSubscription().catch(() => {});
+    }
+  }, []);
+
   // Load personality and web search from settings
   useEffect(() => {
     fetch('/api/jarvis/settings')
@@ -278,6 +341,8 @@ export default function Home() {
       })
       .catch(() => {});
   }, []);
+
+
 
   // Wake-word lifecycle
   useEffect(() => {
@@ -411,6 +476,43 @@ export default function Home() {
 
   const refreshSidebar = useCallback(() => setSidebarRefreshTick(t => t + 1), []);
 
+  // ── Deep research: poll background jobs + fire browser notification when a gem is ready ──
+  useEffect(() => {
+    let cancelled = false;
+    const loadResearch = async () => {
+      try {
+        const res = await fetch('/api/jarvis/research');
+        if (!res.ok) return;
+        const jobs = (await res.json()) as ResearchJob[];
+        if (cancelled) return;
+        setResearchJobs(jobs);
+        // Newly completed job → notify + refresh sidebar so the gem chat appears
+        for (const job of jobs) {
+          if (job.status === 'completed' && !researchNotifiedRef.current.has(job.id)) {
+            researchNotifiedRef.current.add(job.id);
+            refreshSidebar();
+            toast({
+              title: t('research.notificationTitle'),
+              description: `${job.title} — ${t('research.notificationBody')}`,
+            });
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+              try {
+                const n = new Notification(`${job.title} 💎`, {
+                  body: t('research.notificationBody'),
+                  tag: `research-${job.id}`,
+                });
+                n.onclick = () => { window.focus(); setResearchPanelOpen(true); };
+              } catch { /* notifications unavailable */ }
+            }
+          }
+        }
+      } catch { /* server not reachable — retry on next tick */ }
+    };
+    void loadResearch();
+    const iv = setInterval(loadResearch, 12_000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [refreshSidebar, toast, t]);
+
   /** Convert a File to base64 + metadata */
   const readFile = useCallback((file: File): Promise<AttachedFile> => {
     return new Promise((resolve, reject) => {
@@ -462,7 +564,18 @@ export default function Home() {
       const res = await fetch(`/api/jarvis/conversations/${id}`);
       if (!res.ok) return;
       const data = await res.json();
-      setMessages((data.messages ?? []).map((m: any) => ({ role: m.role, content: m.content })));
+      // Filter out poisoned history entries — raw tool-call JSON an older
+      // broken tool-calling attempt stored as assistant messages.
+      const cleanMessages = (data.messages ?? []).filter(
+        (m: any) =>
+          !(
+            m.role === 'assistant' &&
+            typeof m.content === 'string' &&
+            m.content.includes('read_source_code') &&
+            (m.content.trim().startsWith('{') || m.content.trim().startsWith('```'))
+          ),
+      ).map((m: any) => ({ role: m.role, content: m.content, reasoning: m.reasoning ?? undefined }));
+      setMessages(cleanMessages);
       setActiveConversationId(id);
       setSuggestions([]);
     } catch {
@@ -480,6 +593,24 @@ export default function Home() {
     chatTimerMsgIdxRef.current = null;
     timerStartedAtRef.current = null;
     timerOriginalDurationRef.current = null;
+  }, []);
+
+  // Wave 2 — a freshly created gem opens straight into chat mode
+  const handleGemCreated = useCallback((conv: { id: string; title: string }) => {
+    haptics.medium?.();
+    setMode('chat');
+    setActiveConversationId(conv.id);
+    setMessages([]);
+    setSuggestions([]);
+    toast({ title: conv.title, description: t('gem.createdToast') });
+    void loadConversation(conv.id);
+  }, [loadConversation, toast, t]);
+
+  // Wave 2 — Data Lab hands a data summary to Jarvis in chat mode
+  const handleDataLabAsk = useCallback((summaryText: string) => {
+    haptics.medium?.();
+    setMode('chat');
+    setTimeout(() => processUserTextRef.current?.(summaryText, null, false), 80);
   }, []);
 
   const playTTS = useCallback((jarvisText: string, onStart: () => void, onDone: () => void) => {
@@ -543,14 +674,29 @@ export default function Home() {
     );
   }, [synthesizeSpeech, handleError, iosUnlockedAudioRef]);
 
-  const processUserText = useCallback(async (userText: string, file?: AttachedFile | null, speak = true) => {
+  const processUserText = useCallback(async (userText: string, file?: AttachedFile | null, speak = true, codeAllowance?: boolean) => {
+    // ── "Use code for this answer?" confirmation gate ─────────────
+    // If the message looks like a question about Jarvis's own code and the
+    // user hasn't decided yet, show the confirmation card first. Confirm
+    // re-sends with code access (codeAllowance=true); Cancel re-sends without
+    // it (false) — the message is never dropped, Jarvis still answers.
+    if (codeAllowance === undefined && isChatMode && looksLikeCodeRequest(userText)) {
+      pendingCodeRef.current = { userText, file: file ?? null, speak };
+      setSuggestions([]);
+      setMessages(prev => [...prev, {
+        role: 'assistant' as const,
+        content: '',
+        timestamp: Date.now(),
+        pendingSourceCode: { userText },
+      }]);
+      return;
+    }
+
     // Optimistically add message (with file preview if any)
     setMessages(prev => [...prev, { role: 'user', content: userText, file: file ?? undefined, timestamp: Date.now() }]);
     setSuggestions([]);
     setStatus('thinking');
     vibrate(20);
-    requestStartRef.current = Date.now();
-
     try {
       const body: Record<string, string> = { userMessage: userText };
       if (activeConvIdRef.current) body.conversationId = activeConvIdRef.current;
@@ -564,7 +710,12 @@ export default function Home() {
         }
       }
       if (webSearchEnabled) body.webSearchEnabled = 'true';
+      if (thinkingEnabled) body.thinkingEnabled = 'true';
       body.responseStyle = isChatMode ? 'chat' : 'voice';
+      const detectedEmotion = voiceEmotionRef.current;
+      if (detectedEmotion !== 'neutral') body.emotion = detectedEmotion;
+      if (codeAllowance === true) body.allowSourceCode = 'true';
+      else if (codeAllowance === false) body.allowSourceCode = 'false';
 
       const res = await fetch('/api/jarvis/chat', {
         method: 'POST',
@@ -589,6 +740,7 @@ export default function Home() {
       const decoder = new TextDecoder();
       let streamBuffer = '';
       let jarvisText = '';
+      let jarvisReasoning = '';
       let convId = activeConvIdRef.current ?? '';
       let newSuggestions: string[] = [];
       let widget: Widget | null = null;
@@ -614,22 +766,21 @@ export default function Home() {
             const parsed = JSON.parse(data);
             switch (parsed.type) {
               case 'token':
-                // Track time-to-first-token for connection quality
-                if (requestStartRef.current > 0) {
-                  const ttft = Date.now() - requestStartRef.current;
-                  requestStartRef.current = 0; // only measure once
-                  const samples = latencySamplesRef.current;
-                  samples.push(ttft);
-                  if (samples.length > 5) samples.shift(); // keep last 5
-                  // Compute average of last 3
-                  const last3 = samples.slice(-3);
-                  setLatencyMs(last3.reduce((a, b) => a + b, 0) / last3.length);
-                }
                 jarvisText += parsed.content;
                 // Update the last message (assistant) with accumulated text
                 setMessages(prev => {
                   const updated = [...prev];
                   updated[updated.length - 1] = { ...updated[updated.length - 1], content: jarvisText };
+                  return updated;
+                });
+                break;
+              case 'reasoning':
+                // Thinking mode — accumulate the private reasoning chain onto
+                // the same assistant message (shown in a collapsible block).
+                jarvisReasoning += parsed.content;
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { ...updated[updated.length - 1], reasoning: jarvisReasoning };
                   return updated;
                 });
                 break;
@@ -743,8 +894,15 @@ export default function Home() {
       // In chat mode, only speak if the request came from the mic (speak=true).
       if (speak) {
         playTTS(jarvisText, () => { vibrate([20, 30, 20]); setStatus('speaking'); }, () => {
-          setStatus('idle');
-          if (isChatMode) setTimeout(() => inputRef.current?.focus(), 50);
+          if (isChatModeRef.current) {
+            setStatus('idle');
+            setTimeout(() => inputRef.current?.focus(), 50);
+          } else {
+            // Conversational voice loop — immediately keep listening so the
+            // user can just keep talking without tapping the orb again.
+            setStatus('recording');
+            activateCommand(true);
+          }
         });
       } else {
         setStatus('idle');
@@ -754,7 +912,7 @@ export default function Home() {
       const msg = err instanceof TypeError ? 'Network error — is the server running?' : 'Request failed';
       handleError(msg, undefined, () => processUserTextRef.current?.(userText, file, speak));
     }
-  }, [handleError, refreshSidebar, playTTS, isChatMode, webSearchEnabled, activateCommand, vibrate]);
+  }, [handleError, refreshSidebar, playTTS, isChatMode, webSearchEnabled, thinkingEnabled, activateCommand, vibrate]);
 
   const handleToggleRecording = useCallback(() => {
     unlockAudioForIOS(); // must be called synchronously from user gesture for iOS Safari
@@ -906,6 +1064,8 @@ export default function Home() {
   // Ref so the transcript callback can call processUserText without stale closure
   const processUserTextRef = useRef<typeof processUserText | null>(null);
   useEffect(() => { processUserTextRef.current = processUserText; }, [processUserText]);
+  // Pending "Use code for this answer?" confirmation payload
+  const pendingCodeRef = useRef<{ userText: string; file: AttachedFile | null; speak: boolean } | null>(null);
 
   // Auto-grow/shrink the chat textarea when input changes
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -919,6 +1079,8 @@ export default function Home() {
   // Barge-in recognizer — orb tap while Jarvis is speaking in chat mode:
   // auto-submit + speak back (kept separate from the input-bar dictation).
   const { start: startChatRecording, stop: stopChatRecording } = useSpeechRecognition({
+    lang: lang === 'nl' ? 'nl-NL' : 'en-US',
+    autoDetectLang: true,
     onTranscript: (text) => {
       setChatRecording(false);
       if (!text.trim()) return;
@@ -935,6 +1097,8 @@ export default function Home() {
   const { start: startChatDictation, stop: stopChatDictation } = useSpeechRecognition({
     continuous: true,
     interimResults: true,
+    lang: lang === 'nl' ? 'nl-NL' : 'en-US',
+    autoDetectLang: true,
     onTranscript: (text) => {
       if (!text.trim()) return;
       setChatInput(prev => prev ? `${prev.trimEnd()} ${text.trim()}` : text.trim());
@@ -948,6 +1112,7 @@ export default function Home() {
   /** In-chat dictation toggle — mic button beside the input. While active it
       becomes a square button; tap it to stop recording. Stays in chat mode. */
   const [chatDictating, setChatDictating] = useState(false);
+  useEffect(() => { chatDictatingRef.current = chatDictating; }, [chatDictating]);
   const handleChatMicToggle = () => {
     if (chatDictating) {
       haptics.light();
@@ -973,6 +1138,38 @@ export default function Home() {
     setMode('voice');
   };
 
+  // Leave-the-tab safeguard: stop recording / TTS / dictation the moment the
+  // user switches away, so the mic never keeps listening in a background tab.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState !== 'hidden') return;
+      // Stop TTS playback
+      if (activeAudioRef.current) {
+        activeAudioRef.current.stop?.();
+        activeAudioRef.current = null;
+      }
+      // Stop in-chat dictation (continuous mic)
+      if (chatDictatingRef.current) {
+        stopChatDictation();
+        setChatDictating(false);
+        setChatInterim('');
+      }
+      // Cancel active voice recording (same reset as handleToggleRecording cancel)
+      if (statusRef.current === 'recording') {
+        suppressWakeWord();
+        stopListening();
+        if (isChatModeRef.current) {
+          setStatus('idle');
+        } else {
+          setStatus('wake');
+          unsuppressWakeWord();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [stopListening, stopChatDictation, suppressWakeWord, unsuppressWakeWord]);
+
   const handleStopSpeaking = () => {
     haptics.light();
     activeAudioRef.current?.stop?.();
@@ -988,15 +1185,10 @@ export default function Home() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+K / Cmd+K → focus chat input
+      // Ctrl+K / Cmd+K → command palette (search memory + run anything)
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        if (isChatMode) {
-          inputRef.current?.focus();
-        } else {
-          setMode('chat');
-          setTimeout(() => inputRef.current?.focus(), 100);
-        }
+        setPaletteOpen(true);
         return;
       }
       // Spacebar for voice mode PTT
@@ -1011,6 +1203,17 @@ export default function Home() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [status, isChatMode, handleToggleRecording]);
+
+  /** Read a message aloud from the ChatGPT-style action row. */
+  const speakMessage = useCallback((text: string) => {
+    if (!text.trim()) return;
+    unlockAudioForIOS();
+    activeAudioRef.current?.stop?.();
+    activeAudioRef.current = null;
+    playTTS(text, () => setStatus('speaking'), () => {
+      if (isChatModeRef.current) setStatus('idle');
+    });
+  }, [playTTS, unlockAudioForIOS]);
 
   /** Regenerate the assistant's response from a given message index */
   const handleRegenerate = useCallback((messageIndex: number) => {
@@ -1056,153 +1259,60 @@ export default function Home() {
 
       {/* ── Header: Apple-style translucent toolbar ── */}
       {/* Hidden in voice mode — the orb view takes the full screen. */}
-      <header className={`glass-toolbar px-4 py-3 flex items-center gap-3 border-b border-border/50 relative z-50 flex-shrink-0 ${mode === 'voice' ? 'hidden' : ''}`}>
-        <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
-          {/* Mobile hamburger — ChatGPT-style circular button with red badge */}
-          <button
-            onClick={() => setMobileSidebarOpen(true)}
-            className="relative lg:hidden w-9 h-9 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 text-foreground flex items-center justify-center shadow-sm transition-all hover:bg-secondary/70 active:scale-95"
-            aria-label="Open history"
-          >
-            <Menu className="w-[18px] h-[18px]" />
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-semibold flex items-center justify-center border border-white/80 leading-none">1</span>
-          </button>
-          {/* Logo and title */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #007AFF, #5856D6)' }}
-            >
-              <span className="text-white text-[9px] font-bold tracking-wider">J</span>
-            </div>
-            <h1 className="font-sans font-semibold text-base tracking-tight whitespace-nowrap">Jarvis</h1>
-            {/* Connection quality */}
-            {latencyMs !== null && (
-              <span className={`hidden sm:inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
-                latencyMs < 1500 ? 'text-green-600 dark:text-green-400 bg-green-500/8' :
-                latencyMs < 3500 ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/8' :
-                'text-red-600 dark:text-red-400 bg-red-500/8'
-              }`}>
-                <span className={`w-1 h-1 rounded-full ${
-                  latencyMs < 1500 ? 'bg-green-500' :
-                  latencyMs < 3500 ? 'bg-yellow-500' :
-                  'bg-red-500'
-                }`} />
-                {latencyMs < 1000 ? '<1s' : `${Math.round(latencyMs / 100) / 10}s`}
-              </span>
-            )}
-          </div>
-        </div>
+      <header className={`glass-toolbar px-4 py-2.5 flex items-center border-b border-border/50 relative z-50 flex-shrink-0 ${mode === 'voice' ? 'hidden' : ''}`}>
+        {/* Left: hamburger (menu) — always visible, ChatGPT style */}
+        <button
+          onClick={() => setMobileSidebarOpen(true)}
+          className="w-9 h-9 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 text-foreground flex items-center justify-center shadow-sm transition-all hover:bg-secondary/70 active:scale-95"
+          aria-label="Open history"
+        >
+          <Menu className="w-[18px] h-[18px]" />
+        </button>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-          {/* Mode picker — Apple segmented control style */}
-          <div
-            className="flex items-center p-0.5 rounded-lg"
-            style={{ background: 'hsl(var(--secondary))' }}
-          >
-            {([
-              { id: 'chat' as const, label: t('header.mode.chat'), icon: MessageSquare },
-              { id: 'camera' as const, label: t('header.mode.camera'), icon: Webcam },
-            ]).map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => { haptics.light(); setMode(id); }}
-                className={`relative flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-[7px] text-[11px] font-medium transition-all duration-200 ${
-                  mode === id
-                    ? 'bg-white dark:bg-[#1a1a2e] text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {mode === id && (
-                  <motion.div
-                    layoutId="mode-pill"
-                    className="absolute inset-0 rounded-[7px] bg-white dark:bg-[#1a1a2e] shadow-sm"
-                    transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
-                  />
-                )}
-                <span className="relative z-10 flex items-center gap-1.5">
-                  <Icon className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{label}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {/* Personality button — hidden on small screens to keep the header uncluttered */}
-          <div className="relative hidden sm:block">
+        {/* Right: new chat + more — ChatGPT-style pill with divider */}
+        <div className="relative flex items-center ml-auto">
+          <div className="flex items-center rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 shadow-sm overflow-hidden">
             <button
-              onClick={() => setPersonalityMenuOpen(o => !o)}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all"
-              aria-label="Change personality"
+              onClick={() => { haptics.light(); handleNewChat(); }}
+              className="w-9 h-9 flex items-center justify-center text-foreground transition-colors hover:bg-secondary/70 active:scale-95"
+              aria-label={t('sidebar.newChat')}
+              title={t('sidebar.newChat')}
             >
-              {personality === 'auto' && <Sparkles className="w-4 h-4" />}
-              {personality === 'balanced' && <MessageCircle className="w-4 h-4" />}
-              {personality === 'talkative' && <Sparkles className="w-4 h-4" />}
-              {personality === 'helpful' && <Briefcase className="w-4 h-4" />}
-              {personality === 'concise' && <Zap className="w-4 h-4" />}
-              {personality === 'custom' && <SlidersHorizontal className="w-4 h-4" />}
+              <SquarePen className="w-[18px] h-[18px]" strokeWidth={2} />
             </button>
-
-            {personalityMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setPersonalityMenuOpen(false)} />
-                <div className="absolute right-0 top-full mt-2 z-50 min-w-[12rem] p-1.5 rounded-xl border border-border/60 bg-card shadow-apple-xl overflow-hidden">
-                  {[
-                    { value: 'auto', label: 'Auto (AI decides)', icon: Sparkles },
-                    { value: 'balanced', label: 'Balanced', icon: MessageCircle },
-                    { value: 'talkative', label: 'Talkative', icon: Sparkles },
-                    { value: 'helpful', label: 'Helpful', icon: Briefcase },
-                    { value: 'concise', label: 'Just gets it done', icon: Zap },
-                    { value: 'custom', label: 'Custom', icon: SlidersHorizontal },
-                  ].map(({ value, label, icon: Icon }) => (
-                    <button
-                      key={value}
-                      onClick={() => handleSetPersonality(value)}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[11px] font-medium transition-colors ${
-                        personality === value
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Custom personality prompt editor */}
-            {customPromptOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setCustomPromptOpen(false)} />
-                <div className="absolute right-0 top-full mt-2 z-50 w-72 p-4 rounded-xl border border-border/60 bg-card shadow-apple-xl space-y-3">
-                  <p className="text-[10px] font-medium text-muted-foreground tracking-wider uppercase">Custom Personality</p>
-                  <textarea
-                    value={customPrompt}
-                    onChange={e => setCustomPrompt(e.target.value)}
-                    placeholder="Describe how you want Jarvis to behave…"
-                    className="w-full h-28 bg-background border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-[11px] px-3 py-2 rounded-lg outline-none focus:border-primary/50 resize-none"
-                  />
-                  <button
-                    onClick={handleSaveCustomPrompt}
-                    className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-[11px] font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Save
-                  </button>
-                </div>
-              </>
-            )}
+            <div className="w-px h-5 bg-black/10 dark:bg-white/15" />
+            <button
+              onClick={() => { haptics.light(); setDotsMenuOpen(o => !o); }}
+              className="w-9 h-9 flex items-center justify-center text-foreground transition-colors hover:bg-secondary/70 active:scale-95"
+              aria-label="Menu"
+            >
+              <MoreHorizontal className="w-[18px] h-[18px]" strokeWidth={2} />
+            </button>
           </div>
 
-          <button onClick={() => { haptics.light(); toggleTheme(); }} title={resolved === 'dark' ? t('header.lightMode') : t('header.darkMode')}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all">
-            {resolved === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-          <button onClick={() => { haptics.light(); setSettingsOpen(true); }} title={t('header.settings')}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all">
-            <Settings className="w-4 h-4" />
-          </button>
+          {/* Dots dropdown — Settings */}
+          <AnimatePresence>
+            {dotsMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setDotsMenuOpen(false)} />
+                <motion.div
+                  initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-2 z-50 w-48 p-1 rounded-xl border border-border/50 bg-background shadow-apple-lg overflow-hidden"
+                >
+                  <button
+                    onClick={() => { setDotsMenuOpen(false); setSettingsOpen(true); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted/60 transition-colors"
+                  >
+                    <Settings className="w-4 h-4 text-muted-foreground" />
+                    {t('settings.title')}
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </header>
 
@@ -1218,6 +1328,7 @@ export default function Home() {
             mobileOpen={mobileSidebarOpen}
             onMobileClose={() => setMobileSidebarOpen(false)}
             onOpenSettings={() => setSettingsOpen(true)}
+            onNavigate={(m) => { haptics.light(); setMode(m); }}
           />
         )}
 
@@ -1285,7 +1396,7 @@ export default function Home() {
                 <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
                   <button
                     onClick={() => { haptics.light(); setAgentModeActive(a => !a); if (!agentModeActive) setPipBrowserOpen(true); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all ${
                       agentModeActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
@@ -1294,7 +1405,7 @@ export default function Home() {
                   </button>
                   <button
                     onClick={() => { haptics.light(); setPipBrowserOpen(b => !b); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all ${
                       pipBrowserOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
@@ -1303,12 +1414,19 @@ export default function Home() {
                   </button>
                   <button
                     onClick={() => { haptics.light(); setPipCameraOpen(c => !c); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all ${
                       pipCameraOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
                     <Webcam className="w-3 h-3 inline mr-1" />
                     {pipCameraOpen ? t('voice.camOn') : t('voice.cam')}
+                  </button>
+                  <button
+                    onClick={() => { haptics.light(); setMode('camera'); }}
+                    className="px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all text-muted-foreground/50 hover:text-foreground"
+                  >
+                    <Camera className="w-3 h-3 inline mr-1" />
+                    {t('voice.cameraMode')}
                   </button>
                 </div>
                 <div className="mt-6 text-center space-y-2">
@@ -1319,7 +1437,7 @@ export default function Home() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.2 }}
-                      className={`text-lg font-semibold tracking-tight ${
+                      className={`text-lg font-extralight tracking-tight ${
                         status === 'recording' ? 'text-red-500 dark:text-red-400' :
                         status === 'speaking' ? 'text-green-500 dark:text-green-400' :
                         status === 'thinking' || status === 'transcribing' ? 'text-amber-500 dark:text-amber-400' :
@@ -1329,6 +1447,16 @@ export default function Home() {
                       {statusLabels[status]}
                     </motion.h2>
                   </AnimatePresence>
+                  {voiceEmotion !== 'neutral' && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 font-rounded rounded-full border border-primary/25 bg-primary/5"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                      <span className="text-[10px] font-medium text-primary/80">{t(`emotion.${voiceEmotion}`)}</span>
+                    </motion.div>
+                  )}
                   {status === 'speaking' && (
                     <motion.button
                       initial={{ opacity: 0, scale: 0.9 }}
@@ -1408,7 +1536,7 @@ export default function Home() {
                 )}
                 <Orb status={status} />
                 <div className="mt-6 text-center space-y-2">
-                  <h2 className="text-base font-semibold tracking-tight text-foreground">
+                  <h2 className="text-2xl font-extralight tracking-tight text-foreground">
                     {statusLabels[status]}
                   </h2>
                 </div>
@@ -1425,7 +1553,7 @@ export default function Home() {
                 <div className="flex items-center gap-2 mt-3">
                   <button
                     onClick={() => { setAgentModeActive(a => !a); if (!agentModeActive) setPipBrowserOpen(true); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all ${
                       agentModeActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
@@ -1434,7 +1562,7 @@ export default function Home() {
                   </button>
                   <button
                     onClick={() => { setPipBrowserOpen(b => !b); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all ${
                       pipBrowserOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
@@ -1443,12 +1571,19 @@ export default function Home() {
                   </button>
                   <button
                     onClick={() => { setPipCameraOpen(c => !c); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all ${
                       pipCameraOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
                     <Webcam className="w-3 h-3 inline mr-1" />
                     {pipCameraOpen ? 'Cam On' : 'Cam'}
+                  </button>
+                  <button
+                    onClick={() => { haptics.light(); setMode('camera'); }}
+                    className="px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all text-muted-foreground/50 hover:text-foreground"
+                  >
+                    <Camera className="w-3 h-3 inline mr-1" />
+                    {t('voice.cameraMode')}
                   </button>
                 </div>
               </div>
@@ -1474,6 +1609,7 @@ export default function Home() {
                   onSuggestionClick={handleSuggestionClick}
                   onRegenerate={handleRegenerate}
                   onEditMessage={handleEditMessage}
+                  onSpeak={speakMessage}
                   onImageConfirm={(prompt) => {
                     // Remove pending image messages and generate
                     setMessages(prev => prev.filter(m => !m.pendingImage));
@@ -1504,6 +1640,18 @@ export default function Home() {
                   onAgentBrowserCancel={() => {
                     setMessages(prev => prev.filter(m => !m.pendingAgentBrowser));
                     setStatus('idle');
+                  }}
+                  onSourceCodeConfirm={() => {
+                    const pending = pendingCodeRef.current;
+                    pendingCodeRef.current = null;
+                    setMessages(prev => prev.filter(m => !m.pendingSourceCode));
+                    if (pending) processUserTextRef.current?.(pending.userText, pending.file, pending.speak, true);
+                  }}
+                  onSourceCodeCancel={() => {
+                    const pending = pendingCodeRef.current;
+                    pendingCodeRef.current = null;
+                    setMessages(prev => prev.filter(m => !m.pendingSourceCode));
+                    if (pending) processUserTextRef.current?.(pending.userText, pending.file, pending.speak, false);
                   }}
                 />
 
@@ -1587,7 +1735,7 @@ export default function Home() {
                       </div>
                     </div>
                   )}
-                  <div className="flex items-center gap-1 px-2 py-1.5 rounded-full border border-border/50 bg-card shadow-md">
+                  <div className="flex items-center gap-1 px-2 py-1.5 rounded-full border border-[#e5e5ea] dark:border-white/10 bg-white dark:bg-[#1c1c1e] shadow-sm">
                     {/* Hidden file inputs */}
                     <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
                     <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
@@ -1608,6 +1756,23 @@ export default function Home() {
                         <Plus className="w-[18px] h-[18px]" strokeWidth={2} />
                       </button>
                     </div>
+
+                    {/* Thinking mode toggle — Jarvis streams his reasoning before answering */}
+                    <button
+                      onClick={() => { haptics.light(); setThinkingEnabled(v => !v); }}
+                      disabled={isBusy}
+                      title={thinkingEnabled ? t('input.thinkingOn') : t('input.thinking')}
+                      className={`p-2 rounded-full transition-all flex-shrink-0 disabled:opacity-30 ${
+                        thinkingEnabled
+                          ? 'text-primary bg-primary/10'
+                          : 'text-foreground/70 hover:text-foreground hover:bg-secondary/70'
+                      }`}
+                    >
+                      <BrainCircuit
+                        className={`w-[18px] h-[18px] transition-transform ${thinkingEnabled ? 'scale-110' : ''}`}
+                        strokeWidth={2}
+                      />
+                    </button>
 
                     <div className="relative flex-1 min-w-0">
                       <textarea ref={e => { inputRef.current = e; textareaRef.current = e; }} value={chatInput}
@@ -1638,7 +1803,7 @@ export default function Home() {
                             : t('input.placeholder')
                         }
                         disabled={isBusy}
-                        className="w-full bg-transparent text-foreground placeholder:text-muted-foreground/60 font-sans text-[15px] px-2 py-2.5 outline-none resize-none min-h-[24px] max-h-[140px]"
+                        className="w-full bg-transparent text-foreground placeholder:text-muted-foreground/50 placeholder:text-center font-sans text-[15px] px-2 py-2.5 outline-none resize-none min-h-[24px] max-h-[140px]"
                       />
                       {/* Character count */}
                       {chatInput.length > 0 && (
@@ -1664,74 +1829,122 @@ export default function Home() {
                     </button>
                   </div>
 
-                  {/* Fixed + menu popover — NOT clipped by overflow ancestors */}
-                  <AnimatePresence>
-                    {plusMenuOpen && !isBusy && plusMenuCoords && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={closePlusMenu} />
-                        <motion.div
-                          initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 6, scale: 0.95 }}
-                          transition={{ duration: 0.15 }}
-                          className="fixed z-50 w-44 p-1 rounded-xl border border-border/50 bg-background shadow-xl overflow-hidden"
-                          style={{ bottom: plusMenuCoords.bottom, right: plusMenuCoords.right }}
-                        >
+                  {/* + menu popover — rendered through a portal so its fixed
+                      positioning is always viewport-relative (framer-motion
+                      transforms on ancestors used to throw it off-screen). */}
+                  {createPortal(
+                    <AnimatePresence>
+                      {plusMenuOpen && !isBusy && plusMenuCoords && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={closePlusMenu} />
+                          <motion.div
+                            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                            transition={{ duration: 0.15 }}
+                            className="fixed z-50 w-56 rounded-xl border border-border/50 bg-background shadow-xl overflow-hidden max-h-[min(70vh,480px)] flex flex-col"
+                            style={{ top: plusMenuCoords.top, left: plusMenuCoords.left }}
+                          >
+                          {/* ── ADD ── */}
+                          <p className="px-3 pt-2 pb-1 text-[9px] font-semibold tracking-widest text-muted-foreground/40">{t('menu.section.add')}</p>
                           <button
                             onClick={() => { closePlusMenu(); fileInputRef.current?.click(); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
-                            <Paperclip className="w-3.5 h-3.5 flex-shrink-0" />
+                            <Paperclip className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
                             {t('input.attachFile')}
                           </button>
                           <button
                             onClick={() => { closePlusMenu(); cameraInputRef.current?.click(); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
-                            <Camera className="w-3.5 h-3.5 flex-shrink-0" />
+                            <Camera className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
                             {t('input.camera')}
                           </button>
-                          <div className="h-px bg-border/30 my-1" />
+                          <button
+                            onClick={() => { closePlusMenu(); setMode('camera'); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            <Webcam className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
+                            {t('header.mode.camera')}
+                          </button>
+
+                          {/* ── CREATE ── */}
+                          <p className="px-3 pt-2 pb-1 text-[9px] font-semibold tracking-widest text-muted-foreground/40">{t('menu.section.create')}</p>
+                          <button
+                            onClick={() => { closePlusMenu(); setGemDialogOpen(true); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            <Sparkles className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
+                            {t('gem.menuItem')}
+                          </button>
+                          <button
+                            onClick={() => { closePlusMenu(); setDataLabOpen(true); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            <BarChart3 className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
+                            {t('datalab.menuItem')}
+                          </button>
                           <button
                             onClick={() => { closePlusMenu(); setTimeout(() => inputRef.current?.focus(), 50); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
-                            <ImageIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                            <ImageIcon className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
                             {t('input.generateImage')}
+                          </button>
+
+                          {/* ── POWER ── */}
+                          <p className="px-3 pt-2 pb-1 text-[9px] font-semibold tracking-widest text-muted-foreground/40">{t('menu.section.power')}</p>
+                          <button
+                            onClick={() => { closePlusMenu(); setResearchPanelOpen(true); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            <BrainCircuit className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
+                            {t('research.title')}
                           </button>
                           <button
                             onClick={() => { closePlusMenu(); handleToggleScreenShare(); }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono transition-colors ${
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] transition-colors ${
                               screenShareActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                             }`}
                           >
-                            <Monitor className="w-3.5 h-3.5 flex-shrink-0" />
+                            <Monitor className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
                             {screenShareActive ? t('input.stopSharing') : t('input.shareScreen')}
                           </button>
-                          <div className="h-px bg-border/30 my-1" />
-                          <button
-                            onClick={() => { closePlusMenu(); setAgentModeActive(a => !a); }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono transition-colors ${
-                              agentModeActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                            }`}
-                          >
-                            <Bot className="w-3.5 h-3.5 flex-shrink-0" />
-                            {agentModeActive ? t('input.agentModeOn') : t('input.agentMode')}
-                          </button>
-                          <div className="h-px bg-border/30 my-1" />
                           <button
                             onClick={() => { closePlusMenu(); handleToggleWebSearch(); }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[11px] font-mono transition-colors ${
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] transition-colors ${
                               webSearchEnabled ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                             }`}
                           >
-                            <Globe className="w-3.5 h-3.5 flex-shrink-0" />
-                            {t('input.webSearch')} {webSearchEnabled ? '(on)' : '(off)'}
+                            <Globe className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
+                            {t('input.webSearch')}
                           </button>
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
+                          <button
+                            onClick={() => { closePlusMenu(); setAgentModeActive(a => !a); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] transition-colors ${
+                              agentModeActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            }`}
+                          >
+                            <Bot className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
+                            {agentModeActive ? t('input.agentModeOn') : t('input.agentMode')}
+                          </button>
+
+                          {/* ── SHARE ── */}
+                          <p className="px-3 pt-2 pb-1 text-[9px] font-semibold tracking-widest text-muted-foreground/40">{t('menu.section.share')}</p>
+                          <button
+                            onClick={() => { closePlusMenu(); window.open(`https://wa.me/?text=${encodeURIComponent('Hey Jarvis, can you help me with...')}`, '_blank'); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          >
+                            <MessageCircle className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
+                            {t('input.whatsapp')}
+                          </button>
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>,
+                    document.body,
+                  )}
 
                   {/* Agent mode indicator */}
                   {agentModeActive && (
@@ -1840,6 +2053,66 @@ export default function Home() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* ── New Gem dialog ── */}
+      <GemDialog
+        open={gemDialogOpen}
+        onClose={() => setGemDialogOpen(false)}
+        onCreated={handleGemCreated}
+      />
+
+      {/* ── Data Lab ── */}
+      <DataLab
+        open={dataLabOpen}
+        onClose={() => setDataLabOpen(false)}
+        onAskJarvis={handleDataLabAsk}
+      />
+
+      {/* ── Command palette (Cmd+K) ── */}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onNavigate={(m) => { haptics.light(); setMode(m); }}
+        onOpenResearch={() => setResearchPanelOpen(true)}
+        onOpenGem={() => setGemDialogOpen(true)}
+        onOpenDataLab={() => setDataLabOpen(true)}
+        onToggleWebSearch={handleToggleWebSearch}
+        onToggleTheme={() => toggleTheme()}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenConversation={(id) => { void loadConversation(id); setMode('chat'); }}
+        onNewChat={handleNewChat}
+      />
+
+      {/* ── Deep Research panel ── */}
+      <AnimatePresence>
+        {researchPanelOpen && (
+          <ResearchPanel
+            jobs={researchJobs}
+            onClose={() => setResearchPanelOpen(false)}
+            onOpenGem={(convId) => { loadConversation(convId); setResearchPanelOpen(false); }}
+            onStarted={() => { refreshSidebar(); }}
+            onCancel={async (jobId) => {
+              try { await fetch(`/api/jarvis/research/${jobId}/cancel`, { method: 'POST' }); refreshSidebar(); } catch { /* noop */ }
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Pulsing chip when a research job is running in the background */}
+      <AnimatePresence>
+        {!researchPanelOpen && researchJobs.some(j => j.status === 'queued' || j.status === 'running') && (
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            onClick={() => setResearchPanelOpen(true)}
+            className="fixed z-40 bottom-24 right-4 flex items-center gap-2 px-3 py-2 rounded-full border border-border/60 bg-background/90 backdrop-blur-xl shadow-apple-lg hover:bg-secondary/70 transition-colors"
+          >
+            <BrainCircuit className="w-3.5 h-3.5 text-primary animate-pulse" />
+            <span className="text-[10px] font-mono text-muted-foreground">DEEP RESEARCH</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       <SettingsPanel
         open={settingsOpen}

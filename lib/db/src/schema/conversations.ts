@@ -3,6 +3,10 @@ import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 export const conversations = pgTable("conversations", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull().default("New Conversation"),
+  /** "chat" = normal conversation, "gem" = a finished deep-research gem */
+  kind: text("kind", { enum: ["chat", "gem"] }).notNull().default("chat"),
+  /** Custom system prompt. When set, the chat route uses this instead of the default Jarvis prompt (used by gems). */
+  systemPrompt: text("system_prompt"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -14,6 +18,8 @@ export const messages = pgTable("messages", {
     .references(() => conversations.id, { onDelete: "cascade" }),
   role: text("role", { enum: ["user", "assistant"] }).notNull(),
   content: text("content").notNull(),
+  /** Private reasoning chain shown in a collapsible "Thinking" block (thinking mode). */
+  reasoning: text("reasoning"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

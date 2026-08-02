@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Globe, ArrowLeft, ArrowRight, RotateCcw, Maximize2, Minimize2, Bot, Play, Square, Grid3X3, Loader2 } from 'lucide-react';
+import { Globe, ArrowLeft, ArrowRight, RotateCcw, Maximize2, Minimize2, Bot, Play, Square, Pause, Grid3X3, Loader2 } from 'lucide-react';
 
 interface BrowserState {
   url: string;
@@ -54,6 +54,7 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
   // ── Agent mode state ────────────────────────────────────────────
   const [agentGoal, setAgentGoal] = useState('');
   const [agentRunning, setAgentRunning] = useState(false);
+  const [agentPaused, setAgentPaused] = useState(false);
   const [agentLog, setAgentLog] = useState<AgentLogEntry[]>([]);
   const [agentError, setAgentError] = useState<string | null>(null);
   const [showGrid, setShowGrid] = useState(false);
@@ -190,6 +191,7 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
     const controller = new AbortController();
     agentAbortRef.current = controller;
     setAgentRunning(true);
+    setAgentPaused(false);
     setAgentError(null);
     setAgentLog([]);
     logIdRef.current = 0;
@@ -258,6 +260,14 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
         addLog('done', `✔ ${msg.summary ?? 'Task complete.'}`);
         setAgentRunning(false);
         break;
+      case 'paused':
+        setAgentPaused(true);
+        addLog('step', '[PAUSED] You have control');
+        break;
+      case 'resumed':
+        setAgentPaused(false);
+        addLog('step', '[RESUMED]');
+        break;
       case 'error':
         addLog('error', `⚠ ${msg.message ?? 'Unknown error'}`);
         break;
@@ -267,7 +277,20 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
   const stopAgentRun = useCallback(() => {
     agentAbortRef.current?.abort();
     setAgentRunning(false);
+    setAgentPaused(false);
     addLog('error', 'Run stopped by user');
+  }, [addLog]);
+
+  const pauseAgentRun = useCallback(() => {
+    setAgentPaused(true);
+    fetch('/api/jarvis/browse/pause', { method: 'POST' }).catch(() => {});
+    addLog('step', '[PAUSED] Take control of the browser');
+  }, [addLog]);
+
+  const resumeAgentRun = useCallback(() => {
+    setAgentPaused(false);
+    fetch('/api/jarvis/browse/resume', { method: 'POST' }).catch(() => {});
+    addLog('step', '[RESUMING]');
   }, [addLog]);
 
   // Auto-start when the parent sets a goal (agent mode / search detection)
@@ -292,6 +315,10 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
 
   // Execute a browser action via the REST API
   const executeAction = useCallback(async (action: string, payload?: any) => {
+    // Manual takeover: touching the browser mid-run pauses the agent loop.
+    if (agentRunning && !agentPaused) {
+      pauseAgentRun();
+    }
     try {
       const res = await fetch('/api/jarvis/browse/action', {
         method: 'POST',
@@ -307,7 +334,7 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
       console.error('Browser action failed:', err);
       return { success: false };
     }
-  }, []);
+  }, [agentRunning, agentPaused, pauseAgentRun]);
 
   // Navigate to a URL
   const handleNavigate = useCallback((url?: string) => {
@@ -453,13 +480,32 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
           <option value={32}>32px</option>
         </select>
         {agentRunning ? (
-          <button
-            onClick={stopAgentRun}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors text-[10px] font-mono"
-            title="Stop the agent"
-          >
-            <Square className="w-3 h-3" /> Stop
-          </button>
+          <>
+            {agentPaused ? (
+              <button
+                onClick={resumeAgentRun}
+                className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30 transition-colors text-[10px] font-mono"
+                title="Resume the agent - it continues the same goal"
+              >
+                <Play className="w-3 h-3" /> Resume
+              </button>
+            ) : (
+              <button
+                onClick={pauseAgentRun}
+                className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 transition-colors text-[10px] font-mono"
+                title="Pause the agent and take over the browser yourself"
+              >
+                <Pause className="w-3 h-3" /> Pause
+              </button>
+            )}
+            <button
+              onClick={stopAgentRun}
+              className="flex items-center gap-1 px-2 py-1 rounded bg-destructive/15 text-destructive hover:bg-destructive/25 transition-colors text-[10px] font-mono"
+              title="Stop the agent"
+            >
+              <Square className="w-3 h-3" /> Stop
+            </button>
+          </>
         ) : (
           <button
             onClick={() => startAgentRun()}
@@ -542,6 +588,12 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00ff88" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
                 </svg>
+              </div>
+            )}
+            {/* Paused takeover banner */}
+            {agentPaused && (
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-amber-500/90 backdrop-blur rounded-full text-[10px] font-mono text-white shadow-apple-md z-10">
+                PAUSED - you have control. Press Resume to hand it back.
               </div>
             )}
             {/* Loading indicator */}

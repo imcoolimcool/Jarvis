@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import { detectSpeechLanguage, toSpeechLangTag } from '@/lib/speech-lang';
 
 // Extend window for webkit prefix
 declare global {
@@ -27,6 +28,13 @@ interface UseSpeechRecognitionOptions {
   interimResults?: boolean;
   /** BCP-47 speech-recognition language, e.g. "nl-NL" or "en-US". */
   lang?: string;
+  /**
+   * Auto-detect whether the user is speaking Dutch or English and adapt the
+   * recognition language for subsequent utterances. Uses lib/speech-lang.
+   */
+  autoDetectLang?: boolean;
+  /** Fired when auto-detection flips the language (e.g. to update a badge). */
+  onLangChange?: (lang: string) => void;
 }
 
 export function useSpeechRecognition({
@@ -37,10 +45,14 @@ export function useSpeechRecognition({
   continuous = false,
   interimResults = false,
   lang = 'en-US',
+  autoDetectLang = false,
+  onLangChange,
 }: UseSpeechRecognitionOptions) {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const langRef = useRef(lang);
   langRef.current = lang;
+  const onLangChangeRef = useRef(onLangChange);
+  onLangChangeRef.current = onLangChange;
 
   const start = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -67,7 +79,17 @@ export function useSpeechRecognition({
         if (result.isFinal) finalText += chunk;
         else interimText += chunk;
       }
-      if (finalText.trim()) onTranscript(finalText.trim());
+      if (finalText.trim()) {
+        // Auto-adapt the recognition language to what the user actually speaks.
+        if (autoDetectLang) {
+          const next = toSpeechLangTag(detectSpeechLanguage(finalText), langRef.current);
+          if (next !== langRef.current) {
+            langRef.current = next;
+            onLangChangeRef.current?.(next);
+          }
+        }
+        onTranscript(finalText.trim());
+      }
       if (interimText.trim()) onInterim?.(interimText.trim());
     };
 
@@ -108,7 +130,7 @@ export function useSpeechRecognition({
         onEnd();
       }
     }
-  }, [onTranscript, onError, onEnd, onInterim, continuous, interimResults, lang]);
+  }, [onTranscript, onError, onEnd, onInterim, continuous, interimResults, lang, autoDetectLang]);
 
   const stop = useCallback(() => {
     recognitionRef.current?.stop();

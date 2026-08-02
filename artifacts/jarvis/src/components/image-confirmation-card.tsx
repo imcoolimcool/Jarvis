@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Image, Check, X, Loader2, Monitor, Globe } from 'lucide-react';
+import { Image, Check, X, Loader2, Monitor, Globe, Code2 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 interface ImageConfirmationCardProps {
   imagePrompt: string;
@@ -207,6 +208,66 @@ export function AgentBrowserConfirmationCard({ onConfirm, onCancel }: AgentBrows
           >
             <X className="w-3.5 h-3.5" />
             CANCEL
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+interface SourceCodeConfirmationCardProps {
+  userText: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+/** "Use code for this answer?" — Confirm allows Jarvis to read his own source
+ *  code for this message; Cancel still sends the message but without code access. */
+export function SourceCodeConfirmationCard({ userText, onConfirm, onCancel }: SourceCodeConfirmationCardProps) {
+  const { t } = useI18n();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.95 }}
+      transition={{ duration: 0.25 }}
+      className="max-w-[420px] self-start"
+    >
+      <div className="rounded-2xl border border-blue-400/30 bg-blue-500/5 overflow-hidden">
+        <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-2">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+            <Code2 className="w-4 h-4 text-blue-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-display font-semibold tracking-wider text-blue-300">
+              {t('chat.useCodeTitle')}
+            </p>
+            <p className="text-[11px] font-mono text-muted-foreground/60 truncate">
+              {t('chat.useCodePrompt')}
+            </p>
+          </div>
+        </div>
+        <div className="px-4 pb-2">
+          <div className="px-3 py-2 rounded-lg bg-background/50 border border-border/30">
+            <p className="text-[11px] font-mono text-foreground/70 leading-relaxed line-clamp-3">
+              {userText}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 px-4 pb-3.5">
+          <button
+            onClick={onConfirm}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-500/20 border border-blue-400/30 text-blue-300 text-[11px] font-display font-semibold tracking-wider hover:bg-blue-500/30 hover:border-blue-400/50 transition-all active:scale-[0.97]"
+          >
+            <Check className="w-3.5 h-3.5" />
+            {t('chat.useCodeConfirm')}
+          </button>
+          <button
+            onClick={onCancel}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-card border border-border/50 text-muted-foreground text-[11px] font-display font-semibold tracking-wider hover:bg-muted/50 hover:text-foreground transition-all active:scale-[0.97]"
+          >
+            <X className="w-3.5 h-3.5" />
+            {t('chat.useCodeCancel')}
           </button>
         </div>
       </div>

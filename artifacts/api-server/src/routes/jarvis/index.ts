@@ -9,6 +9,10 @@ import gmailRouter from "./gmail";
 import spotifyRouter from "./spotify";
 import browseRouter from "./browse";
 import generateImageRouter from "./generate-image";
+import codeRouter from "./code";
+import researchRouter from "./research";
+import pushRouter from "./push";
+import llmKeysRouter from "./llm-keys";
 
 const router = Router();
 
@@ -22,5 +26,9 @@ router.use(gmailRouter);
 router.use(spotifyRouter);
 router.use("/browse", browseRouter);
 router.use(generateImageRouter);
+router.use(codeRouter);
+router.use(researchRouter);
+router.use(pushRouter);
+router.use(llmKeysRouter);
 
 export default router;

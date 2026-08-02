@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { haptics } from '@/lib/haptics';
 import {
-  Plus,
   Trash2,
   MessageSquare,
   X,
@@ -10,13 +9,9 @@ import {
   Search,
   Download,
   Library,
-  FolderKanban,
-  Puzzle,
-  MoreHorizontal,
   Pencil,
   Settings,
   Globe,
-  Webcam,
 } from 'lucide-react';
 import { useI18n, type TranslationKey } from '@/lib/i18n';
 
@@ -27,6 +22,7 @@ export interface ConversationSummary {
   title: string;
   createdAt: string;
   updatedAt: string;
+  snippet?: string;
 }
 
 function formatRelativeTime(dateStr: string, t: TFunc): string {
@@ -108,17 +104,16 @@ interface SidebarContentProps {
   onClearAll?: () => void;
   onMobileClose?: () => void;
   onOpenSettings?: () => void;
+  onNavigate?: (mode: 'chat' | 'agent' | 'camera') => void;
 }
 
-function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew, onSelect, onDelete, onExport, onSearchChange, onClearAll, onMobileClose, onOpenSettings }: SidebarContentProps) {
+function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew, onSelect, onDelete, onExport, onSearchChange, onClearAll, onMobileClose, onOpenSettings, onNavigate }: SidebarContentProps) {
   const { t } = useI18n();
   const groups = groupByDate(conversations, t);
 
   const navItems = [
-    { icon: Library, label: t('sidebar.chat'), active: true },
-    { icon: Globe, label: t('sidebar.navBrowser'), active: false },
-    { icon: Webcam, label: t('sidebar.navCamera'), active: false },
-    { icon: Puzzle, label: t('sidebar.navPlugins'), active: false },
+    { icon: Library, label: t('sidebar.chat'), mode: 'chat' as const },
+    { icon: Globe, label: t('sidebar.navBrowser'), mode: 'agent' as const },
   ];
 
   return (
@@ -135,24 +130,18 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
         </button>
       </div>
 
-      {/* Nav links */}
+      {/* Nav links — actually switch modes now (Chat / Browser / Camera) */}
       <nav className="px-2 space-y-0.5">
-        {navItems.map(({ icon: Icon, label, active }) => (
+        {navItems.map(({ icon: Icon, label, mode }) => (
           <button
             key={label}
-            onClick={() => { haptics.light(); onNew(); }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-              active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-            }`}
+            onClick={() => { haptics.light(); onNavigate?.(mode); onMobileClose?.(); }}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
           >
             <Icon className="w-[18px] h-[18px]" strokeWidth={1.8} />
             {label}
           </button>
         ))}
-        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors">
-          <MoreHorizontal className="w-[18px] h-[18px]" strokeWidth={1.8} />
-          <span className="hidden">more</span>
-        </button>
       </nav>
 
       {/* Search */}
@@ -164,7 +153,7 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
             value={searchQuery}
             onChange={e => onSearchChange?.(e.target.value)}
             placeholder={t('sidebar.searchPlaceholder')}
-            className="sidebar-search-input w-full bg-secondary/50 border border-transparent focus:border-border/60 text-foreground placeholder:text-muted-foreground/50 text-[13px] pl-9 pr-8 py-2 rounded-full outline-none transition-all"
+            className="sidebar-search-input w-full bg-secondary/50 border border-transparent focus:border-border/60 text-foreground placeholder:text-muted-foreground/50 text-[13px] pl-9 pr-8 py-2 font-rounded rounded-full outline-none transition-all"
           />
           {searchQuery && (
             <button
@@ -216,6 +205,11 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
                     <span className="leading-snug line-clamp-2 break-words block pr-5">
                       {formatConversationTitle(conv.title)}
                     </span>
+                    {conv.snippet && (
+                      <span className="text-[10px] text-muted-foreground/50 mt-0.5 block line-clamp-1 break-words italic">
+                        {conv.snippet}
+                      </span>
+                    )}
                     <span className="text-[10px] text-muted-foreground/40 mt-0.5 block">
                       {formatRelativeTime(conv.updatedAt, t)}
                     </span>
@@ -252,7 +246,7 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
         <div className="flex items-center gap-2">
           <button
             onClick={() => { haptics.light(); onNew(); }}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity text-sm font-semibold shadow-sm"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-rounded rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity text-sm font-semibold shadow-sm"
           >
             <Pencil className="w-4 h-4" strokeWidth={2} />
             {t('sidebar.chat')}
@@ -290,39 +284,28 @@ interface ChatSidebarProps {
   mobileOpen?: boolean;
   onMobileClose?: () => void;
   onOpenSettings?: () => void;
+  onNavigate?: (mode: 'chat' | 'agent' | 'camera') => void;
 }
 
-export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen, onMobileClose, onOpenSettings }: ChatSidebarProps) {
+export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen, onMobileClose, onOpenSettings, onNavigate }: ChatSidebarProps) {
   const { t } = useI18n();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredConversations = searchQuery
-    ? conversations.filter(c =>
-        c.title.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : conversations;
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        const searchInput = document.querySelector<HTMLInputElement>('.sidebar-search-input');
-        searchInput?.focus();
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/jarvis/conversations');
+      // With an active query, search across titles AND message contents
+      // (episodic memory) instead of just filtering titles client-side.
+      const url = searchQuery
+        ? `/api/jarvis/conversations/search?q=${encodeURIComponent(searchQuery)}`
+        : '/api/jarvis/conversations';
+      const res = await fetch(url);
       if (res.ok) setConversations(await res.json());
     } catch { /* silent */ }
-  }, []);
+  }, [searchQuery]);
 
   useEffect(() => { load(); }, [load, refreshTick]);
 
@@ -384,7 +367,7 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen
   };
 
   const sharedProps: SidebarContentProps = {
-    conversations: filteredConversations,
+    conversations,
     activeId,
     deleting,
     searchQuery,
@@ -396,6 +379,7 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen
     onClearAll: () => setConfirmClearAll(true),
     onMobileClose,
     onOpenSettings,
+    onNavigate,
   };
 
   return (

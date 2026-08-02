@@ -4,7 +4,7 @@ import App from './App';
 
 import './index.css';
 
-// Apple devices (iOS/macOS) → SF Pro instead of self-hosted Graphik
+// Apple devices (iOS/macOS) → system SF Pro (crispest); others use self-hosted SF Pro
 if (/iPhone|iPad|iPod|Macintosh|Mac|Apple/i.test(navigator.userAgent)) {
   document.documentElement.classList.add('platform-apple');
 }

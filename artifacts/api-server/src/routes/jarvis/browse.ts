@@ -4,12 +4,16 @@ import { JarvisBrowser } from "../../lib/puppeteer-browser";
 import { jarvisConfig } from "../../config/jarvis";
 import * as cheerio from "cheerio";
 import { buildErrorDetail } from "../../lib/error-detail";
+import { pooledClient } from "../../lib/llm-client";
 
 const router = Router();
 
 /** Global browser instance — shared across all browse requests */
 let browserInstance: JarvisBrowser | null = null;
 let browserInitializing = false;
+
+/** Agent pause control — set by POST /browse/pause (or auto on manual takeover). */
+let agentPaused = false;
 
 /**
  * Get or create the shared browser instance.
@@ -167,6 +171,10 @@ router.post("/action", async (req, res) => {
       return;
     }
 
+    // Manual takeover: if an agent run is active, a manual action pauses it
+    // so the loop stops stepping and the human keeps control.
+    agentPaused = true;
+
     const result = await browser.executeAction({ action, payload } as any);
 
     if (result.success) {
@@ -213,7 +221,40 @@ router.get("/status", async (_req, res) => {
  * GET /api/jarvis/browse/ws-url
  * Get the WebSocket URL for receiving live screenshots.
  */
-router.get("/ws-url", (req, res) => {
+/**
+ * POST /api/jarvis/browse/pause
+ * Pause the running agent loop so the human can take over the browser.
+ */
+router.post("/pause", async (_req, res) => {
+  agentPaused = true;
+  res.json({ paused: true });
+});
+
+/**
+ * POST /api/jarvis/browse/resume
+ * Resume a paused agent loop (continues the same goal).
+ */
+router.post("/resume", async (_req, res) => {
+  agentPaused = false;
+  res.json({ paused: false });
+});
+
+/**
+ * GET /api/jarvis/browse/pause-state
+ * Current pause state (for UI sync across clients).
+ */
+router.get("/pause-state", async (_req, res) => {
+  res.json({ paused: agentPaused });
+});
+
+router.get("/ws-url", async (req, res) => {
+  // The browser WebSocket server only exists while a browser instance is
+  // running. Since Chrome is lazy-launched (see index.ts — we no longer spawn
+  // it eagerly at boot to avoid OOM restarts), kick off the launch here BEFORE
+  // the frontend opens /browser-ws, so the proxy has a live WS server to
+  // forward to. Best-effort — never throws.
+  void ensureBrowserStarted();
+
   // Derive the WebSocket URL from the current request host.
   // The browser WebSocket is served through the Vite dev proxy at
   // /browser-ws (which forwards to the Puppeteer WS server on port 3002),
@@ -225,15 +266,6 @@ router.get("/ws-url", (req, res) => {
 });
 
 // ── Autonomous agent loop (vision LLM drives the browser) ────────────────
-
-/** NVIDIA NIM — OpenAI-compatible endpoint for the vision LLM. */
-const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
-
-function getVisionClient(): OpenAI {
-  const apiKey = process.env["OPENAI_LLM_API_KEY"];
-  if (!apiKey) throw new Error("OPENAI_LLM_API_KEY is not set");
-  return new OpenAI({ apiKey, baseURL: NVIDIA_BASE_URL });
-}
 
 /** System prompt for the autonomous browsing agent. */
 const AGENT_SYSTEM_PROMPT = `You are Jarvis, an autonomous web-browsing agent. You are looking at a live screenshot of a browser.
@@ -400,16 +432,7 @@ router.post("/agent-run", async (req, res) => {
     if (!res.writableEnded) res.write(`data: ${JSON.stringify(payload)}\n\n`);
   };
 
-  let client: OpenAI;
-  try {
-    client = getVisionClient();
-  } catch (err) {
-    send({ type: "error", message: (err as Error).message });
-    send({ type: "done", summary: "The AI vision driver is not configured.", steps: 0 });
-    res.write("data: [DONE]\n\n");
-    res.end();
-    return;
-  }
+  const client = pooledClient();
 
   let browser: JarvisBrowser;
   try {
@@ -428,6 +451,9 @@ router.post("/agent-run", async (req, res) => {
   });
 
   send({ type: "start", goal: goal.trim(), maxSteps: stepsLimit, cellSize: gridCell });
+
+  // Fresh run always starts unpaused (manual takeover may re-pause it).
+  agentPaused = false;
 
   // Optional head start: navigate first so the LLM sees a real page.
   if (initialUrl && typeof initialUrl === "string") {
@@ -547,6 +573,20 @@ router.post("/agent-run", async (req, res) => {
     }
 
     await sleep(1400);
+
+    // Human takeover: hold here until resumed or stopped.
+    if (agentPaused && !aborted.value) {
+      send({ type: "paused" });
+      let notifiedResume = false;
+      while (agentPaused && !aborted.value) {
+        if (!notifiedResume) {
+          send({ type: "step", step, maxSteps: stepsLimit, action: "paused", reason: "You have control - press Resume to hand it back" });
+          notifiedResume = true;
+        }
+        await sleep(500);
+      }
+      if (!aborted.value) send({ type: "resumed" });
+    }
   }
 
   if (!aborted.value && !res.writableEnded) {

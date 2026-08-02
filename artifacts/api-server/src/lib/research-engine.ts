@@ -1,0 +1,589 @@
+/**
+ * Deep Research Engine
+ * --------------------
+ * Runs LONG-RUNNING background research jobs (hours → days, by design).
+ *
+ * A job is a self-driven loop:
+ *   1. PLAN    — the LLM decomposes the goal into many research phases
+ *   2. SEARCH  — web search (Tavily if a key exists, else free DuckDuckGo HTML)
+ *   3. READ    — fetch the top sources and extract readable text (cheerio)
+ *   4. SYNTHESIZE — distill each batch into sourced notes appended to the job
+ *   5. CRITIQUE — the LLM finds gaps, contradictions and follow-up phases and
+ *                 replans — the phase list grows, so there is NO hard limit.
+ *   6. Repeat… sleep between phases scales with the chosen depth.
+ *
+ * When the loop finally converges, the engine writes a deep report and
+ * spawns a "gem" conversation — a special chat whose system prompt makes
+ * Jarvis behave like a 30-year veteran of the researched field.
+ *
+ * Everything is persisted to Postgres on every step, so the frontend can
+ * poll progress and a server restart resumes the job (via recoverStuckJobs).
+ */
+
+import OpenAI from "openai";
+import { db, researchJobs, conversations, messages } from "@workspace/db";
+import { eq, or } from "drizzle-orm";
+import { load as cheerioLoad } from "cheerio";
+import { jarvisConfig } from "../config/jarvis";
+import { logger } from "./logger";
+import { notifyAll } from "./web-push";
+import { runWithLLM, LLMAllKeysCoolingError } from "./llm-client";
+
+const SLEEP_SECONDS: Record<"standard" | "deep" | "quantum", [number, number]> = {
+  standard: [30, 75],
+  deep: [90, 180],
+  quantum: [150, 300],
+};
+
+const BASE_PHASES: Record<"standard" | "deep" | "quantum", [number, number]> = {
+  standard: [8, 14],
+  deep: [15, 25],
+  quantum: [30, 60],
+};
+
+type JobStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
+type JobDepth = "standard" | "deep" | "quantum";
+
+/** Patch shape accepted by the research_jobs row updater. */
+interface JobPatch {
+  status?: JobStatus;
+  progress?: number;
+  phase?: string;
+  log?: string;
+  notes?: string;
+  report?: string;
+  gemSystemPrompt?: string;
+  gemConversationId?: string;
+  phasesCompleted?: number;
+  error?: string;
+  heartbeatAt?: Date;
+  startedAt?: Date;
+  completedAt?: Date;
+}
+
+/** Jobs currently being processed (prevents double-loops after resume). */
+const runningJobs = new Set<string>();
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** JSON block extractor — the NIM models love markdown fences. */
+function extractJson(text: string): string | null {
+  if (!text) return null;
+  let cleaned = text.trim();
+  const fence = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence) cleaned = fence[1].trim();
+  const match = cleaned.match(/[\[{][\s\S]*[\]}]/);
+  return match ? match[0] : null;
+}
+
+async function llm(
+  system: string,
+  user: string,
+  opts: { maxTokens?: number; temperature?: number } = {},
+): Promise<string> {
+  const completion = await runWithLLM((client, model) =>
+    client.chat.completions.create({
+      model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user.slice(0, 60_000) },
+      ],
+      temperature: opts.temperature ?? 0.4,
+      max_tokens: opts.maxTokens ?? 1200,
+    }),
+  );
+  return completion.choices[0]?.message?.content ?? "";
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * Web search — Tavily when a key exists, otherwise free DDG scrape
+ * ──────────────────────────────────────────────────────────────── */
+
+async function searchWeb(query: string, maxResults = 5): Promise<{ title: string; url: string; snippet: string }[]> {
+  const tavilyKey = process.env["TAVILY_API_KEY"] ?? process.env["WEB_SEARCH_API_KEY"];
+  if (tavilyKey) {
+    try {
+      const res = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: tavilyKey,
+          query,
+          search_depth: "advanced",
+          max_results: maxResults,
+        }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as {
+          results?: { title?: string; url?: string; content?: string }[];
+        };
+        return (data.results ?? [])
+          .filter((r) => r.url)
+          .map((r) => ({
+            title: r.title ?? r.url ?? "",
+            url: r.url ?? "",
+            snippet: (r.content ?? "").slice(0, 400),
+          }));
+      }
+    } catch {
+      /* fall through to DDG */
+    }
+  }
+
+  // Free DuckDuckGo HTML endpoint (no key needed) — best effort.
+  try {
+    const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+      headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0 Safari/537.36" },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    const $ = cheerioLoad(html);
+    const results: { title: string; url: string; snippet: string }[] = [];
+    $(".result").each((_, el) => {
+      if (results.length >= maxResults) return;
+      const link = $(el).find("a.result__a").first();
+      const url = link.attr("href") ?? "";
+      if (!url) return;
+      // DDG wraps links in a redirect — decode the uddg parameter if present
+      let finalUrl = url;
+      const uddg = url.match(/uddg=([^&]+)/);
+      if (uddg) {
+        try { finalUrl = decodeURIComponent(uddg[1]); } catch { /* keep original */ }
+      }
+      const title = link.text().trim();
+      const snippet = $(el).find(".result__snippet").first().text().trim();
+      if (title && finalUrl) results.push({ title, url: finalUrl, snippet: snippet.slice(0, 400) });
+    });
+    return results;
+  } catch {
+    return [];
+  }
+}
+
+/** Fetch a page and return readable text (cheerio extraction, best effort). */
+async function readPage(url: string, maxChars = 6000): Promise<string> {
+  try {
+    const u = new URL(url);
+    if (!/^https?:$/.test(u.protocol)) return "";
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0 Safari/537.36" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!res.ok) return "";
+    const contentType = res.headers.get("content-type") ?? "";
+    if (!contentType.includes("html") && !contentType.includes("text/plain")) return "";
+    const html = await res.text();
+    if (html.length > 2_000_000) return "";
+    const $ = cheerioLoad(html);
+    $("script, style, noscript, svg, nav, footer, header, form, iframe, [aria-hidden='true']").remove();
+    return $("body")
+      .text()
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, maxChars);
+  } catch {
+    return "";
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * Job persistence helpers
+ * ──────────────────────────────────────────────────────────────── */
+
+async function updateJob(jobId: string, patch: JobPatch): Promise<void> {
+  await db.update(researchJobs).set(patch).where(eq(researchJobs.id, jobId));
+}
+
+async function appendLog(jobId: string, line: string): Promise<void> {
+  const stamp = new Date().toISOString().slice(11, 19);
+  const rows = await db.select({ log: researchJobs.log }).from(researchJobs).where(eq(researchJobs.id, jobId));
+  const current = rows[0]?.log ?? "";
+  const next = `${current}${current ? "\n" : ""}[${stamp}] ${line}`.slice(-200_000);
+  await updateJob(jobId, { log: next, heartbeatAt: new Date() });
+}
+
+async function appendNotes(jobId: string, chunk: string): Promise<void> {
+  const rows = await db.select({ notes: researchJobs.notes }).from(researchJobs).where(eq(researchJobs.id, jobId));
+  const current = rows[0]?.notes ?? "";
+  const next = `${current}${current ? "\n\n" : ""}${chunk}`.slice(-400_000);
+  await updateJob(jobId, { notes: next });
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * Phase helpers
+ * ──────────────────────────────────────────────────────────────── */
+
+interface Phase {
+  title: string;
+  description: string;
+  queries: string[];
+}
+
+interface JobMeta {
+  prompt: string;
+  title: string;
+  mode: string;
+  depth: JobDepth;
+}
+
+async function planPhases(job: JobMeta, resumeNotes: string): Promise<Phase[]> {
+  const [minPhases, maxPhases] = BASE_PHASES[job.depth] ?? BASE_PHASES.deep;
+  const system =
+    "You are the research planner for a very deep autonomous research system. " +
+    "You decompose a research goal into a comprehensive list of phases. Each phase must have a title, a one-line description, and 2-4 specific search queries. " +
+    "Think like a world-class researcher: cover fundamentals, state of the art, controversies, experts, primary sources, history, future directions, and practical implications. " +
+    "Return ONLY valid JSON — an array of objects: [{\"title\": string, \"description\": string, \"queries\": string[]}].";
+  const user =
+    `Research goal: ${job.prompt}\n` +
+    `Mode: ${job.mode === "agent" ? "agent (full autonomy, explore tangents, verify claims)" : "normal (focused)"}\n` +
+    `Target number of phases: between ${minPhases} and ${maxPhases}. More phases = deeper research.\n` +
+    (resumeNotes ? `\nResearch already completed so far — plan the REMAINING phases to go even deeper, not repeats:\n${resumeNotes.slice(-40_000)}` : "");
+  try {
+    const raw = await llm(system, user, { maxTokens: 6000, temperature: 0.5 });
+    const json = extractJson(raw);
+    if (!json) return [];
+    const parsed = JSON.parse(json) as Phase[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((p) => p && typeof p.title === "string" && Array.isArray(p.queries))
+      .slice(0, maxPhases + 20)
+      .map((p) => ({
+        title: String(p.title).slice(0, 200),
+        description: String(p.description ?? "").slice(0, 500),
+        queries: p.queries.slice(0, 4).map((q) => String(q).slice(0, 300)),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/** Generate follow-up phases based on the critique — this is how a job never truly ends. */
+async function proposeFollowups(job: JobMeta, notes: string, gaps: string): Promise<Phase[]> {
+  const system =
+    "You are an obsessive researcher. Given the gaps found in a research phase, propose 0-3 follow-up phases that would genuinely deepen understanding. " +
+    "Return ONLY valid JSON: [{\"title\": string, \"description\": string, \"queries\": string[]}]. Return [] if the topic is fully saturated.";
+  const user = `Goal: ${job.prompt}\n\nKnowledge so far (tail):\n${notes.slice(-20_000)}\n\nGaps found:\n${gaps.slice(-8000)}`;
+  try {
+    const raw = await llm(system, user, { maxTokens: 2500, temperature: 0.6 });
+    const json = extractJson(raw);
+    if (!json) return [];
+    const parsed = JSON.parse(json) as Phase[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((p) => p && typeof p.title === "string" && Array.isArray(p.queries))
+      .slice(0, 3)
+      .map((p) => ({ title: String(p.title).slice(0, 200), description: String(p.description ?? "").slice(0, 500), queries: p.queries.slice(0, 4).map((q) => String(q).slice(0, 300)) }));
+  } catch {
+    return [];
+  }
+}
+
+/** Execute one phase: search → read → synthesize → critique. Returns gap summary. */
+async function runPhase(
+  jobId: string,
+  job: JobMeta,
+  phase: Phase,
+  index: number,
+  total: number,
+): Promise<{ gapSummary: string; saturated: boolean }> {
+  const label = `Phase ${index}/${total} — ${phase.title}`;
+
+  // 1. Gather sources across all queries
+  const gathered: { title: string; url: string; snippet: string; text: string }[] = [];
+  const seen = new Set<string>();
+  for (const query of phase.queries) {
+    const results = await searchWeb(query, job.mode === "agent" ? 6 : 4);
+    for (const r of results) {
+      if (seen.has(r.url) || gathered.length >= 8) continue;
+      seen.add(r.url);
+      gathered.push({ ...r, text: "" });
+    }
+    await sleep(1200 + Math.random() * 2500); // gentle pacing
+  }
+
+  // 2. Read the top pages (agent mode reads more)
+  const readCount = job.mode === "agent" ? 4 : 3;
+  for (const item of gathered.slice(0, readCount)) {
+    const text = await readPage(item.url, 6000);
+    if (text) item.text = text;
+    await sleep(800 + Math.random() * 2000);
+  }
+
+  const sourcesText = gathered
+    .map((g) => `### ${g.title}\nURL: ${g.url}\nSnippet: ${g.snippet}\n${g.text ? `Content:\n${g.text.slice(0, 5000)}` : "(page unreadable)"}`)
+    .join("\n\n");
+
+  // 3. Synthesize
+  const synthSystem =
+    "You are a senior research analyst. Distill the provided sources into rigorous, well-organized notes for a deep research dossier. " +
+    "Use markdown bullets. Cite sources inline as [source: domain]. Note uncertainty, conflicting claims, and missing evidence explicitly. " +
+    "Be precise and dense — every bullet should carry real information, not filler.";
+  const synthUser =
+    `Research goal: ${job.prompt}\nPhase: ${phase.title}\n\nSOURCES:\n${sourcesText.slice(0, 55_000)}`;
+  const notesChunk = await llm(synthSystem, synthUser, { maxTokens: 2500, temperature: 0.3 });
+  await appendNotes(jobId, `## ${phase.title}\n${notesChunk}`);
+  await appendLog(jobId, `Synthesized "${phase.title}" (${gathered.filter((g) => g.text).length} pages read)`);
+
+  // 4. Critique — find gaps for the replanning step
+  const critiqueSystem =
+    "You are a ruthless research critic. Identify the biggest remaining gaps, contradictions, and untested claims in this research so far. " +
+    "Return ONLY valid JSON: {\"gaps\": string, \"saturated\": boolean}.";
+  const critiqueUser = `Goal: ${job.prompt}\nPhase: ${phase.title}\n\nLatest notes:\n${notesChunk.slice(-12_000)}`;
+  let gapSummary = "Continue exploring adjacent and deeper aspects.";
+  let saturated = false;
+  try {
+    const raw = await llm(critiqueSystem, critiqueUser, { maxTokens: 1200, temperature: 0.4 });
+    const json = extractJson(raw);
+    if (json) {
+      const parsed = JSON.parse(json) as { gaps?: string; saturated?: boolean };
+      if (typeof parsed.gaps === "string" && parsed.gaps.trim()) gapSummary = parsed.gaps.trim().slice(0, 4000);
+      saturated = parsed.saturated === true;
+    }
+  } catch { /* keep defaults */ }
+
+  return { gapSummary: saturated ? "" : gapSummary, saturated };
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * Gem creation
+ * ──────────────────────────────────────────────────────────────── */
+
+async function createGem(
+  jobId: string,
+  job: JobMeta & { notes: string },
+): Promise<{ gemConversationId: string; gemSystemPrompt: string; report: string }> {
+  const finalSystem =
+    "You are the final synthesis stage of a deep research system. Write the definitive report on the research goal. " +
+    "Structure it like a world-class expert monograph: executive summary, fundamentals, state of the art, evidence and sources, " +
+    "controversies and open questions, expert perspectives, practical implications, future outlook, and a conclusion. " +
+    "Be exhaustively thorough — this is the capstone deliverable of a multi-hour investigation. Use markdown with headings and citations [source: domain]. " +
+    "Then, on a separate line, output a JSON block with the identity for the resulting expert 'gem': " +
+    '{"persona": string (a powerful system-prompt persona of a 30-year veteran expert who can reason like a world authority), "expertise": string (their specialty summary)}. ' +
+    "The persona must instruct the expert to: reason rigorously like a senior researcher; use the attached knowledge base as ground truth; stay humble about uncertainty; answer with deep, structured reasoning.";
+  const finalUser =
+    `Goal: ${job.prompt}\n\nComplete research dossier:\n${job.notes.slice(-120_000)}`;
+  const finalRaw = await llm(finalSystem, finalUser, { maxTokens: 6000, temperature: 0.3 });
+
+  // Split report from the persona JSON block
+  let report = finalRaw;
+  let persona = "";
+  const m = finalRaw.match(/\{[^{}]*"persona"[^{}]*\}/);
+  if (m) {
+    try {
+      const parsed = JSON.parse(m[0]) as { persona?: string; expertise?: string };
+      if (typeof parsed.persona === "string") persona = parsed.persona;
+      if (typeof parsed.expertise === "string" && persona) {
+        persona = `You are a world-class expert — ${parsed.expertise} — with the depth and judgement of someone who has studied and worked in this field for 30 years.\n\n${persona}`;
+      }
+      report = finalRaw.replace(m[0], "").trim();
+    } catch {
+      /* keep everything as report */
+    }
+  }
+  if (!persona) {
+    persona =
+      `You are a world-class expert on the topic: "${job.title}", with the depth and judgement of someone who has studied and worked in this field for 30 years.\n\n` +
+      "Ground every answer in the research dossier attached to this conversation. Reason rigorously, structure your answers, and acknowledge uncertainty honestly.";
+  }
+
+  const gemSystemPrompt =
+    persona +
+    "\n\n== RESEARCH DOSSIER (ground truth, distilled over many hours of investigation) ==\n" +
+    job.notes.slice(-80_000) +
+    "\n\nRules:\n- Reason like a senior expert: define terms, state assumptions, weigh evidence, then conclude.\n- When the dossier is silent, reason from first principles and say so.\n- Be rigorous, precise, and appropriately humble about uncertainty.\n- Format long answers with clear markdown structure.";
+
+  // Create the gem conversation + seed messages
+  const [conv] = await db
+    .insert(conversations)
+    .values({ title: `💎 ${job.title.slice(0, 120)}`, kind: "gem", systemPrompt: gemSystemPrompt })
+    .returning();
+  await db.insert(messages).values([
+    { conversationId: conv.id, role: "user", content: job.prompt },
+    { conversationId: conv.id, role: "assistant", content: report },
+  ]);
+  await appendLog(jobId, `Gem chat created (${conv.id}).`);
+  return { gemConversationId: conv.id, gemSystemPrompt, report };
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * The main loop
+ * ──────────────────────────────────────────────────────────────── */
+
+export async function startResearchJob(jobId: string): Promise<void> {
+  if (runningJobs.has(jobId)) return;
+  runningJobs.add(jobId);
+  try {
+    await runJob(jobId);
+  } catch (err) {
+    logger.error({ err, jobId }, "Research job crashed");
+    try {
+      await updateJob(jobId, { status: "failed", error: err instanceof Error ? err.message : String(err) });
+    } catch { /* DB unavailable */ }
+  } finally {
+    runningJobs.delete(jobId);
+  }
+}
+
+async function runJob(jobId: string): Promise<void> {
+  let [row] = await db.select().from(researchJobs).where(eq(researchJobs.id, jobId));
+  if (!row) return;
+
+  await updateJob(jobId, { status: "running", startedAt: new Date() });
+
+  const job: JobMeta = { prompt: row.prompt, title: row.title, mode: row.mode, depth: row.depth };
+
+  await appendLog(jobId, `Research launched: "${row.title}" — ${row.mode} mode, ${row.depth} depth. This will run for a very long time.`);
+
+  // 1. Initial plan (or continuation plan when resuming with notes)
+  let phases = await planPhases(job, row.notes);
+  if (phases.length === 0) {
+    // Fallback when the planner failed — build a generic phase list
+    phases = [
+      { title: "Foundations", description: "Core concepts", queries: [`${job.prompt} fundamentals`] },
+      { title: "State of the art", description: "Current developments", queries: [`${job.prompt} state of the art 2025`] },
+      { title: "Expert perspectives", description: "What experts say", queries: [`${job.prompt} expert analysis`] },
+    ];
+  }
+  await appendLog(jobId, `Planner produced ${phases.length} phases.`);
+
+  let completed = 0;
+  let index = 0;
+  while (phases.length > 0 && index < phases.length) {
+    const phase = phases[index];
+    index += 1;
+
+    // Cancellation + liveness checks
+    const [live] = await db.select({ status: researchJobs.status }).from(researchJobs).where(eq(researchJobs.id, jobId));
+    if (!live) return;
+    if (live.status === "cancelled") {
+      await appendLog(jobId, "Cancelled by user.");
+      return;
+    }
+
+    const total = phases.length;
+    await updateJob(jobId, {
+      progress: Math.min(99, Math.round((completed / total) * 100)),
+      phase: `Phase ${index}/${total} — ${phase.title}`,
+      heartbeatAt: new Date(),
+    });
+
+    try {
+      const { gapSummary } = await runPhase(jobId, job, phase, index, total);
+      completed += 1;
+      await updateJob(jobId, { phasesCompleted: completed });
+
+      // Replan: propose follow-up phases from the critique (no hard limit — this is how the research deepens forever)
+      if (gapSummary && index % 2 === 1) {
+        const [fresh] = await db.select({ notes: researchJobs.notes }).from(researchJobs).where(eq(researchJobs.id, jobId));
+        if (fresh) row = { ...row, notes: fresh.notes };
+        const followups = await proposeFollowups(job, row.notes, gapSummary);
+        if (followups.length > 0) {
+          phases.splice(index, 0, ...followups);
+          await appendLog(jobId, `Replanning: +${followups.length} follow-up phase(s) from critique. Total now ${phases.length}.`);
+        }
+      }
+    } catch (phaseErr) {
+      if (phaseErr instanceof LLMAllKeysCoolingError) {
+        // Every LLM key is cooling down — pause + notify + auto-resume on the SAME phase.
+        await appendLog(jobId, "All LLM keys are cooling down (quota/rate limits). Pausing research for ~10 minutes — will auto-resume on this same phase. Nothing is lost.");
+        void notifyAll(`Research paused: ${job.title}`, "Every LLM key is cooling down. Jarvis will auto-resume in ~10 minutes — nothing is lost.", "/");
+        await sleep(10 * 60 * 1000);
+        index -= 1; // retry this phase
+        continue;
+      }
+      // Transient errors (search down, LLM hiccup) — log and continue, never kill the job
+      logger.warn({ err: phaseErr, jobId }, "Research phase failed transiently");
+      await appendLog(jobId, `Phase "${phase.title}" hit an error — continuing: ${phaseErr instanceof Error ? phaseErr.message.slice(0, 300) : "unknown"}`);
+      completed += 1;
+    }
+
+    // Pacing — scaled by depth so a deep/quantum job genuinely spans hours/days
+    const [lo, hi] = SLEEP_SECONDS[job.depth] ?? SLEEP_SECONDS.deep;
+    await sleep((lo + Math.random() * (hi - lo)) * 1000);
+  }
+
+  // 2. Final synthesis + gem
+  const [finalRow] = await db.select().from(researchJobs).where(eq(researchJobs.id, jobId));
+  if (!finalRow) return;
+  await updateJob(jobId, { progress: 99, phase: "Final synthesis — writing the gem…" });
+  await appendLog(jobId, "Phases complete. Writing final report and spawning the gem chat…");
+
+  // Final synthesis uses the key pool too — if every key is cooling, pause
+  // and retry rather than failing the whole job at the last step.
+  let gemResult: { gemConversationId: string; gemSystemPrompt: string; report: string } | null = null;
+  for (let attempt = 0; attempt < 3 && !gemResult; attempt++) {
+    try {
+      gemResult = await createGem(
+        jobId,
+        { prompt: finalRow.prompt, title: finalRow.title, notes: finalRow.notes, mode: finalRow.mode, depth: finalRow.depth },
+      );
+    } catch (gemRetryErr) {
+      if (gemRetryErr instanceof LLMAllKeysCoolingError && attempt < 2) {
+        await appendLog(jobId, "All LLM keys cooling during final synthesis — retrying in 10 minutes.");
+        void notifyAll(`Research nearly done: ${job.title}`, "Every LLM key is cooling down. Jarvis will write the final report when a key revives.", "/");
+        await sleep(10 * 60 * 1000);
+      } else {
+        throw gemRetryErr;
+      }
+    }
+  }
+  const { gemConversationId, gemSystemPrompt, report } = gemResult!;
+  try {
+    await updateJob(jobId, {
+      status: "completed",
+      progress: 100,
+      phase: "Complete",
+      report,
+      gemSystemPrompt,
+      gemConversationId,
+      completedAt: new Date(),
+    });
+    await appendLog(jobId, "Done. The gem chat is ready.");
+    void notifyAll(
+      `Research complete: ${job.title}`,
+      "Your deep research finished — the expert gem is ready to open.",
+      "/",
+    );
+  } catch (gemErr) {
+    logger.error({ err: gemErr, jobId }, "Gem creation failed");
+    await updateJob(jobId, { status: "failed", error: gemErr instanceof Error ? gemErr.message : String(gemErr) });
+    void notifyAll(
+      `Research finished with an error: ${job.title}`,
+      "Something went wrong while creating your gem.",
+      "/",
+    );
+  }
+}
+
+/**
+ * Resume ANY unfinished job ('queued' or 'running') after a server (re)start.
+ * Because a fresh process has no loops running, heartbeat age is irrelevant —
+ * everything unfinished gets picked up again from its saved notes.
+ * Also runs periodically as a safety net: if a loop ever dies hard, the job is
+ * reclaimed without waiting for a full restart. startResearchJob's in-process
+ * guard (runningJobs) prevents double-processing.
+ */
+export async function recoverStuckJobs(): Promise<void> {
+  try {
+    const unfinished = await db
+      .select()
+      .from(researchJobs)
+      .where(or(eq(researchJobs.status, "running"), eq(researchJobs.status, "queued")));
+    for (const job of unfinished) {
+      await appendLog(job.id, "Server (re)started — resuming research from accumulated notes.");
+      void startResearchJob(job.id);
+    }
+  } catch {
+    logger.warn("recoverStuckJobs: DB unavailable at boot — research jobs will start when the server can reach the DB.");
+  }
+}
+
+// Safety net: reclaim any job that ended up stuck without a server restart.
+setInterval(() => {
+  void recoverStuckJobs().catch(() => {});
+}, 10 * 60 * 1000).unref();
