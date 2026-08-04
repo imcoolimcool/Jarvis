@@ -1,5 +1,7 @@
 {pkgs}: {
   deps = [
+    pkgs.udev
+    pkgs.mesa
     pkgs.expat
     pkgs.alsa-lib
     pkgs.cairo
