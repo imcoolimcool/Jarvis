@@ -1,5 +1,23 @@
-JARVIS VOICE ASSISTANT — COMPLETE WEBSITE AUDIT
-================================================
+JARVIS VOICE ASSISTANT — CORRECTED QA AUDIT
+===========================================
+
+CORRECTION TO THE PREVIOUS REPORT
+----------------------------------
+
+The previous version of this file overstated the audit coverage. I described
+the website as fully tested because a QA runner recorded 344 DOM activations.
+That was not sufficient evidence.
+
+The 344 number was a control-activation count across changing UI states. It
+did not prove that every Settings subview, modal, form, feature workflow, or
+provider-backed action completed successfully. Some controls navigated away
+from their parent surface, some actions were intentionally blocked, and some
+QA selectors were incorrect. The earlier claim that there were "zero failed
+activations" must not be interpreted as proof that every button or feature
+works.
+
+I am correcting that claim here. The crucial end-to-end portions requested by
+the user were not fully completed.
 
 Audit date: August 4, 2026
 Application: Jarvis Voice Assistant
@@ -9,11 +27,9 @@ API workflow: artifacts/api-server: API Server
 
 IMPORTANT SCOPE NOTE
 --------------------
-This report lists every problem found during the completed QA walkthrough and
-interactive sweep. It cannot honestly guarantee that no undiscovered problem
-exists in code paths that require unavailable external providers, real
-microphone/camera permissions, live OAuth accounts, or a working internal
-browser service.
+This report lists problems found during a partial QA walkthrough. It cannot
+honestly claim to list every problem on the website because the complete
+end-to-end walkthrough requirement was not satisfied.
 
 No Jarvis application source code was modified during the QA walkthrough.
 The QA environment was configured with Chromium support and separate QA-only
@@ -24,9 +40,13 @@ browser runners. Application data was not intentionally created or deleted.
 --------------------
 
 The website starts and renders successfully. The API is reachable, the
-database health check succeeds, and the main interface is usable. The final
-interactive audit activated 344 enabled controls across 17 isolated UI states
-with zero failed activations and zero missing expected entry controls.
+database health check succeeds, and the main interface is usable. Several
+top-level screens and controls were opened, but the full application
+walkthrough was not completed.
+
+The earlier broad runner recorded 344 DOM activations across 17 attempted
+state runs. That number is evidence of attempted interaction only, not proof
+of fully verified workflows.
 
 The most important product problems are:
 
@@ -48,26 +68,32 @@ side effects or unavailable in the test environment.
 2. VERIFICATION RESULTS
 -----------------------
 
-Interactive control verification:
+Interactive control evidence:
 
 - Fresh isolated UI states tested: 17
-- Enabled control activations: 344
-- Failed control activations: 0
-- Missing expected feature-entry controls: 0
+- DOM activations recorded by the broad runner: 344
+- Fully verified end-to-end controls: NOT ESTABLISHED
+- Targeted actions reported as unavailable by the focused runner: 24
 - Requests intentionally blocked for safety: 79
 - Final state screenshots captured by the interactive runner: 361
+- Focused-flow screenshots captured: 140
 
-The controls were activated through the live DOM one at a time, with the page
-rescanned after state changes. Repeated conversation rows were treated as one
-semantic control type so the audit would not loop through every generated
-conversation instance indefinitely.
+The broad controls were activated through the live DOM one at a time, with the
+page rescanned after state changes. Repeated conversation rows were treated as
+one semantic control type so the audit would not loop through every generated
+conversation instance indefinitely. A later focused runner attempted Settings,
+dialogs, forms, and feature panels, but its state transitions and selectors
+also exposed coverage gaps.
 
 This means:
 
-- Every enabled control type exposed in the tested states was activated.
-- No enabled control was confirmed to be a dead button.
-- It does NOT mean that every possible data row, every real file, every
-  external OAuth redirect, or every provider-dependent action completed.
+- Many controls received a DOM click.
+- Some top-level screens were captured.
+- It does NOT mean that every enabled control was verified by observing its
+  intended result.
+- It does NOT mean that every Settings panel, modal, form, data state, real
+  file, OAuth redirect, or provider-dependent action completed.
+- No conclusion that every button works should be drawn from the 344 count.
 
 The earlier pointer-based sweep also ran against desktop and mobile layouts.
 The final reliable state-isolated sweep used Chromium and live DOM activation
@@ -461,15 +487,53 @@ carefully:
    accessibility scanner.
 
 
-6. BUTTONS AND FEATURES THAT DID NOT WORK
-------------------------------------------
+6. FEATURE COVERAGE MATRIX
+--------------------------
 
-No enabled control was confirmed as a dead button:
+Status meanings:
 
-- Enabled control activations: 344
-- Failed activations: 0
+- PASS: the intended workflow reached a usable result in the live app.
+- FAIL: the live app reached a reproducible failure.
+- BLOCKED: the QA run intentionally prevented the action or external side
+  effect.
+- NOT TESTED: the required workflow was not conclusively exercised.
+- SOURCE REVIEW ONLY: behavior was inspected in code but not verified live.
 
-However, activation is not the same as successful completion of every feature.
+| Feature / workflow | Status | Evidence or limitation |
+|---|---|---|
+| Voice home and mode navigation | PASS | Live voice/chat/mode states opened. |
+| Voice recording and transcription | NOT TESTED | No real microphone recording completed. |
+| Text-to-speech playback | NOT TESTED | No real provider response completed. |
+| Conversation history/sidebar | ACTIVATED ONLY | Controls were clicked; full row-by-row mutation behavior was not verified. |
+| Plus menu | ACTIVATED ONLY | Menu opened and several actions were activated; child workflows were not all completed. |
+| File attachment upload | BLOCKED | File chooser was intentionally cancelled. |
+| Camera stream and snapshot | NOT TESTED | Real device stream was not completed; permission-dependent states were not fully verified. |
+| Screen sharing | NOT TESTED | Real screen-share permission flow was not completed. |
+| New Gem form and creation | BLOCKED | Form was opened; mutating creation request was blocked. |
+| Deep Research form | ACTIVATED ONLY | Form, depth, mode, and confirmation states were reached; start request was blocked. |
+| Research cancellation and job lifecycle | NOT TESTED | No real queued/running job was allowed to complete. |
+| Studios hub | ACTIVATED ONLY | Hub opened; each studio's complete resulting workflow was not independently verified. |
+| Design Studio empty state | PASS | Empty state and upload entry were opened. |
+| Design Studio image editor | NOT TESTED | Real image upload/editor/save workflow was not completed. |
+| Music Studio mood selection | ACTIVATED ONLY | Several mood controls and compose action were opened; playback completion was not independently verified. |
+| Data Lab empty state | PASS | Empty state and file chooser entry were opened. |
+| Data Lab CSV parsing/chart/ask | NOT TESTED | Real file upload and analysis request were not completed. |
+| Command palette | ACTIVATED ONLY | Palette and several actions were opened; every resulting destination was not verified independently. |
+| Settings navigation | ACTIVATED ONLY | Settings was opened; subview coverage was attempted but not conclusively established. |
+| Settings form editing/save/dirty state | NOT TESTED | Full edit, save, close-confirmation, discard, and keep-editing flow was not completed. |
+| Language and accent persistence | NOT TESTED | Controls were encountered, but persistence after navigation/reload was not proven. |
+| Memory edit/delete | NOT TESTED | Empty state observed; no record was available for edit/delete testing. |
+| Gmail OAuth | BLOCKED | External OAuth redirect was not completed. |
+| Spotify OAuth | BLOCKED | External OAuth redirect was intercepted/closed. |
+| LLM key management | BLOCKED | Secret-bearing and mutating actions were not completed. |
+| Chat/LLM response | BLOCKED | LLM requests were blocked and quota/cooling state was unreliable. |
+| Image generation | BLOCKED | External generation request was intentionally blocked. |
+| Browser mode | FAIL | Internal browser WebSocket could not establish. |
+| Agent mode | FAIL | Browser automation dependency could not establish. |
+| Build mode / terminal actions | BLOCKED | Mutating/expensive requests were intentionally blocked. |
+| Weather/calendar/web-search settings | NOT TESTED | Inputs/toggles were encountered but persistence and live provider behavior were not proven. |
+| Accessibility keyboard traversal | NOT TESTED | No complete keyboard traversal or automated axe scan was run. |
+
 The following feature paths could not be fully completed:
 
 - Browser mode: internal browser WebSocket unavailable.
@@ -487,16 +551,18 @@ The following feature paths could not be fully completed:
 - Chat/LLM: broad testing was stopped when the configured key entered a
   cooling/quota state.
 
-These are not all confirmed bugs. They are a mixture of one real service
-failure (Browser/Agent), intentional audit safety blocks, and unavailable
-external-device/provider dependencies.
+These are not all confirmed bugs. They are a mixture of two confirmed service
+failures (Browser/Agent), intentional audit safety blocks, incomplete
+workflow coverage, and unavailable external-device/provider dependencies.
 
 
 7. PAGE AND SCREENSHOT VERIFICATION
 -----------------------------------
 
 This is a single-page application rather than a set of conventional URL
-pages. The major visible screens and states were tested separately.
+pages. Major visible screens and some states were opened separately, but the
+matrix above is the authoritative coverage summary; opening a surface does not
+mean its full workflow passed.
 
 Screenshots captured:
 
@@ -636,10 +702,11 @@ Priority 5 — Improve feature completeness:
 -----------------
 
 The website is runnable and has a compelling visual concept with substantial
-feature breadth. The audit did not find a dead enabled button: all 344
-enabled controls selected for semantic coverage activated successfully.
+feature breadth. This audit is NOT a complete end-to-end verification. The
+344 DOM activation count must not be used as a pass rate, and the matrix above
+contains substantial NOT TESTED, BLOCKED, and ACTIVATED ONLY coverage.
 
-The product is not yet fully polished. The most urgent improvements are:
+The most urgent product improvements are:
 
 1. Make the default UI readable.
 2. Stop showing the microphone error before the user asks for voice access.

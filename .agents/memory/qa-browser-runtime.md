@@ -14,3 +14,16 @@ For interactive coverage, isolate each major UI surface in a fresh page and re-s
 **Why:** A single linear sweep through this app repeatedly invalidated stale targets and kept rediscovering conversation rows as navigation changed the DOM.
 
 **How to apply:** Bound semantic control coverage per state, treat repeated data rows as one control type, and record blocked external/mutating requests separately from product failures.
+
+For end-to-end claims, DOM activation counts are not completion evidence. Each
+major surface and mutually exclusive action needs an isolated fresh state,
+post-action assertion, and a status of PASS, FAIL, BLOCKED, NOT TESTED, or
+SOURCE REVIEW ONLY.
+
+**Why:** A broad Jarvis sweep reported hundreds of successful activations even
+though Settings persistence, provider flows, media workflows, and resulting
+feature states were not conclusively completed.
+
+**How to apply:** Never headline a QA report with click totals as a pass rate;
+publish a per-workflow coverage matrix and keep harness failures separate from
+application failures.

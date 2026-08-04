@@ -1,0 +1,939 @@
+{
+  "url": "http://localhost:21662/",
+  "chromiumPath": "/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium",
+  "screenshotCount": 140,
+  "blockedRequests": 41,
+  "errors": [
+    "[settings-personalization] console: Failed to load resource: net::ERR_FAILED",
+    "[settings-personalization] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-memory] console: Failed to load resource: net::ERR_FAILED",
+    "[settings-memory] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-language] console: Failed to load resource: net::ERR_FAILED",
+    "[settings-language] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-gmail] console: Failed to load resource: net::ERR_FAILED",
+    "[settings-gmail] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-spotify] console: Failed to load resource: net::ERR_FAILED",
+    "[settings-spotify] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-accent] console: Failed to load resource: net::ERR_FAILED",
+    "[settings-accent] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-app] console: Failed to load resource: net::ERR_FAILED",
+    "[settings-app] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-llm] console: Failed to load resource: net::ERR_FAILED",
+    "[settings-llm] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-about] console: Failed to load resource: net::ERR_FAILED",
+    "[settings-about] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[plus-menu] console: Failed to load resource: net::ERR_FAILED",
+    "[gem-dialog] console: Failed to load resource: net::ERR_FAILED",
+    "[research-panel] console: Failed to load resource: net::ERR_FAILED",
+    "[data-lab] console: Failed to load resource: net::ERR_FAILED",
+    "[studios-hub] console: Failed to load resource: net::ERR_FAILED",
+    "[design-studio] console: Failed to load resource: net::ERR_FAILED",
+    "[music-studio] console: Failed to load resource: net::ERR_FAILED",
+    "[command-palette] console: Failed to load resource: net::ERR_FAILED",
+    "[command-palette] console: WebSocket connection to 'ws://localhost:21662/browser-ws' failed: Connection closed before receiving a handshake response",
+    "[camera-mode] console: Failed to load resource: net::ERR_FAILED"
+  ],
+  "results": [
+    {
+      "flow": "settings-personalization",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "control",
+      "target": "Menu",
+      "ok": true
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "control",
+      "target": "Settings",
+      "ok": true
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "control",
+      "target": "Personalization",
+      "ok": true
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "inventory",
+      "view": "personalization",
+      "controls": []
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "input",
+      "target": "textarea",
+      "ok": true
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "control",
+      "target": "Custom",
+      "ok": true
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "input",
+      "target": "textarea",
+      "ok": true
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "control",
+      "target": "Settings",
+      "ok": true
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "control",
+      "target": "Close",
+      "ok": true
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "control",
+      "target": "Menu",
+      "ok": true
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "control",
+      "target": "Settings",
+      "ok": true
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "control",
+      "target": "Memory",
+      "ok": true
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "inventory",
+      "view": "memory",
+      "controls": []
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "completion",
+      "completion": "empty-state-observed; no memory record available for edit/delete"
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "control",
+      "target": "Close",
+      "ok": true
+    },
+    {
+      "flow": "settings-language",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "settings-language",
+      "kind": "control",
+      "target": "Menu",
+      "ok": true
+    },
+    {
+      "flow": "settings-language",
+      "kind": "control",
+      "target": "Settings",
+      "ok": true
+    },
+    {
+      "flow": "settings-language",
+      "kind": "control",
+      "target": "Language",
+      "ok": true
+    },
+    {
+      "flow": "settings-language",
+      "kind": "inventory",
+      "view": "language",
+      "controls": []
+    },
+    {
+      "flow": "settings-language",
+      "kind": "control",
+      "target": "Nederlands",
+      "ok": true
+    },
+    {
+      "flow": "settings-language",
+      "kind": "control",
+      "target": "English",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "settings-language",
+      "kind": "control",
+      "target": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "control",
+      "target": "Menu",
+      "ok": true
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "control",
+      "target": "Settings",
+      "ok": true
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "control",
+      "target": "Email",
+      "ok": true
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "inventory",
+      "view": "gmail",
+      "controls": []
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "control",
+      "target": "Connect Gmail",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "control",
+      "target": "Close",
+      "ok": true
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "control",
+      "target": "Menu",
+      "ok": true
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "control",
+      "target": "Settings",
+      "ok": true
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "control",
+      "target": "Spotify",
+      "ok": true
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "inventory",
+      "view": "spotify",
+      "controls": []
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "popup",
+      "url": "https://accounts.spotify.com/en/login?continue=https%3A%2F%2Faccounts.spotify.com%2Fauthorize%3Fscope%3Duser-read-playback-state%2Buser-modify-playback-state%2Buser-read-currently-playing%2Bstreaming%2Buser-read-email%2Buser-read-private%2Bplaylist-read-private%2Buser-library-read%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252F9d2b9df0-748a-4afe-82f8-7c1d27c82b34-00-33wvqt2nsicbd.kirk.replit.dev%252Fapi%252Fjarvis%252Fspotify%252Fcallback%26client_id%3D7bc72a7bf6bd465a8dfcde4e9d5e9355%26show_dialog%3Dtrue&client_id=7bc72a7bf6bd465a8dfcde4e9d5e9355",
+      "activated": true,
+      "completion": "blocked-external"
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "control",
+      "target": "Connect Spotify",
+      "ok": true
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "control",
+      "target": "Close",
+      "ok": true
+    },
+    {
+      "flow": "settings-accent",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "settings-accent",
+      "kind": "control",
+      "target": "Menu",
+      "ok": true
+    },
+    {
+      "flow": "settings-accent",
+      "kind": "control",
+      "target": "Settings",
+      "ok": true
+    },
+    {
+      "flow": "settings-accent",
+      "kind": "control",
+      "target": "Accent color",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "settings-accent",
+      "kind": "inventory",
+      "view": "accent",
+      "controls": []
+    },
+    {
+      "flow": "settings-accent",
+      "kind": "control",
+      "target": "Purple",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "settings-accent",
+      "kind": "control",
+      "target": "Blue",
+      "ok": true
+    },
+    {
+      "flow": "settings-accent",
+      "kind": "control",
+      "target": "Close",
+      "ok": true
+    },
+    {
+      "flow": "settings-app",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "settings-app",
+      "kind": "control",
+      "target": "Menu",
+      "ok": true
+    },
+    {
+      "flow": "settings-app",
+      "kind": "control",
+      "target": "Settings",
+      "ok": true
+    },
+    {
+      "flow": "settings-app",
+      "kind": "control",
+      "target": "Web search & data",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "settings-app",
+      "kind": "inventory",
+      "view": "app",
+      "controls": []
+    },
+    {
+      "flow": "settings-app",
+      "kind": "control",
+      "target": "Web search",
+      "ok": true
+    },
+    {
+      "flow": "settings-app",
+      "kind": "input",
+      "target": "input[placeholder*='weather'], input[placeholder*='Weather']",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "settings-app",
+      "kind": "control",
+      "target": "Add feed",
+      "ok": true
+    },
+    {
+      "flow": "settings-app",
+      "kind": "control",
+      "target": "Preview system prompt",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "settings-app",
+      "kind": "control",
+      "target": "Close",
+      "ok": true
+    },
+    {
+      "flow": "settings-llm",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "settings-llm",
+      "kind": "control",
+      "target": "Menu",
+      "ok": true
+    },
+    {
+      "flow": "settings-llm",
+      "kind": "control",
+      "target": "Settings",
+      "ok": true
+    },
+    {
+      "flow": "settings-llm",
+      "kind": "control",
+      "target": "LLM keys",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "settings-llm",
+      "kind": "inventory",
+      "view": "llm",
+      "controls": []
+    },
+    {
+      "flow": "settings-llm",
+      "kind": "control",
+      "target": "Add key",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "settings-llm",
+      "kind": "control",
+      "target": "Close",
+      "ok": true
+    },
+    {
+      "flow": "settings-about",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "settings-about",
+      "kind": "control",
+      "target": "Menu",
+      "ok": true
+    },
+    {
+      "flow": "settings-about",
+      "kind": "control",
+      "target": "Settings",
+      "ok": true
+    },
+    {
+      "flow": "settings-about",
+      "kind": "control",
+      "target": "About",
+      "ok": true
+    },
+    {
+      "flow": "settings-about",
+      "kind": "inventory",
+      "view": "about",
+      "controls": []
+    },
+    {
+      "flow": "settings-about",
+      "kind": "control",
+      "target": "Close",
+      "ok": true
+    },
+    {
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "selector",
+      "target": "#plus-menu-button",
+      "ok": true
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "control",
+      "target": "Attach file",
+      "ok": true
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "selector",
+      "target": "#plus-menu-button",
+      "ok": true
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "control",
+      "target": "Camera",
+      "ok": true
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "selector",
+      "target": "#plus-menu-button",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "control",
+      "target": "New Gem",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "gem-dialog",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "gem-dialog",
+      "kind": "selector",
+      "target": "#plus-menu-button",
+      "ok": true
+    },
+    {
+      "flow": "gem-dialog",
+      "kind": "control",
+      "target": "New Gem",
+      "ok": true
+    },
+    {
+      "flow": "gem-dialog",
+      "kind": "input",
+      "target": "input",
+      "ok": true
+    },
+    {
+      "flow": "gem-dialog",
+      "kind": "input",
+      "target": "textarea",
+      "ok": true
+    },
+    {
+      "flow": "gem-dialog",
+      "kind": "control",
+      "target": "Create",
+      "ok": true
+    },
+    {
+      "flow": "gem-dialog",
+      "kind": "control",
+      "target": "Close",
+      "ok": true
+    },
+    {
+      "flow": "research-panel",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "research-panel",
+      "kind": "control",
+      "target": "Deep Research",
+      "ok": true
+    },
+    {
+      "flow": "research-panel",
+      "kind": "input",
+      "target": "textarea",
+      "ok": true
+    },
+    {
+      "flow": "research-panel",
+      "kind": "control",
+      "target": "Deep",
+      "ok": true
+    },
+    {
+      "flow": "research-panel",
+      "kind": "control",
+      "target": "Normal",
+      "ok": true
+    },
+    {
+      "flow": "research-panel",
+      "kind": "control",
+      "target": "Start research",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "research-panel",
+      "kind": "control",
+      "target": "Cancel",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "research-panel",
+      "kind": "control",
+      "target": "Close research",
+      "ok": true
+    },
+    {
+      "flow": "data-lab",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "data-lab",
+      "kind": "control",
+      "target": "Data Lab",
+      "ok": true
+    },
+    {
+      "flow": "data-lab",
+      "kind": "control",
+      "target": "Browse",
+      "ok": true
+    },
+    {
+      "flow": "data-lab",
+      "kind": "control",
+      "target": "Close",
+      "ok": true
+    },
+    {
+      "flow": "studios-hub",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "studios-hub",
+      "kind": "selector",
+      "target": "#plus-menu-button",
+      "ok": true
+    },
+    {
+      "flow": "studios-hub",
+      "kind": "control",
+      "target": "All Studios",
+      "ok": true
+    },
+    {
+      "flow": "studios-hub",
+      "kind": "control",
+      "target": "Chat",
+      "ok": true
+    },
+    {
+      "flow": "studios-hub",
+      "kind": "control",
+      "target": "Voice",
+      "ok": true
+    },
+    {
+      "flow": "studios-hub",
+      "kind": "control",
+      "target": "Camera",
+      "ok": true
+    },
+    {
+      "flow": "studios-hub",
+      "kind": "control",
+      "target": "Deep Research",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "studios-hub",
+      "kind": "control",
+      "target": "Build Mode",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "studios-hub",
+      "kind": "control",
+      "target": "Design Studio",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "studios-hub",
+      "kind": "control",
+      "target": "Music Studio",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "studios-hub",
+      "kind": "control",
+      "target": "Fact Check",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "studios-hub",
+      "kind": "control",
+      "target": "Data Lab",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "design-studio",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "design-studio",
+      "kind": "selector",
+      "target": "#plus-menu-button",
+      "ok": true
+    },
+    {
+      "flow": "design-studio",
+      "kind": "control",
+      "target": "Design Studio",
+      "ok": true
+    },
+    {
+      "flow": "design-studio",
+      "kind": "control",
+      "target": "Upload image",
+      "ok": true
+    },
+    {
+      "flow": "design-studio",
+      "kind": "control",
+      "target": "Close",
+      "ok": true
+    },
+    {
+      "flow": "music-studio",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "music-studio",
+      "kind": "selector",
+      "target": "#plus-menu-button",
+      "ok": true
+    },
+    {
+      "flow": "music-studio",
+      "kind": "control",
+      "target": "Music Studio",
+      "ok": true
+    },
+    {
+      "flow": "music-studio",
+      "kind": "control",
+      "target": "Chill",
+      "ok": true
+    },
+    {
+      "flow": "music-studio",
+      "kind": "control",
+      "target": "Focus",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "control",
+      "target": "Energetic",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "control",
+      "target": "Dark",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "control",
+      "target": "Happy",
+      "ok": true
+    },
+    {
+      "flow": "music-studio",
+      "kind": "control",
+      "target": "Epic",
+      "ok": true
+    },
+    {
+      "flow": "music-studio",
+      "kind": "control",
+      "target": "Sad",
+      "ok": true
+    },
+    {
+      "flow": "music-studio",
+      "kind": "control",
+      "target": "Compose another take",
+      "ok": true
+    },
+    {
+      "flow": "music-studio",
+      "kind": "control",
+      "target": "Close",
+      "ok": true
+    },
+    {
+      "flow": "command-palette",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "command-palette",
+      "kind": "control",
+      "target": "Chat",
+      "ok": true
+    },
+    {
+      "flow": "command-palette",
+      "kind": "control",
+      "target": "Voice",
+      "ok": true
+    },
+    {
+      "flow": "command-palette",
+      "kind": "control",
+      "target": "Agent",
+      "ok": true
+    },
+    {
+      "flow": "command-palette",
+      "kind": "control",
+      "target": "Camera",
+      "ok": true
+    },
+    {
+      "flow": "command-palette",
+      "kind": "control",
+      "target": "Deep Research",
+      "ok": true
+    },
+    {
+      "flow": "command-palette",
+      "kind": "control",
+      "target": "New Gem",
+      "ok": true
+    },
+    {
+      "flow": "command-palette",
+      "kind": "control",
+      "target": "Data Lab",
+      "ok": true
+    },
+    {
+      "flow": "command-palette",
+      "kind": "control",
+      "target": "Generate image",
+      "ok": true
+    },
+    {
+      "flow": "camera-mode",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    },
+    {
+      "flow": "camera-mode",
+      "kind": "control",
+      "target": "Camera mode",
+      "ok": true
+    },
+    {
+      "flow": "camera-mode",
+      "kind": "control",
+      "target": "Retry camera",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "camera-mode",
+      "kind": "control",
+      "target": "Upload photo",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "flow": "camera-mode",
+      "kind": "control",
+      "target": "Back to chat",
+      "ok": true
+    }
+  ],
+  "flows": [
+    "settings-personalization",
+    "settings-memory",
+    "settings-language",
+    "settings-gmail",
+    "settings-spotify",
+    "settings-accent",
+    "settings-app",
+    "settings-llm",
+    "settings-about",
+    null,
+    "plus-menu",
+    "gem-dialog",
+    "research-panel",
+    "data-lab",
+    "studios-hub",
+    "design-studio",
+    "music-studio",
+    "command-palette",
+    "camera-mode"
+  ],
+  "successfulControls": 99,
+  "failedControls": 24,
+  "notCompleted": [
+    {
+      "flow": "settings-memory",
+      "kind": "completion",
+      "completion": "empty-state-observed; no memory record available for edit/delete"
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "popup",
+      "url": "https://accounts.spotify.com/en/login?continue=https%3A%2F%2Faccounts.spotify.com%2Fauthorize%3Fscope%3Duser-read-playback-state%2Buser-modify-playback-state%2Buser-read-currently-playing%2Bstreaming%2Buser-read-email%2Buser-read-private%2Bplaylist-read-private%2Buser-library-read%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252F9d2b9df0-748a-4afe-82f8-7c1d27c82b34-00-33wvqt2nsicbd.kirk.replit.dev%252Fapi%252Fjarvis%252Fspotify%252Fcallback%26client_id%3D7bc72a7bf6bd465a8dfcde4e9d5e9355%26show_dialog%3Dtrue&client_id=7bc72a7bf6bd465a8dfcde4e9d5e9355",
+      "activated": true,
+      "completion": "blocked-external"
+    }
+  ]
+}
