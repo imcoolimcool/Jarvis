@@ -1,7 +1,7 @@
 # Jarvis Voice Assistant — QA Walkthrough Report
 
 **Date:** 2026-08-04  
-**Scope:** Local Replit preview, frontend and API startup, responsive visual inspection, source-level control inventory, and non-destructive API checks.  
+**Scope:** Local Replit preview, frontend and API startup, responsive visual inspection, source-level control inventory, state-isolated interactive control activation, and non-destructive API checks.  
 **Rule followed:** No application code was modified and no application data was intentionally created or deleted.
 
 ## Executive summary
@@ -44,6 +44,8 @@ The first three are user-facing findings. The fourth is a QA/tooling finding, no
 - `GET /api/jarvis/llm-keys` returned `200` and showed one masked, healthy environment-backed LLM key.
 - `GET /api/jarvis/browse/status` returned `200` and `running: false`.
 - No browser console errors were reported by the app-preview capture.
+- The completed state-isolated browser sweep activated 344 enabled controls successfully across 17 fresh app states and captured 361 state screenshots.
+- No expected feature-entry control was missing from the final sweep.
 
 ### Startup warning
 
@@ -191,6 +193,51 @@ The imported scripts contain machine-specific absolute paths:
 - Read the frontend URL from a command-line argument or environment variable.
 - Keep the browser runner separate from application code and add a short Replit-specific invocation to the README.
 
+## Finding QA-005 — Duplicate React keys are emitted during interactive navigation
+
+**Severity:** Low  
+**Category:** Runtime correctness / UI stability  
+**Status:** Confirmed during the interactive sweep
+
+### Evidence
+
+The browser console reported:
+
+> Encountered two children with the same key. Keys should be unique so that components maintain their identity across updates.
+
+The warning appeared while exercising the voice home/history states and repeated in several fresh state runs. React warns that duplicated keys can cause children to be duplicated or omitted unpredictably.
+
+### Recommended fix
+
+- Identify the list rendered during the affected navigation states, most likely conversation/history or another dynamically populated collection.
+- Ensure every rendered sibling has a stable unique key based on its record identity rather than a display label or timestamp.
+- Re-run the interactive sweep and confirm the warning is absent.
+
+## Finding QA-006 — Browser mode cannot establish its WebSocket session
+
+**Severity:** Medium  
+**Category:** Functionality / browser mode  
+**Status:** Confirmed during interactive navigation
+
+### Evidence
+
+Entering Agent or Browser mode produced:
+
+> WebSocket connection to `ws://localhost:21662/browser-ws` failed: Connection closed before receiving a handshake response
+
+The API route exists and the browser status endpoint responds, but the frontend could not complete the browser-session WebSocket handshake during the QA run. The API logs also showed the browser-side proxy target on port 3002 refusing connections.
+
+### Likely cause
+
+The internal Puppeteer/browser service is not running or is using a runtime configuration that differs from the frontend’s `/browser-ws` proxy expectation. This is separate from the Chromium executable used by the QA runner.
+
+### Recommended fix
+
+- Start or configure the internal browser service on the port expected by the `/browser-ws` proxy.
+- Make the browser service use the installed Replit Chromium path and available system libraries.
+- Show a clear in-app unavailable state when the browser session cannot connect, rather than leaving the mode in a partially initialized state.
+- Re-test Agent and Browser mode after the service handshake succeeds.
+
 ## Additional UX observations
 
 These are observations from the visual/source pass and are not counted as separate confirmed defects unless reproduced interactively:
@@ -258,17 +305,35 @@ These are observations from the visual/source pass and are not counted as separa
 - Camera and screen-share entry points
 - Timer, alarm, weather, clock, and other widget source paths
 
-### Not fully click-verified
+### Interactive sweep results and remaining limitations
 
-The environment did not permit a true interactive browser run:
+The final QA-only state-isolated runner used fresh Chromium pages for each major surface and activated each enabled control through the live DOM, re-scanning after every state change. It covered:
+
+- Voice home, history, and menu states
+- Chat entry, plus menu, research, Gem, Studios, Design Studio, Music Studio, Data Lab, Settings, command palette, and sidebar states
+- Agent, Browser, and Camera mode entry states
+- Desktop and mobile visual states in the earlier responsive sweep
+
+Final totals:
+
+| Measure | Result |
+|---|---:|
+| Enabled control activations | 344 |
+| Failed control activations | 0 |
+| Missing expected entry controls | 0 |
+| State screenshots | 361 |
+| Requests intentionally blocked for safety | 79 |
+
+The blocked requests were mutation, OAuth, chat/LLM, browser, media, or other external/expensive actions. They were blocked so the walkthrough could not create/delete data, launch real OAuth flows, or consume external services. The resulting `Failed to fetch` messages and the delete-handler runtime entries are audit-induced and should not be counted as independent product failures.
+
+The following flows were not completed end-to-end:
 
 - The provided runner’s Chrome path was missing.
 - Bundled Chromium was initially missing runtime libraries.
-- The screenshot tool available for the live artifact is static and cannot click through overlays.
 - OAuth flows were not completed because they require external provider interaction and redirect handling.
 - Audio, camera, screen-sharing, file-upload, image-generation, TTS, and external OAuth flows were not exercised end-to-end.
 
-These are test coverage limitations, not claims that those features are broken.
+The imported runner was adapted in QA-only files to use the installed Chromium runtime and the configured Replit preview port. No application source code was changed during the walkthrough.
 
 ## Screenshots
 
@@ -278,4 +343,4 @@ These are test coverage limitations, not claims that those features are broken.
 
 ## Final assessment
 
-The project is runnable locally and the backend/frontend wiring is in place. The highest-value fixes are visual accessibility and permission UX: make the default interface readable, and do not interrupt the initial screen with a microphone error before the user asks for wake-word functionality. After those changes, the next QA pass should use a portable browser runner to complete the interactive flows that could not be clicked in this environment.
+The project is runnable locally and the backend/frontend wiring is in place. The highest-value product fixes are visual accessibility and permission UX: make the default interface readable, and do not interrupt the initial screen with a microphone error before the user asks for wake-word functionality. The interactive sweep also confirmed a duplicate-key warning and an unavailable internal browser WebSocket that should be addressed. The remaining media, OAuth, and external-service flows require explicit integration/provider availability and were intentionally not completed destructively.

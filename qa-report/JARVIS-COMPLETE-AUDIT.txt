@@ -1,0 +1,654 @@
+JARVIS VOICE ASSISTANT — COMPLETE WEBSITE AUDIT
+================================================
+
+Audit date: August 4, 2026
+Application: Jarvis Voice Assistant
+Environment: Local Replit preview
+Frontend workflow: artifacts/jarvis: web
+API workflow: artifacts/api-server: API Server
+
+IMPORTANT SCOPE NOTE
+--------------------
+This report lists every problem found during the completed QA walkthrough and
+interactive sweep. It cannot honestly guarantee that no undiscovered problem
+exists in code paths that require unavailable external providers, real
+microphone/camera permissions, live OAuth accounts, or a working internal
+browser service.
+
+No Jarvis application source code was modified during the QA walkthrough.
+The QA environment was configured with Chromium support and separate QA-only
+browser runners. Application data was not intentionally created or deleted.
+
+
+1. EXECUTIVE SUMMARY
+--------------------
+
+The website starts and renders successfully. The API is reachable, the
+database health check succeeds, and the main interface is usable. The final
+interactive audit activated 344 enabled controls across 17 isolated UI states
+with zero failed activations and zero missing expected entry controls.
+
+The most important product problems are:
+
+1. The default light interface is too faint and has poor contrast.
+2. A microphone-denied wake-word toast appears before the user requests
+   microphone or wake-word functionality.
+3. Browser and Agent mode cannot establish the internal browser WebSocket.
+4. React reports duplicate list keys during navigation.
+5. A fresh user sees a hard-coded personal profile name.
+6. Important features are hidden behind several nested menus and very small
+   labels.
+
+The biggest unverified areas are audio, camera, screen sharing, file upload,
+image generation, text-to-speech, OAuth, external LLM calls, and the internal
+browser automation service. These were either intentionally blocked to avoid
+side effects or unavailable in the test environment.
+
+
+2. VERIFICATION RESULTS
+-----------------------
+
+Interactive control verification:
+
+- Fresh isolated UI states tested: 17
+- Enabled control activations: 344
+- Failed control activations: 0
+- Missing expected feature-entry controls: 0
+- Requests intentionally blocked for safety: 79
+- Final state screenshots captured by the interactive runner: 361
+
+The controls were activated through the live DOM one at a time, with the page
+rescanned after state changes. Repeated conversation rows were treated as one
+semantic control type so the audit would not loop through every generated
+conversation instance indefinitely.
+
+This means:
+
+- Every enabled control type exposed in the tested states was activated.
+- No enabled control was confirmed to be a dead button.
+- It does NOT mean that every possible data row, every real file, every
+  external OAuth redirect, or every provider-dependent action completed.
+
+The earlier pointer-based sweep also ran against desktop and mobile layouts.
+The final reliable state-isolated sweep used Chromium and live DOM activation
+because overlays and changing conversation rows made a single linear
+coordinate-based sweep inaccurate.
+
+
+3. STATES AND SURFACES TESTED
+-----------------------------
+
+The final isolated sweep covered:
+
+- Voice home
+- Voice history/sidebar
+- Voice menu
+- Chat home
+- Chat plus menu
+- Deep Research entry
+- New Gem entry
+- Studios hub
+- Design Studio entry
+- Music Studio entry
+- Data Lab entry
+- Settings
+- Command palette
+- Chat sidebar
+- Agent mode
+- Browser mode
+- Camera mode
+
+The source and visual audit also reviewed:
+
+- Plus menu actions:
+  - Attach file
+  - Camera
+  - New Gem
+  - Generate image
+  - All Studios
+  - Design Studio
+  - Music Studio
+- Studios:
+  - Chat
+  - Voice
+  - Camera
+  - Deep Research
+  - Build Mode
+  - Design Studio
+  - Music Studio
+  - Fact Check
+  - Data Lab
+- Command palette:
+  - Mode switching
+  - Deep Research
+  - New Gem
+  - Data Lab
+  - Image action
+  - New chat
+  - Web-search toggle
+  - Theme toggle
+  - Settings
+  - Conversation search
+- Settings:
+  - Personalization
+  - Memory
+  - Language
+  - Gmail
+  - Spotify
+  - Appearance
+  - Accent color
+  - Web search/data
+  - LLM keys
+  - About
+- Research controls
+- Data Lab controls
+- Design Studio controls
+- Music Studio controls
+- Conversation sidebar actions
+- Camera and screen-share entry points
+- Timer, alarm, weather, clock, and widget-related paths
+
+
+4. CONFIRMED WEBSITE PROBLEMS
+-----------------------------
+
+PROBLEM QA-001 — Default light theme has weak contrast
+Severity: MEDIUM
+Category: Accessibility, visual design, usability
+Status: Confirmed in the live preview at desktop, tablet, and mobile widths
+
+What happens:
+
+- The main "Ready" status text is extremely pale.
+- Mode labels such as Agent, Browser, and Camera mode are difficult to read.
+- The microphone icon and other controls are low contrast.
+- The white background, pastel gradients, and blue orb make the screen feel
+  washed out or overexposed.
+- Many labels are further weakened by low-opacity styling.
+
+Why this matters:
+
+- Users may not know what is interactive.
+- Low-vision users may have difficulty reading or identifying controls.
+- The visual hierarchy makes the interface feel unfinished despite the
+  underlying feature depth.
+
+Likely contributing factors:
+
+- Muted foreground colors are too light in the light theme.
+- Essential text and icons use opacity reductions such as 40%, 50%, or 70%.
+- Decorative gradients compete with functional content.
+
+Recommended changes:
+
+- Increase contrast for primary status text, labels, icons, and buttons.
+- Avoid opacity below approximately 70% for essential controls.
+- Verify text and control contrast against WCAG targets.
+- Reduce decorative background intensity behind functional content.
+- Add a high-contrast or accessibility display option.
+
+
+PROBLEM QA-002 — Microphone permission error appears without user intent
+Severity: MEDIUM
+Category: Permission UX, responsive layout
+Status: Confirmed in the live preview
+
+What happens:
+
+On initial load, the website displays:
+
+  Wake word needs mic access
+  Microphone access denied. Wake word needs the microphone.
+
+This appears before the user has requested wake-word listening or voice
+capture. On mobile, the toast occupies a large prominent area and can overlap
+the top portion of the interface.
+
+Why this matters:
+
+- It makes the first experience feel broken.
+- It asks the user to solve a problem they did not cause intentionally.
+- It can obscure or distract from the primary interface.
+
+Recommended changes:
+
+- Request microphone permission only after an explicit user action.
+- Keep passive permission failures quiet.
+- If a notice is necessary, make it small, dismissible, and contextual.
+- Add "Try again" and browser-permission guidance.
+- Do not let the notice cover primary mobile navigation.
+
+
+PROBLEM QA-003 — Browser and Agent mode cannot connect to the browser service
+Severity: MEDIUM
+Category: Functionality, browser automation
+Status: Confirmed during interactive navigation
+
+What happens:
+
+Entering Agent or Browser mode produces a WebSocket failure similar to:
+
+  WebSocket connection to ws://localhost:21662/browser-ws failed:
+  Connection closed before receiving a handshake response
+
+The frontend expects the same-origin browser WebSocket route, while the API
+logs show that its internal browser proxy target on port 3002 refuses the
+connection. The API browser status endpoint itself responds, but the actual
+browser session is not available.
+
+Why this matters:
+
+- Browser mode cannot perform its core browsing interaction.
+- Agent mode may appear to open while its automation backend is unavailable.
+- The user is not given a sufficiently clear recovery state.
+
+Recommended changes:
+
+- Start and health-check the internal browser service before exposing Browser
+  or Agent mode as available.
+- Ensure the service uses the installed Replit Chromium executable and the
+  available system libraries.
+- Add a clear "Browser service unavailable" state with retry guidance.
+- Disable or label browser-dependent actions until the WebSocket handshake is
+  healthy.
+- Add an automated browser-service readiness check.
+
+
+PROBLEM QA-004 — Duplicate React keys appear during navigation
+Severity: LOW
+Category: Runtime correctness, UI stability
+Status: Confirmed by browser console output
+
+What happens:
+
+The browser console reports:
+
+  Encountered two children with the same key. Keys should be unique so that
+  components maintain their identity across updates.
+
+The warning appeared in fresh voice/history and navigation states.
+
+Why this matters:
+
+React may duplicate, omit, or incorrectly preserve list children when keys are
+not unique. Conversation/history lists are the most likely affected area,
+although the exact list should be confirmed in source.
+
+Recommended changes:
+
+- Find the list rendered during the affected navigation states.
+- Use a stable unique record ID for each sibling.
+- Do not use timestamps, display labels, array positions, or repeated text as
+  the only key.
+- Re-run the sweep and confirm the warning is gone.
+
+
+PROBLEM QA-005 — Fresh users see a hard-coded personal profile
+Severity: LOW
+Category: Personalization, privacy perception, onboarding
+Status: Confirmed by source inspection
+
+What happens:
+
+When no profile has been configured, Settings falls back to:
+
+  Kasper Kal
+  KK
+
+Why this matters:
+
+- It makes a new user feel as though they are seeing somebody else's data.
+- It is confusing in a shared, forked, or deployed copy of the app.
+- It undermines trust in the personalization system.
+
+Recommended changes:
+
+- Replace the personal fallback with "Your profile" or "Set up your profile".
+- Use neutral initials until the user selects a name.
+- Add a first-use profile setup prompt.
+- Add a fresh-local-storage test case.
+
+
+PROBLEM QA-006 — Important features are difficult to discover
+Severity: LOW
+Category: Information architecture, onboarding
+Status: Confirmed as a usability observation
+
+What happens:
+
+Many capabilities are nested behind combinations of:
+
+- The plus menu
+- The Studios hub
+- The command palette
+- Settings subviews
+- Mode switches
+
+The main home screen does not clearly explain where these capabilities live.
+
+Why this matters:
+
+- New users may never find Research, Data Lab, Gems, Studios, integrations,
+  or appearance options.
+- Voice-first users may not discover keyboard or menu-based actions.
+
+Recommended changes:
+
+- Add a short first-use guided tour.
+- Add labeled quick actions below or beside the orb.
+- Make the plus menu more descriptive instead of icon-heavy.
+- Provide an "All features" entry point.
+- Add search results with category labels and keyboard shortcuts.
+
+
+PROBLEM QA-007 — Very small, low-opacity labels reduce usability
+Severity: LOW
+Category: Accessibility, typography
+Status: Confirmed by visual/source inspection
+
+What happens:
+
+Menus, studio cards, and mode controls frequently use very small 10px–12px
+text with muted or semi-transparent styling.
+
+Recommended changes:
+
+- Increase essential labels to a more readable minimum size.
+- Use stronger text contrast for interactive labels.
+- Keep monospace styling for technical data only.
+- Add visible hover, focus, and selected states.
+- Validate keyboard focus visibility.
+
+
+PROBLEM QA-008 — Fact Check naming can mislead users
+Severity: LOW
+Category: Content clarity, navigation
+Status: Observed during source and navigation review
+
+What happens:
+
+"Fact Check" appears as a Studios destination, but it routes back to chat
+because fact checking occurs on individual messages rather than in a
+standalone workspace.
+
+Why this matters:
+
+Users may expect a dedicated fact-checking screen and think navigation failed.
+
+Recommended changes:
+
+- Rename it to "Fact-check a message".
+- Add a short description explaining that it works on chat responses.
+- Add a visible fact-check action to assistant messages.
+
+
+PROBLEM QA-009 — The main interface has a large amount of empty space
+Severity: LOW
+Category: Visual hierarchy, discoverability
+Status: Confirmed visual observation
+
+What happens:
+
+The orb is centered in a very large mostly empty canvas. Navigation and
+settings are visually distant from the primary interaction.
+
+Recommended changes:
+
+- Use the empty area for contextual suggestions, recent actions, or a
+  first-use explanation.
+- Add a compact quick-action row.
+- Keep the calm aesthetic while improving information hierarchy.
+- Ensure the orb remains the visual focus without making the rest of the app
+  feel disconnected.
+
+
+PROBLEM QA-010 — Imported QA scripts are not portable
+Severity: LOW
+Category: QA tooling, maintainability
+Status: Confirmed; not an end-user website defect
+
+What happens:
+
+- One runner hard-coded /usr/local/bin/google-chrome.
+- Another hard-coded an output directory from the original developer machine.
+- The imported scripts targeted port 5173 instead of the configured frontend
+  port 21662.
+- Puppeteer initially lacked the runtime libraries needed by Chromium.
+
+Recommended changes:
+
+- Resolve Chromium dynamically.
+- Read the frontend URL from an environment variable or command-line option.
+- Use project-relative screenshot output.
+- Keep environment-specific runners separate from application code.
+- Add a documented Replit QA command.
+
+
+5. OBSERVED RUNTIME AND ENVIRONMENT LIMITATIONS
+-----------------------------------------------
+
+The following messages appeared during the audit but must be interpreted
+carefully:
+
+1. "Failed to fetch" and failed DELETE/PUT requests:
+   The QA runner intentionally blocked mutating requests to prevent deleting
+   conversations or changing settings. These messages are audit-induced and
+   are not proof that the corresponding production API is broken.
+
+2. LLM quota/cooling:
+   The configured LLM key entered a cooling/quota state during the broad
+   sweep. Chat/LLM behavior was therefore not a reliable end-to-end test.
+
+3. Media and provider flows:
+   Audio, microphone, camera, screen sharing, file selection, image
+   generation, text-to-speech, Gmail OAuth, and Spotify OAuth were not
+   completed against real external providers.
+
+4. Internal browser service:
+   The browser automation service itself was unavailable, which is a real
+   Browser/Agent product functionality problem, not merely a click-runner
+   limitation.
+
+5. Database boot warning:
+   The API initially logged that the database was unavailable while recovering
+   research jobs, but the later health check reported a connected database.
+   This looks like a transient startup ordering warning, not a persistent
+   outage.
+
+6. No automated accessibility scanner was run:
+   The contrast and typography problems were found through visual inspection
+   and source review. A future pass should also run axe or an equivalent
+   accessibility scanner.
+
+
+6. BUTTONS AND FEATURES THAT DID NOT WORK
+------------------------------------------
+
+No enabled control was confirmed as a dead button:
+
+- Enabled control activations: 344
+- Failed activations: 0
+
+However, activation is not the same as successful completion of every feature.
+The following feature paths could not be fully completed:
+
+- Browser mode: internal browser WebSocket unavailable.
+- Agent mode: browser automation dependency unavailable.
+- Voice/microphone behavior: permission denied in the test context; the
+  unsolicited toast is itself a confirmed UX defect.
+- Audio transcription: not completed with a real microphone recording.
+- Text-to-speech: not completed with a real provider response.
+- Camera capture and screen sharing: not completed with real device streams.
+- File upload: file chooser interaction was intentionally cancelled.
+- Image generation: external generation request was intentionally blocked and
+  the LLM/API quota state was not reliable.
+- Gmail: OAuth redirect flow was not completed.
+- Spotify: OAuth redirect flow was not completed.
+- Chat/LLM: broad testing was stopped when the configured key entered a
+  cooling/quota state.
+
+These are not all confirmed bugs. They are a mixture of one real service
+failure (Browser/Agent), intentional audit safety blocks, and unavailable
+external-device/provider dependencies.
+
+
+7. PAGE AND SCREENSHOT VERIFICATION
+-----------------------------------
+
+This is a single-page application rather than a set of conventional URL
+pages. The major visible screens and states were tested separately.
+
+Screenshots captured:
+
+- 361 interactive state screenshots
+- Desktop home screenshot
+- Mobile home screenshot
+- Tablet home screenshot
+- Final live preview screenshot
+
+Screenshots were captured for fresh states and after control activations. The
+complete interactive screenshot set is stored in:
+
+  qa-report/state-clicks/
+
+Additional QA runner output is stored in:
+
+  qa-report/dom-clicks/
+  qa-report/exhaustive-clicks/
+
+The final live preview showed the app rendering normally, while also visibly
+confirming the weak contrast and unsolicited microphone toast.
+
+
+8. WHAT I LIKE ABOUT THE WEBSITE
+--------------------------------
+
+1. The visual concept is distinctive:
+   The central orb gives Jarvis a recognizable identity and makes the voice
+   assistant feel more like a product than a generic chat window.
+
+2. The interface is calm and uncluttered:
+   The minimal layout avoids the dense dashboard feeling common in assistant
+   applications.
+
+3. The feature breadth is strong:
+   Research, Gems, Studios, Data Lab, design tools, music tools, integrations,
+   browser automation, camera mode, and widgets provide a broad foundation.
+
+4. The app has multiple interaction styles:
+   Voice, chat, Agent, Browser, Camera, command palette, and menus support
+   different user preferences.
+
+5. Responsive states were considered:
+   Desktop, tablet, and mobile layouts exist, and mobile-specific sidebar and
+   safe-area behavior were present.
+
+6. The architecture is reasonably organized:
+   Features are separated into components, hooks, settings views, studios,
+   and API routes rather than being entirely concentrated in one file.
+
+7. The backend health and read-only endpoints worked:
+   The database health endpoint reported a connected database, and settings,
+   research, conversations, memories, Gmail status, Spotify status, and LLM
+   key endpoints responded as expected during the audit.
+
+
+9. WHAT I DO NOT LIKE ABOUT THE WEBSITE
+----------------------------------------
+
+1. The default light theme is too faint:
+   The design looks attractive in concept but sacrifices readability.
+
+2. The permission toast damages the first impression:
+   Users should not see a large microphone failure before asking for voice
+   access.
+
+3. The primary navigation is too hidden:
+   Too many useful features require knowing which menu or shortcut to open.
+
+4. The browser failure is not communicated well:
+   Browser/Agent mode needs a clear unavailable or retry state.
+
+5. The profile fallback feels copied from a developer environment:
+   A personal name in a fresh app makes the product feel unfinished and can
+   raise privacy concerns.
+
+6. Tiny labels make the product feel more technical than approachable:
+   The typography and low opacity are not ideal for a broad audience.
+
+7. The empty main canvas does not explain the product:
+   New users receive little guidance about what they can do next.
+
+8. "Fact Check" is not self-explanatory:
+   Its destination behavior does not match what the label suggests.
+
+
+10. RECOMMENDED CHANGES
+-----------------------
+
+Priority 1 — Fix trust and usability blockers:
+
+- Increase light-theme contrast and run an accessibility contrast audit.
+- Gate microphone permission requests behind explicit user actions.
+- Replace the hard-coded profile fallback with a neutral placeholder.
+- Repair or disable the internal browser service until its WebSocket is healthy.
+- Add visible retry and unavailable states for Browser and Agent modes.
+
+Priority 2 — Fix runtime quality:
+
+- Resolve duplicate React keys.
+- Add error boundaries around provider-dependent feature surfaces.
+- Add retry, timeout, and cancellation states for network-backed actions.
+- Distinguish "service unavailable" from "permission denied" and "request
+  blocked".
+- Add automated regression tests for settings, sidebar, menus, and mode
+  transitions.
+
+Priority 3 — Improve discoverability:
+
+- Add first-use onboarding.
+- Add a quick-action row on the home screen.
+- Add descriptions to plus-menu and Studios items.
+- Rename or clarify Fact Check.
+- Show keyboard shortcuts and feature categories in the command palette.
+
+Priority 4 — Improve accessibility:
+
+- Increase minimum text sizes for essential labels.
+- Make focus rings visible.
+- Add accessible names and descriptions to icon-only controls.
+- Test keyboard navigation through every modal and menu.
+- Add automated axe or equivalent accessibility checks.
+- Offer a high-contrast mode.
+
+Priority 5 — Improve feature completeness:
+
+- Add a browser-service health indicator.
+- Add an integration setup checklist for Gmail and Spotify.
+- Add a provider readiness screen for LLM, image, audio, and TTS services.
+- Add explicit empty, loading, error, retry, and success states to every
+  Studio.
+- Provide a safe demo mode that exercises feature flows without real external
+  side effects.
+
+
+11. FINAL VERDICT
+-----------------
+
+The website is runnable and has a compelling visual concept with substantial
+feature breadth. The audit did not find a dead enabled button: all 344
+enabled controls selected for semantic coverage activated successfully.
+
+The product is not yet fully polished. The most urgent improvements are:
+
+1. Make the default UI readable.
+2. Stop showing the microphone error before the user asks for voice access.
+3. Repair or clearly disable Browser and Agent mode when the internal browser
+   service is unavailable.
+4. Remove the personal default profile.
+5. Fix the duplicate React keys.
+6. Improve feature discoverability and accessibility.
+
+The app is a promising foundation, but the first-run experience and
+provider-dependent failure states need attention before calling it production
+ready.

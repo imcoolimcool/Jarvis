@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.chromium
     pkgs.udev
     pkgs.mesa
     pkgs.expat

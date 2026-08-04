@@ -25,3 +25,10 @@ uri = "file://qa-report/JARVIS-QA-REPORT.md"
 type = "text"
 title = "Jarvis QA Walkthrough Report"
 description = "Comprehensive non-destructive walkthrough report with confirmed issues, reproduction steps, likely causes, recommended files, severity, coverage limits, and screenshot evidence."
+
+[[outputs]]
+id = "eWUhbpcUCXFR8iIaCqSJV"
+uri = "file://qa-report/JARVIS-COMPLETE-AUDIT.txt"
+type = "text"
+title = "Jarvis Complete Website Audit"
+description = "Full QA audit covering verified control clicks, screenshots, confirmed defects, unverified provider-dependent flows, recommendations, likes, dislikes, and final verdict."

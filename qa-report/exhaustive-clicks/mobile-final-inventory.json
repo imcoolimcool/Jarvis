@@ -1,0 +1,533 @@
+[
+  {
+    "index": 0,
+    "key": "BUTTON|||Open history|w-9 h-9 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 text-foreground flex items-c|16|11|36|36",
+    "text": "",
+    "title": "",
+    "aria": "Open history",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 1,
+    "key": "BUTTON||New Chat|New Chat|w-9 h-9 flex items-center justify-center text-foreground transition-colors hover:bg-secondary/70 active:scale-95|300|11|36|36",
+    "text": "",
+    "title": "New Chat",
+    "aria": "New Chat",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 2,
+    "key": "BUTTON|||Menu|w-9 h-9 flex items-center justify-center text-foreground transition-colors hover:bg-secondary/70 active:scale-95|337|11|36|36",
+    "text": "",
+    "title": "",
+    "aria": "Menu",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 3,
+    "key": "BUTTON|||Search|w-8 h-8 rounded-full bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground flex items-center ju|0|0|0|0",
+    "text": "",
+    "title": "",
+    "aria": "Search",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 4,
+    "key": "BUTTON|Chat|||w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium text-muted-foreground hover:text-foreground |0|0|0|0",
+    "text": "Chat",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 5,
+    "key": "BUTTON|Browser|||w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium text-muted-foreground hover:text-foreground |0|0|0|0",
+    "text": "Browser",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 6,
+    "key": "DIV|New Conversation9m ago|||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg |0|0|0|0",
+    "text": "New Conversation9m ago",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 7,
+    "key": "SPAN||Export as text||absolute right-6 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foregrou|0|0|0|0",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 8,
+    "key": "SPAN||||absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500 |0|0|0|0",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 9,
+    "key": "DIV|New Conversation10m ago|||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg |0|0|0|0",
+    "text": "New Conversation10m ago",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 10,
+    "key": "SPAN||Export as text||absolute right-6 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foregrou|0|0|0|0",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 11,
+    "key": "SPAN||||absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500 |0|0|0|0",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 12,
+    "key": "DIV|New Conversation11m ago|||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg |0|0|0|0",
+    "text": "New Conversation11m ago",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 13,
+    "key": "SPAN||Export as text||absolute right-6 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foregrou|0|0|0|0",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 14,
+    "key": "SPAN||||absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500 |0|0|0|0",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 15,
+    "key": "DIV|New Conversation11m ago|||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg |0|0|0|0",
+    "text": "New Conversation11m ago",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 16,
+    "key": "SPAN||Export as text||absolute right-6 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foregrou|0|0|0|0",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 17,
+    "key": "SPAN||||absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500 |0|0|0|0",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 18,
+    "key": "DIV|New Conversation13m ago|||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg |0|0|0|0",
+    "text": "New Conversation13m ago",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 19,
+    "key": "SPAN||Export as text||absolute right-6 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foregrou|0|0|0|0",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 20,
+    "key": "SPAN||||absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500 |0|0|0|0",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 21,
+    "key": "DIV|New Conversation13m ago|||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg |0|0|0|0",
+    "text": "New Conversation13m ago",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 22,
+    "key": "SPAN||Export as text||absolute right-6 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foregrou|0|0|0|0",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 23,
+    "key": "SPAN||||absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500 |0|0|0|0",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 24,
+    "key": "DIV|New Conversation13m ago|||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg |0|0|0|0",
+    "text": "New Conversation13m ago",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 25,
+    "key": "SPAN||Export as text||absolute right-6 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foregrou|0|0|0|0",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 26,
+    "key": "SPAN||||absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500 |0|0|0|0",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 27,
+    "key": "DIV|New Conversation13m ago|||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg |0|0|0|0",
+    "text": "New Conversation13m ago",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 28,
+    "key": "SPAN||Export as text||absolute right-6 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foregrou|0|0|0|0",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 29,
+    "key": "SPAN||||absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-red-500 |0|0|0|0",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 30,
+    "key": "BUTTON|Chat|||flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-rounded rounded-full bg-primary text-primary-foreground h|0|0|0|0",
+    "text": "Chat",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 31,
+    "key": "BUTTON|||Settings|w-10 h-10 rounded-full border border-border/50 text-muted-foreground hover:text-foreground hover:bg-secondary/70 flex it|0|0|0|0",
+    "text": "",
+    "title": "",
+    "aria": "Settings",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 32,
+    "key": "BUTTON|Clear All|||w-full text-[10px] font-medium text-muted-foreground/40 tracking-wider text-center hover:text-red-500/60 transition-colo|0|0|0|0",
+    "text": "Clear All",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 33,
+    "key": "BUTTON||Back to chat|Back to chat|absolute top-3 left-3 z-30 w-9 h-9 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 t|12|71|36|36",
+    "text": "",
+    "title": "Back to chat",
+    "aria": "Back to chat",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 34,
+    "key": "BUTTON||Flip camera||w-7 h-7 flex items-center justify-center rounded-full bg-background/60 backdrop-blur border border-border/30 hover:bg-ba|336|762|28|28",
+    "text": "",
+    "title": "Flip camera",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 35,
+    "key": "BUTTON||||p-1 rounded hover:bg-secondary/80 text-muted-foreground transition-colors|317|533|20|20",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 36,
+    "key": "BUTTON||||p-1 rounded hover:bg-secondary/80 text-muted-foreground transition-colors|341|533|20|20",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 37,
+    "key": "BUTTON||Back||p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors|63|570|22|22",
+    "text": "",
+    "title": "Back",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 38,
+    "key": "BUTTON||Forward||p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors|91|570|22|22",
+    "text": "",
+    "title": "Forward",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 39,
+    "key": "BUTTON||Reload||p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors|119|570|22|22",
+    "text": "",
+    "title": "Reload",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 40,
+    "key": "BUTTON||Show click grid (tiny cubes)||p-1 rounded hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground|358|570|22|22",
+    "text": "",
+    "title": "Show click grid (tiny cubes)",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 41,
+    "key": "BUTTON||Minimize||p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors|386|570|22|22",
+    "text": "",
+    "title": "Minimize",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 42,
+    "key": "BUTTON||Fullscreen||p-1 rounded hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground|414|570|22|22",
+    "text": "",
+    "title": "Fullscreen",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 43,
+    "key": "BUTTON|Run|Start the agent||flex items-center gap-1 px-2 py-1 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors text-[10px] f|316|608|49|23",
+    "text": "Run",
+    "title": "Start the agent",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 44,
+    "key": "BUTTON|Scroll Up|||text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors|135|968|38|15",
+    "text": "Scroll Up",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 45,
+    "key": "BUTTON|Scroll Down|||text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors|188|968|50|15",
+    "text": "Scroll Down",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 46,
+    "key": "BUTTON|Type Test|||text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors|254|968|39|15",
+    "text": "Type Test",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 47,
+    "key": "BUTTON|Chat G|||w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors bg-primary/10|28|201|334|34",
+    "text": "Chat G",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 48,
+    "key": "BUTTON|Voice V|||w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors |28|236|334|34",
+    "text": "Voice V",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 49,
+    "key": "BUTTON|Agent A|||w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors |28|270|334|34",
+    "text": "Agent A",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 50,
+    "key": "BUTTON|Camera C|||w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors |28|305|334|34",
+    "text": "Camera C",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 51,
+    "key": "BUTTON|Deep Research R|||w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors |28|339|334|34",
+    "text": "Deep Research R",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 52,
+    "key": "BUTTON|New Gem N|||w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors |28|374|334|34",
+    "text": "New Gem N",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 53,
+    "key": "BUTTON|Data Lab D|||w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors |28|408|334|34",
+    "text": "Data Lab D",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 54,
+    "key": "BUTTON|Generate image I|||w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors |28|442|334|34",
+    "text": "Generate image I",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 55,
+    "key": "BUTTON|Chat|||flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10.5px] font-medium text-muted-foreground hover:text-foreground|34|499|58|27",
+    "text": "Chat",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 56,
+    "key": "BUTTON|Web search|||flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10.5px] font-medium text-muted-foreground hover:text-foreground|98|491|88|42",
+    "text": "Web search",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 57,
+    "key": "BUTTON|Theme|||flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10.5px] font-medium text-muted-foreground hover:text-foreground|192|499|79|27",
+    "text": "Theme",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 58,
+    "key": "BUTTON|Settings|||flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10.5px] font-medium text-muted-foreground hover:text-foreground|283|499|73|27",
+    "text": "Settings",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  }
+]

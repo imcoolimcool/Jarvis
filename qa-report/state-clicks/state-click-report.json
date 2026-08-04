@@ -1,0 +1,2908 @@
+{
+  "url": "http://localhost:21662/",
+  "chromiumPath": "/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium",
+  "screenshotCount": 361,
+  "blockedRequests": 79,
+  "errors": [
+    "[voice-home] console: Failed to load resource: net::ERR_FAILED",
+    "[voice-home] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[voice-home] pageerror: Failed to fetch",
+    "[voice-history] console: Failed to load resource: net::ERR_FAILED",
+    "[voice-history] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[voice-history] pageerror: Failed to fetch",
+    "[voice-menu] console: Failed to load resource: net::ERR_FAILED",
+    "[voice-menu] pageerror: Failed to fetch",
+    "[voice-menu] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-home] console: Failed to load resource: net::ERR_FAILED",
+    "[chat-home] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-home] pageerror: Failed to fetch",
+    "[chat-plus] console: Failed to load resource: net::ERR_FAILED",
+    "[chat-plus] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-plus] pageerror: Failed to fetch",
+    "[chat-research] console: Failed to load resource: net::ERR_FAILED",
+    "[chat-research] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-research] pageerror: Failed to fetch",
+    "[chat-gem] console: Failed to load resource: net::ERR_FAILED",
+    "[chat-gem] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-gem] pageerror: Failed to fetch",
+    "[chat-studios] console: Failed to load resource: net::ERR_FAILED",
+    "[chat-studios] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-studios] pageerror: Failed to fetch",
+    "[chat-design] console: Failed to load resource: net::ERR_FAILED",
+    "[chat-design] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-design] pageerror: Failed to fetch",
+    "[chat-music] console: Failed to load resource: net::ERR_FAILED",
+    "[chat-music] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-music] pageerror: Failed to fetch",
+    "[chat-datalab] console: Failed to load resource: net::ERR_FAILED",
+    "[chat-datalab] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-datalab] pageerror: Failed to fetch",
+    "[chat-settings] console: Failed to load resource: net::ERR_FAILED",
+    "[chat-settings] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-settings] pageerror: Failed to fetch",
+    "[chat-palette] console: Failed to load resource: net::ERR_FAILED",
+    "[chat-palette] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-palette] pageerror: Failed to fetch",
+    "[chat-palette] console: WebSocket connection to 'ws://localhost:21662/browser-ws' failed: Connection closed before receiving a handshake response",
+    "[chat-palette] console: Browser action failed: TypeError: Failed to fetch",
+    "[chat-sidebar] console: Failed to load resource: net::ERR_FAILED",
+    "[chat-sidebar] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-sidebar] pageerror: Failed to fetch",
+    "[agent-mode] console: Failed to load resource: net::ERR_FAILED",
+    "[agent-mode] console: WebSocket connection to 'ws://localhost:21662/browser-ws' failed: Connection closed before receiving a handshake response",
+    "[agent-mode] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[agent-mode] pageerror: Failed to fetch",
+    "[agent-mode] console: Browser action failed: TypeError: Failed to fetch",
+    "[browser-mode] console: Failed to load resource: net::ERR_FAILED",
+    "[browser-mode] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[browser-mode] pageerror: Failed to fetch",
+    "[camera-mode] console: Failed to load resource: net::ERR_FAILED",
+    "[camera-mode] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[camera-mode] pageerror: Failed to fetch"
+  ],
+  "states": {
+    "voice-home": {
+      "initial": 8,
+      "clicked": 16,
+      "final": 33
+    },
+    "voice-history": {
+      "initial": 76,
+      "clicked": 15,
+      "final": 33
+    },
+    "voice-menu": {
+      "initial": 47,
+      "clicked": 14,
+      "final": 33
+    },
+    "chat-home": {
+      "initial": 46,
+      "clicked": 15,
+      "final": 33
+    },
+    "chat-plus": {
+      "initial": 53,
+      "clicked": 15,
+      "final": 33
+    },
+    "chat-research": {
+      "initial": 55,
+      "clicked": 16,
+      "final": 33
+    },
+    "chat-gem": {
+      "initial": 50,
+      "clicked": 16,
+      "final": 33
+    },
+    "chat-studios": {
+      "initial": 56,
+      "clicked": 16,
+      "final": 33
+    },
+    "chat-design": {
+      "initial": 49,
+      "clicked": 17,
+      "final": 33
+    },
+    "chat-music": {
+      "initial": 53,
+      "clicked": 18,
+      "final": 33
+    },
+    "chat-datalab": {
+      "initial": 47,
+      "clicked": 17,
+      "final": 33
+    },
+    "chat-settings": {
+      "initial": 59,
+      "clicked": 16,
+      "final": 33
+    },
+    "chat-palette": {
+      "initial": 20,
+      "clicked": 40,
+      "final": 47
+    },
+    "chat-sidebar": {
+      "initial": 76,
+      "clicked": 16,
+      "final": 33
+    },
+    "agent-mode": {
+      "initial": 58,
+      "clicked": 31,
+      "final": 45
+    },
+    "browser-mode": {
+      "initial": 33,
+      "clicked": 16,
+      "final": 33
+    },
+    "camera-mode": {
+      "initial": 35,
+      "clicked": 16,
+      "final": 33
+    }
+  },
+  "buttonResults": [
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "New Conversation 20m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-home",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "New Conversation 20m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-history",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "New Conversation 20m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "voice-menu",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "New Conversation 20m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-home",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "",
+      "title": "Attach, camera, or search",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "New Conversation 20m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-plus",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "Deep Research R",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "New Conversation 21m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-research",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close research",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "",
+      "title": "Attach, camera, or search",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "New Gem",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "New Conversation 21m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-gem",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "",
+      "title": "Attach, camera, or search",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "All Studios",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "New Conversation 21m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "",
+      "title": "Close",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-studios",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "",
+      "title": "Attach, camera, or search",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "Design Studio",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "New Conversation 22m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "Delete all",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "",
+      "title": "Close",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-design",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "",
+      "title": "Attach, camera, or search",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "Music Studio",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "New Conversation 22m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "Delete all",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "",
+      "title": "Close",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "☀️ Happy",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-music",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "Data Lab D",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "New Conversation 22m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "Delete all",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-datalab",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "New Conversation 22m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "Delete all",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-settings",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "New Conversation 22m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Delete all",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Chat G",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "idle",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Agent",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Agent On",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Browser On",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Camera mode",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "Flip camera",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "Back",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "Forward",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "Reload",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "Show click grid (tiny cubes)",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "Hide click grid",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "Minimize",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Jarvis's Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "Fullscreen",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "",
+      "title": "Collapse",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Run",
+      "title": "Start the agent",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Scroll Up",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Retry Connection",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Scroll Down",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-palette",
+      "kind": "button",
+      "text": "Type Test",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "New Conversation 23m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "Delete all",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "chat-sidebar",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Agent",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "New Conversation 23m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Delete all",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Back",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Forward",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Reload",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Show click grid (tiny cubes)",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Hide click grid",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Minimize",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Jarvis's Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Fullscreen",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Collapse",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Run",
+      "title": "Start the agent",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Retry Connection",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Scroll Up",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Scroll Down",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "Type Test",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "agent-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "New Conversation 23m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "Delete all",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "browser-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "Camera mode",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "New Conversation 23m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "Delete all",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "state": "camera-mode",
+      "kind": "button",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    }
+  ],
+  "totalButtonAttempts": 344,
+  "successfulButtonClicks": 344,
+  "failedButtonClicks": 0,
+  "missingExpectedControls": []
+}

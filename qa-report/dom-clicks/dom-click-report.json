@@ -1,0 +1,275 @@
+{
+  "url": "http://localhost:21662/",
+  "chromiumPath": "/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium",
+  "screenshotCount": 30,
+  "blockedRequests": 6,
+  "errors": [
+    "[desktop] console: Failed to load resource: net::ERR_FAILED",
+    "[desktop] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[desktop] pageerror: Failed to fetch",
+    "[mobile] console: Failed to load resource: net::ERR_FAILED",
+    "[mobile] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. "
+  ],
+  "buttonActivations": [
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "New Conversation 9m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "Export as text",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "New Conversation 11m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "New Conversation 12m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "New Conversation 14m ago",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "",
+      "aria": "Settings",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "Clear All",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "Cancel",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "desktop",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    },
+    {
+      "page": "mobile",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true
+    },
+    {
+      "page": "mobile",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true
+    },
+    {
+      "page": "mobile",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true
+    },
+    {
+      "page": "mobile",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true
+    },
+    {
+      "page": "mobile",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "mobile",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": true
+    },
+    {
+      "page": "mobile",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "mobile",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "Browser",
+      "title": "",
+      "aria": "",
+      "ok": true
+    },
+    {
+      "page": "mobile",
+      "action": "button",
+      "reason": "live-dom-click",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": true
+    }
+  ],
+  "desktop": {
+    "activated": 19,
+    "finalButtons": 33
+  },
+  "mobile": {
+    "activated": 9,
+    "finalButtons": 33
+  }
+}

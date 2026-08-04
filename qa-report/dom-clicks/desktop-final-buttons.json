@@ -1,0 +1,299 @@
+[
+  {
+    "index": 0,
+    "key": "BUTTON|||Open history|glass-toolbar px-4 py-2.5 flex items-center border-b border-border/50 relative z-50 flex-shrink-0 ",
+    "text": "",
+    "title": "",
+    "aria": "Open history",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 1,
+    "key": "BUTTON||New Chat|New Chat|flex items-center rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 shadow-sm overflow",
+    "text": "",
+    "title": "New Chat",
+    "aria": "New Chat",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 2,
+    "key": "BUTTON|||Menu|flex items-center rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 shadow-sm overflow",
+    "text": "",
+    "title": "",
+    "aria": "Menu",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 3,
+    "key": "BUTTON|||Search|px-4 pt-4 pb-3 flex items-center justify-between",
+    "text": "",
+    "title": "",
+    "aria": "Search",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 4,
+    "key": "BUTTON|Chat|||px-2 space-y-0.5",
+    "text": "Chat",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 5,
+    "key": "BUTTON|Browser|||px-2 space-y-0.5",
+    "text": "Browser",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 6,
+    "key": "DIV|New Conversation 9m ago|||space-y-0.5",
+    "text": "New Conversation 9m ago",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 7,
+    "key": "SPAN||Export as text||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 8,
+    "key": "SPAN||||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 9,
+    "key": "DIV|New Conversation 11m ago|||space-y-0.5",
+    "text": "New Conversation 11m ago",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 10,
+    "key": "SPAN||Export as text||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 11,
+    "key": "SPAN||||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 12,
+    "key": "DIV|New Conversation 12m ago|||space-y-0.5",
+    "text": "New Conversation 12m ago",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 13,
+    "key": "SPAN||Export as text||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 14,
+    "key": "SPAN||||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 15,
+    "key": "DIV|New Conversation 12m ago|||space-y-0.5",
+    "text": "New Conversation 12m ago",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 16,
+    "key": "SPAN||Export as text||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 17,
+    "key": "SPAN||||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 18,
+    "key": "DIV|New Conversation 14m ago|||space-y-0.5",
+    "text": "New Conversation 14m ago",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 19,
+    "key": "SPAN||Export as text||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 20,
+    "key": "SPAN||||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 21,
+    "key": "DIV|New Conversation 14m ago|||space-y-0.5",
+    "text": "New Conversation 14m ago",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 22,
+    "key": "SPAN||Export as text||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 23,
+    "key": "SPAN||||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 24,
+    "key": "DIV|New Conversation 14m ago|||space-y-0.5",
+    "text": "New Conversation 14m ago",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 25,
+    "key": "SPAN||Export as text||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 26,
+    "key": "SPAN||||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 27,
+    "key": "DIV|New Conversation 14m ago|||space-y-0.5",
+    "text": "New Conversation 14m ago",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 28,
+    "key": "SPAN||Export as text||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "Export as text",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 29,
+    "key": "SPAN||||w-full text-left px-3 py-2 flex items-start gap-2.5 group transition-all text-[13px] relative cursor-pointer rounded-lg ",
+    "text": "",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 30,
+    "key": "BUTTON|Chat|||flex items-center gap-2",
+    "text": "Chat",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 31,
+    "key": "BUTTON|||Settings|flex items-center gap-2",
+    "text": "",
+    "title": "",
+    "aria": "Settings",
+    "visible": true,
+    "disabled": false
+  },
+  {
+    "index": 32,
+    "key": "BUTTON|Clear All|||p-3 border-t border-border/20 flex-shrink-0",
+    "text": "Clear All",
+    "title": "",
+    "aria": "",
+    "visible": true,
+    "disabled": false
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "index": 0,
+    "key": "BUTTON|||Open history|w-9 h-9 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 text-foreground flex items-c|0|0|0|0",
+    "text": "",
+    "title": "",
+    "aria": "Open history",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 1,
+    "key": "BUTTON||New Chat|New Chat|w-9 h-9 flex items-center justify-center text-foreground transition-colors hover:bg-secondary/70 active:scale-95|0|0|0|0",
+    "text": "",
+    "title": "New Chat",
+    "aria": "New Chat",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 2,
+    "key": "BUTTON|||Menu|w-9 h-9 flex items-center justify-center text-foreground transition-colors hover:bg-secondary/70 active:scale-95|0|0|0|0",
+    "text": "",
+    "title": "",
+    "aria": "Menu",
+    "disabled": false,
+    "visible": false
+  },
+  {
+    "index": 3,
+    "key": "BUTTON||Back to chat|Back to chat|absolute top-3 left-3 z-30 w-9 h-9 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 t|12|12|36|36",
+    "text": "",
+    "title": "Back to chat",
+    "aria": "Back to chat",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 4,
+    "key": "DIV|||idle|relative flex items-center justify-center w-[260px] h-[260px] sm:w-[280px] sm:h-[280px] cursor-pointer group select-none|65|195|260|260",
+    "text": "",
+    "title": "",
+    "aria": "idle",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 5,
+    "key": "BUTTON|Agent|||px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all text-muted-foreground/50 hover:text-foregroun|66|467|66|27",
+    "text": "Agent",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 6,
+    "key": "BUTTON|Browser|||px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all text-muted-foreground/50 hover:text-foregroun|140|467|75|27",
+    "text": "Browser",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  },
+  {
+    "index": 7,
+    "key": "BUTTON|Camera mode|||px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all text-muted-foreground/50 hover:text-foregroun|223|467|101|27",
+    "text": "Camera mode",
+    "title": "",
+    "aria": "",
+    "disabled": false,
+    "visible": true
+  }
+]

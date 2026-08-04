@@ -1,0 +1,1195 @@
+{
+  "url": "http://localhost:21662/",
+  "chromiumPath": "/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium",
+  "generatedAt": "2026-08-04T21:39:49.302Z",
+  "screenshots": 109,
+  "clickAttempts": 135,
+  "successfulClicks": 7,
+  "failedOrBlockedClicks": 128,
+  "requestBlocks": 0,
+  "errors": [
+    "[desktop] console: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[mobile] console: WebSocket connection to 'ws://localhost:21662/browser-ws' failed: Connection closed before receiving a handshake response"
+  ],
+  "clicks": [
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "Back to chat",
+      "aria": "Back to chat",
+      "ok": true,
+      "x": 30,
+      "y": 30
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Open history",
+      "ok": true,
+      "x": 34,
+      "y": 29
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "New Chat",
+      "aria": "New Chat",
+      "ok": true,
+      "x": 1368,
+      "y": 29
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Menu",
+      "ok": true,
+      "x": 1405,
+      "y": 29
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "Settings",
+      "title": "",
+      "aria": "",
+      "ok": true,
+      "x": 1328,
+      "y": 81
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-initial",
+      "text": "",
+      "title": "",
+      "aria": "Search",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-open-Chat",
+      "text": "Chat",
+      "title": "",
+      "aria": "",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-open-Voice",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-open-Agent",
+      "text": "Agent",
+      "title": "",
+      "aria": "",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-open-Camera",
+      "text": "Camera mode",
+      "title": "",
+      "aria": "",
+      "ok": false,
+      "reason": "covered"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-open-Settings",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-open-Deep Research",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-open-All Studios",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-open-Design Studio",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-open-Music Studio",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-open-Data Lab",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "desktop-open-New Gem",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "desktop",
+      "label": "close-overlay",
+      "text": "",
+      "title": "",
+      "aria": "Close",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "mobile",
+      "label": "mobile-open-Chat",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "mobile",
+      "label": "mobile-open-Voice",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "mobile",
+      "label": "mobile-open-Agent",
+      "text": "Agent",
+      "title": "",
+      "aria": "",
+      "ok": true,
+      "x": 98.8984375,
+      "y": 480
+    },
+    {
+      "page": "mobile",
+      "label": "mobile-open-Camera",
+      "text": "Camera mode",
+      "title": "",
+      "aria": "",
+      "ok": true,
+      "x": 288.5859375,
+      "y": 480
+    },
+    {
+      "page": "mobile",
+      "label": "mobile-open-Settings",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "mobile",
+      "label": "mobile-open-Deep Research",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "mobile",
+      "label": "mobile-open-All Studios",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "mobile",
+      "label": "mobile-open-Design Studio",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "mobile",
+      "label": "mobile-open-Music Studio",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "mobile",
+      "label": "mobile-open-Data Lab",
+      "ok": false,
+      "reason": "not-found"
+    },
+    {
+      "page": "mobile",
+      "label": "mobile-open-New Gem",
+      "ok": false,
+      "reason": "not-found"
+    }
+  ],
+  "desktop": {
+    "initialButtons": 8,
+    "finalButtons": 89
+  },
+  "mobile": {
+    "initialButtons": 8,
+    "finalButtons": 59
+  }
+}
