@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createPortal } from 'react-dom';
 import { useSpeechRecognition, isSpeechRecognitionSupported } from '@/hooks/use-speech-recognition';
 import { useWakeWord, isWakeWordSupported } from '@/hooks/use-wake-word';
 import { useClapDetection } from '@/hooks/use-clap-detection';
@@ -10,7 +9,7 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Paperclip, FileText, X, Sparkles, Globe, AlarmClock, Plus, Bug, Image as ImageIcon, Monitor, Search, Minimize2, Maximize2, AudioWaveform, ArrowLeft, SquarePen, MoreHorizontal, Camera, Hammer, FolderTree, LayoutGrid, Palette, Music2 } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, X, Plus, Bug, Search, Minimize2, Maximize2, AudioWaveform, ArrowLeft, SquarePen, MoreHorizontal, Camera, Globe, AlarmClock, Sparkles, FileText } from 'lucide-react';
 import type { Widget, TerminalResult } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, CommandCard } from '@/components/widgets';
 import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
@@ -18,6 +17,9 @@ import { useScreenShare } from '@/hooks/use-screen-share';
 import { JarvisBrowser } from '@/components/jarvis-browser';
 import { CameraFeed } from '@/components/camera-feed';
 import { useI18n } from '@/lib/i18n';
+import { useTheme } from '@/lib/use-theme';
+import { PlusMenu } from '@/components/plus-menu';
+import { AppOverlays } from '@/components/app-overlays';
 import { looksLikeCodeRequest } from '@/lib/code-intent';
 import { haptics } from '@/lib/haptics';
 import { useEmotionDetection, type EmotionLabel } from '@/hooks/use-emotion-detection';
@@ -30,48 +32,11 @@ import { MusicStudio } from '@/components/music-studio';
 import { StudiosHub, type StudioId } from '@/components/studios-hub';
 import { ensurePushSubscription } from '@/lib/push';
 
-type Theme = 'dark' | 'light' | 'auto';
-
 interface AttachedFile {
   base64: string;
   mimeType: string;
   fileName: string;
   preview?: string; // object URL for images
-}
-
-function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    try { return (localStorage.getItem('jarvis-theme') as Theme) || 'light'; }
-    catch { return 'light'; }
-  });
-  const [systemDark, setSystemDark] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
-  );
-
-  // Follow the OS theme while in 'auto' mode
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-
-  const resolved: 'dark' | 'light' = theme === 'auto' ? (systemDark ? 'dark' : 'light') : theme;
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove('dark', 'light');
-    root.classList.add(resolved);
-    try { localStorage.setItem('jarvis-theme', theme); } catch { /* noop */ }
-  }, [theme, resolved]);
-
-  return {
-    theme,
-    resolved,
-    setTheme,
-    /** Pass a target mode, or toggle dark ↔ light when omitted (header quick toggle). */
-    toggle: (next?: Theme) => setTheme(next ?? (resolved === 'dark' ? 'light' : 'dark')),
-  };
 }
 
 export default function Home() {
@@ -1919,79 +1884,29 @@ export default function Home() {
                   {/* + menu popover — rendered through a portal so its fixed
                       positioning is always viewport-relative (framer-motion
                       transforms on ancestors used to throw it off-screen). */}
-                  {createPortal(
-                    <AnimatePresence>
-                      {plusMenuOpen && !isBusy && plusMenuCoords && (
-                        <>
-                          <div className="fixed inset-0 z-40" onClick={closePlusMenu} />
-                          <motion.div
-                            initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 6, scale: 0.95 }}
-                            transition={{ duration: 0.15 }}
-                            className="fixed z-50 w-56 rounded-xl border border-border/50 bg-background shadow-xl overflow-hidden max-h-[min(70vh,480px)] flex flex-col"
-                            style={{ top: plusMenuCoords.top, left: plusMenuCoords.left }}
-                          >
-                          <p className="px-3 pt-1.5 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Attach</p>
-                          <button
-                            onClick={() => { closePlusMenu(); fileInputRef.current?.click(); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            <Paperclip className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            {t('input.attachFile')}
-                          </button>
-                          <button
-                            onClick={() => { closePlusMenu(); setMode('camera'); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            <Camera className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            {t('header.mode.camera')}
-                          </button>
-
-                          <p className="px-3 pt-2 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Create</p>
-                          <button
-                            onClick={() => { closePlusMenu(); setGemDialogOpen(true); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            <Sparkles className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            {t('gem.menuItem')}
-                          </button>
-                          <button
-                            onClick={() => { closePlusMenu(); setTimeout(() => inputRef.current?.focus(), 50); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            <ImageIcon className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            {t('input.generateImage')}
-                          </button>
-
-                          <p className="px-3 pt-2 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Studios</p>
-                          <button
-                            onClick={() => { closePlusMenu(); setStudiosOpen(true); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            <LayoutGrid className="w-4 h-4 flex-shrink-0 text-primary" strokeWidth={1.8} />
-                            All Studios
-                          </button>
-                          <button
-                            onClick={() => { closePlusMenu(); setDesignStudioOpen(true); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            <Palette className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            Design Studio
-                          </button>
-                          <button
-                            onClick={() => { closePlusMenu(); setMusicStudioOpen(true); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            <Music2 className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            Music Studio
-                          </button>
-                          </motion.div>
-                        </>
-                      )}
-                    </AnimatePresence>,
-                    document.body,
-                  )}
+                  <PlusMenu
+                    open={plusMenuOpen && !isBusy && plusMenuCoords !== null}
+                    onClose={closePlusMenu}
+                    onAction={(action) => {
+                      closePlusMenu();
+                      switch (action) {
+                        case 'attach-file': fileInputRef.current?.click(); break;
+                        case 'camera': setMode('camera'); break;
+                        case 'new-gem': setGemDialogOpen(true); break;
+                        case 'generate-image': setTimeout(() => inputRef.current?.focus(), 50); break;
+                        case 'studios': setStudiosOpen(true); break;
+                        case 'design-studio': setDesignStudioOpen(true); break;
+                        case 'music-studio': setMusicStudioOpen(true); break;
+                      }
+                    }}
+                    coords={plusMenuCoords}
+                    labels={{
+                      attachFile: t('input.attachFile'),
+                      camera: t('header.mode.camera'),
+                      newGem: t('gem.menuItem'),
+                      generateImage: t('input.generateImage'),
+                    }}
+                  />
 
                   {/* Agent mode indicator */}
                   {agentModeActive && (
@@ -2075,231 +1990,36 @@ export default function Home() {
         onCreated={handleGemCreated}
       />
 
-      {/* ── Data Lab ── */}
-      <DataLab
-        open={dataLabOpen}
-        onClose={() => setDataLabOpen(false)}
-        onAskJarvis={handleDataLabAsk}
-      />
-
-      {/* ── Command palette (Cmd+K) ── */}
-      <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        onNavigate={(m) => { haptics.light(); setMode(m); }}
-        onOpenResearch={() => setResearchPanelOpen(true)}
-        onOpenGem={() => setGemDialogOpen(true)}
-        onOpenDataLab={() => setDataLabOpen(true)}
-        onToggleWebSearch={handleToggleWebSearch}
-        onToggleTheme={() => toggleTheme()}
-        onOpenSettings={() => setSettingsOpen(true)}
+      {/* ── All modal overlays ── */}
+      <AppOverlays
+        settingsOpen={settingsOpen} onCloseSettings={() => setSettingsOpen(false)}
+        theme={theme} onToggleTheme={() => toggleTheme()}
+        errorDetail={errorDetail} onCloseError={() => setErrorDetail(null)}
+        researchPanelOpen={researchPanelOpen} researchJobs={researchJobs}
+        onCloseResearch={() => setResearchPanelOpen(false)}
+        onOpenGem={(convId) => { loadConversation(convId); setResearchPanelOpen(false); }}
+        onStartResearch={() => { refreshSidebar(); }}
+        onCancelResearch={async (jobId) => { try { await fetch(`/api/jarvis/research/${jobId}/cancel`, { method: 'POST' }); refreshSidebar(); } catch { /* noop */ } }}
+        gemDialogOpen={gemDialogOpen} onCloseGem={() => setGemDialogOpen(false)}
+        onGemCreated={handleGemCreated}
+        dataLabOpen={dataLabOpen} onCloseDataLab={() => setDataLabOpen(false)} onDataLabAsk={handleDataLabAsk}
+        paletteOpen={paletteOpen} onClosePalette={() => setPaletteOpen(false)}
+        onOpenGemFromPalette={() => setGemDialogOpen(true)} onOpenDataLabFromPalette={() => setDataLabOpen(true)}
         onOpenConversation={(id) => { void loadConversation(id); setMode('chat'); }}
         onNewChat={handleNewChat}
+        onNavigate={(m) => { haptics.light(); setMode(m); }}
+        onOpenResearch={() => setResearchPanelOpen(true)}
+        onToggleWebSearch={handleToggleWebSearch}
+        onOpenSettings={() => setSettingsOpen(true)}
+        buildPanelOpen={buildPanelOpen} buildTab={buildTab} setBuildTab={setBuildTab}
+        onCloseBuild={() => setBuildPanelOpen(false)} buildFiles={buildFiles} onRefreshBuildFiles={refreshBuildFiles}
+        sessionCommands={sessionCommands} commandInput={commandInput} setCommandInput={setCommandInput}
+        commandBusy={commandBusy} buildTitle={t('build.title')}
+        studiosOpen={studiosOpen} onCloseStudios={() => setStudiosOpen(false)} onSelectStudio={handleStudioSelect}
+        designStudioOpen={designStudioOpen} onCloseDesign={() => setDesignStudioOpen(false)}
+        musicStudioOpen={musicStudioOpen} onCloseMusic={() => setMusicStudioOpen(false)}
+        showResearchPulse={!researchPanelOpen && researchJobs.some(j => j.status === 'queued' || j.status === 'running')}
       />
-
-      {/* ── Deep Research panel ── */}
-      <AnimatePresence>
-        {researchPanelOpen && (
-          <ResearchPanel
-            jobs={researchJobs}
-            onClose={() => setResearchPanelOpen(false)}
-            onOpenGem={(convId) => { loadConversation(convId); setResearchPanelOpen(false); }}
-            onStarted={() => { refreshSidebar(); }}
-            onCancel={async (jobId) => {
-              try { await fetch(`/api/jarvis/research/${jobId}/cancel`, { method: 'POST' }); refreshSidebar(); } catch { /* noop */ }
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ── Build Mode workspace panel ── */}
-      <AnimatePresence>
-        {buildPanelOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-            className="fixed inset-0 z-40 bg-background/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-            onClick={() => setBuildPanelOpen(false)}
-          >
-            <motion.div
-              onClick={(e) => e.stopPropagation()}
-              className="w-full sm:max-w-3xl h-[85vh] sm:h-[80vh] bg-background border border-border/50 rounded-t-3xl sm:rounded-3xl shadow-apple-2xl overflow-hidden flex flex-col"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <Hammer className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-semibold">{t('build.title')}</span>
-                  <span className="text-[10px] font-mono text-muted-foreground/50 hidden sm:inline">artifacts/workspace</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => { setBuildTab('terminal'); }}
-                    className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors ${buildTab === 'terminal' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                  >
-                    Terminal
-                  </button>
-                  <button
-                    onClick={() => { setBuildTab('files'); refreshBuildFiles(); }}
-                    className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors ${buildTab === 'files' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                  >
-                    Files
-                  </button>
-                  <button
-                    onClick={() => setBuildPanelOpen(false)}
-                    className="p-2 rounded-full hover:bg-muted/50 text-muted-foreground transition-colors ml-1"
-                    title="Close"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Body */}
-              <div className="flex-1 min-h-0 overflow-y-auto">
-                {buildTab === 'terminal' ? (
-                  <div className="p-3">
-                    <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 uppercase mb-2">
-                      Commands the AI ran
-                    </p>
-                    {sessionCommands.length === 0 ? (
-                      <p className="text-xs text-muted-foreground/60 mb-3">
-                        No commands yet — ask Jarvis to build something and every command shows up here as a clean card.
-                      </p>
-                    ) : (
-                      <div className="space-y-1 mb-3">
-                        {sessionCommands.map((tr, i) => <CommandCard key={i} result={tr} />)}
-                      </div>
-                    )}
-                    <form
-                      onSubmit={async (e) => {
-                        e.preventDefault();
-                        const cmd = commandInput.trim();
-                        if (!cmd || commandBusy) return;
-                        setCommandBusy(true);
-                        try {
-                          const res = await fetch('/api/jarvis/terminal', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ sessionId: 'default', command: cmd }),
-                          });
-                          const data = await res.json();
-                          const tr: TerminalResult = {
-                            command: cmd,
-                            exitCode: data.exitCode ?? (data.error ? 1 : 0),
-                            output: data.error ? String(data.error) : `${data.stdout ?? ''}${data.stderr ?? ''}`.trim() || '(no output)',
-                          };
-                          setSessionCommands(prev => [...prev, tr]);
-                        } catch {
-                          setSessionCommands(prev => [...prev, { command: cmd, exitCode: 1, output: 'Network error' }]);
-                        }
-                        setCommandInput('');
-                        setCommandBusy(false);
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <span className="font-mono text-[11px] text-muted-foreground/50">$</span>
-                      <input
-                        value={commandInput}
-                        onChange={(e) => setCommandInput(e.target.value)}
-                        placeholder={commandBusy ? 'running…' : 'run a command (optional)'}
-                        className="flex-1 min-w-0 bg-muted/40 border border-border/30 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-primary/40 transition-colors"
-                        spellCheck={false}
-                      />
-                      <button
-                        type="submit"
-                        disabled={commandBusy}
-                        className="px-3 py-2 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/15 transition-colors disabled:opacity-50"
-                      >
-                        Run
-                      </button>
-                    </form>
-                  </div>
-                ) : (
-                  <div className="p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 uppercase">Workspace files</p>
-                      <button
-                        onClick={() => refreshBuildFiles()}
-                        className="flex items-center gap-1 text-[10px] text-primary/70 hover:text-primary transition-colors"
-                      >
-                        <FolderTree className="w-3.5 h-3.5" /> refresh
-                      </button>
-                    </div>
-                    {buildFiles.length === 0 ? (
-                      <p className="text-xs text-muted-foreground/60">Empty workspace — ask Jarvis to build something, then run files here.</p>
-                    ) : (
-                      <div className="rounded-xl border border-border/30 bg-muted/20 divide-y divide-border/20">
-                        {buildFiles.map((f) => (
-                          <div key={f.path} className="flex items-center justify-between px-3 py-1.5 text-xs">
-                            <span className={`font-mono truncate ${f.type === 'dir' ? 'text-foreground/80 font-medium' : 'text-muted-foreground'}`}>
-                              {f.type === 'dir' ? '📁 ' : '📄 '}{f.path}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground/40 font-mono flex-shrink-0 ml-2">
-                              {f.type === 'file' ? `${f.size} B` : ''}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Pulsing chip when a research job is running in the background */}
-      <AnimatePresence>
-        {!researchPanelOpen && researchJobs.some(j => j.status === 'queued' || j.status === 'running') && (
-          <motion.button
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            onClick={() => setResearchPanelOpen(true)}
-            className="fixed z-40 bottom-24 right-4 flex items-center gap-2 px-3 py-2 rounded-full border border-border/60 bg-background/90 backdrop-blur-xl shadow-apple-lg hover:bg-secondary/70 transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
-            <span className="text-[10px] font-mono text-muted-foreground">DEEP RESEARCH</span>
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* ── Studios hub — one launcher for every studio ── */}
-      <StudiosHub
-        open={studiosOpen}
-        onClose={() => setStudiosOpen(false)}
-        onSelect={handleStudioSelect}
-      />
-
-      {/* ── Design Studio — photo editing / Canva replacement ── */}
-      <DesignStudio
-        open={designStudioOpen}
-        onClose={() => setDesignStudioOpen(false)}
-      />
-
-      {/* ── Music Studio — Suno replacement (Web Audio, free) ── */}
-      <MusicStudio
-        open={musicStudioOpen}
-        onClose={() => setMusicStudioOpen(false)}
-      />
-
-      <SettingsPanel
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
-
-      {/* Error Detail Panel — slides up from bottom when an error occurs */}
-      <AnimatePresence>
-        {errorDetail && (
-          <ErrorDetailPanel detail={errorDetail} onClose={() => setErrorDetail(null)} />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
