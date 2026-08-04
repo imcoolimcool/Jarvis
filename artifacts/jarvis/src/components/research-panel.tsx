@@ -21,8 +21,8 @@ export interface ResearchJob {
   id: string;
   title: string;
   prompt: string;
-  mode: 'agent' | 'normal';
-  depth: 'standard' | 'deep' | 'quantum';
+  mode: 'agent' | 'normal' | 'both';
+  depth: 'standard' | 'deep' | 'quantum' | 'omni';
   status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   phase: string;
@@ -53,6 +53,7 @@ const DEPTH_INFO: Record<ResearchJob['depth'], { label: string; hint: string }> 
   standard: { label: 'Standard', hint: '~5–12 hours' },
   deep: { label: 'Deep', hint: '~1–3 days' },
   quantum: { label: 'Quantum', hint: '~1 week+, no limit' },
+  omni: { label: 'Omni', hint: '~weeks, never truly ends' },
 };
 
 const STATUS_STYLE: Record<ResearchJob['status'], { color: string; icon: 'spin' | 'ok' | 'err' | 'idle' }> = {
@@ -66,8 +67,8 @@ const STATUS_STYLE: Record<ResearchJob['status'], { color: string; icon: 'spin' 
 export function ResearchPanel({ jobs, onClose, onOpenGem, onStarted, onCancel }: ResearchPanelProps) {
   const { t } = useI18n();
   const [goal, setGoal] = useState('');
-  const [depth, setDepth] = useState<ResearchJob['depth']>('deep');
-  const [mode, setMode] = useState<'agent' | 'normal'>('agent');
+  const [depth, setDepth] = useState<ResearchJob['depth']>('standard');
+  const [mode, setMode] = useState<'agent' | 'normal' | 'both'>('agent');
   const [confirming, setConfirming] = useState(false);
   const [starting, setStarting] = useState(false);
 
@@ -93,7 +94,7 @@ export function ResearchPanel({ jobs, onClose, onOpenGem, onStarted, onCancel }:
       const res = await fetch('/api/jarvis/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: goal.trim(), mode, depth }),
+        body: JSON.stringify({ prompt: goal.trim(), title: goal.trim().slice(0, 60), mode, depth }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
@@ -189,7 +190,7 @@ export function ResearchPanel({ jobs, onClose, onOpenGem, onStarted, onCancel }:
               />
               <div className="space-y-1.5">
                 <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50">{t('research.depth')}</p>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-4 gap-1.5">
                   {(Object.keys(DEPTH_INFO) as ResearchJob['depth'][]).map((d) => (
                     <button
                       key={d}
@@ -208,7 +209,7 @@ export function ResearchPanel({ jobs, onClose, onOpenGem, onStarted, onCancel }:
               </div>
               <div className="flex items-center gap-1.5">
                 <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 mr-1">{t('research.mode')}</p>
-                {(['agent', 'normal'] as const).map((m) => (
+                {(['agent', 'normal', 'both'] as const).map((m) => (
                   <button
                     key={m}
                     onClick={() => { haptics.light(); setMode(m); }}
@@ -218,10 +219,13 @@ export function ResearchPanel({ jobs, onClose, onOpenGem, onStarted, onCancel }:
                         : 'border-border/40 text-muted-foreground/60 hover:text-foreground'
                     }`}
                   >
-                    {m === 'agent' ? t('research.mode.agent') : t('research.mode.normal')}
+                    {m === 'agent' ? t('research.mode.agent') : m === 'normal' ? t('research.mode.normal') : t('research.mode.both')}
                   </button>
                 ))}
               </div>
+              <p className="text-[9px] text-muted-foreground/50 leading-relaxed -mt-1">
+                {mode === 'both' ? t('research.mode.both.hint') : mode === 'agent' ? t('research.mode.agent.hint') : t('research.mode.normal.hint')}
+              </p>
               <button
                 onClick={handleStartClick}
                 disabled={!goal.trim()}
@@ -230,6 +234,9 @@ export function ResearchPanel({ jobs, onClose, onOpenGem, onStarted, onCancel }:
                 <Play className="w-3.5 h-3.5 fill-current" />
                 {t('research.start')}
               </button>
+              <p className="text-[10px] text-muted-foreground/60 leading-relaxed text-center">
+                Runs in the background for hours — you can close this tab. Jarvis notifies you when the gem is ready.
+              </p>
             </motion.div>
           )}
         </AnimatePresence>

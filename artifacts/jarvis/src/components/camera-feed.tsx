@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
+import { RefreshCw, ImagePlus } from 'lucide-react';
 import { useObjectDetection } from '@/hooks/use-object-detection';
 import type { DetectionResult } from '@/hooks/use-object-detection';
 
@@ -14,11 +15,17 @@ interface CameraFeedProps {
   onSnapshot?: (base64: string) => void;
   /** Which classes to highlight (empty = highlight all) */
   highlightClasses?: string[];
+  /** Called when the user taps "Upload a photo instead" in the error state */
+  onUploadPhoto?: () => void;
 }
 
 /**
  * Live camera feed with optional TensorFlow.js object detection overlay.
  * Detects 80 object categories — completely free, runs in browser.
+ *
+ * Camera access can fail (permissions, non-secure context, iframe). When it
+ * does we show a friendly error card with a Retry button and, when provided,
+ * an "upload a photo instead" fallback — never a bare broken box.
  */
 export function CameraFeed({
   className = '',
@@ -26,11 +33,13 @@ export function CameraFeed({
   onDetections,
   onSnapshot,
   highlightClasses = [],
+  onUploadPhoto,
 }: CameraFeedProps) {
   const webcamRef = useRef<Webcam | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [streaming, setStreaming] = useState(true);
   const animFrameRef = useRef<number | null>(null);
@@ -131,11 +140,21 @@ export function CameraFeed({
   }, [enableDetection, cameraReady, drawOverlay]);
 
   const handleUserMedia = useCallback(() => {
+    setCameraError(null);
     setCameraReady(true);
   }, []);
 
   const handleUserMediaError = useCallback(() => {
-    setCameraError('Could not access camera. Check permissions.');
+    setCameraReady(false);
+    setCameraError(
+      'Camera unavailable. Your browser needs permission to use the camera (and the page must be served over HTTPS).',
+    );
+  }, []);
+
+  const retry = useCallback(() => {
+    setCameraError(null);
+    setCameraReady(false);
+    setRetryKey(k => k + 1);
   }, []);
 
   const captureSnapshot = useCallback(() => {
@@ -149,18 +168,47 @@ export function CameraFeed({
     setFacingMode((prev) => (prev === 'user' ? 'environment' : 'user'));
   }, []);
 
+  // Friendly error state — Retry + optional upload-photo fallback
   if (cameraError) {
     return (
-      <div className={`flex items-center justify-center bg-muted/30 rounded-lg border border-border/50 p-6 ${className}`}>
-        <p className="text-sm text-muted-foreground">{cameraError}</p>
+      <div className={`flex flex-col items-center justify-center gap-3 bg-muted/20 rounded-lg border border-border/50 p-6 text-center ${className}`}>
+        <div className="w-10 h-10 rounded-full bg-secondary/60 flex items-center justify-center flex-shrink-0">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
+            <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+            <circle cx="12" cy="13" r="3" />
+          </svg>
+        </div>
+        <p className="text-sm text-foreground/80 font-medium">Camera unavailable</p>
+        <p className="text-xs text-muted-foreground leading-relaxed max-w-[260px]">
+          Allow camera access in your browser, or upload a photo instead and Jarvis will run detection on it.
+        </p>
+        <div className="flex gap-2 flex-wrap justify-center">
+          <button
+            onClick={retry}
+            className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Try again
+          </button>
+          {onUploadPhoto && (
+            <button
+              onClick={onUploadPhoto}
+              className="px-3 py-1.5 rounded-full border border-border/60 text-[11px] font-medium text-foreground/80 hover:bg-secondary/60 active:scale-95 transition-all flex items-center gap-1.5"
+            >
+              <ImagePlus className="w-3 h-3" />
+              Upload a photo
+            </button>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
     <div className={`relative overflow-hidden rounded-lg border border-border/50 bg-black ${className}`}>
-      {/* Camera feed */}
+      {/* Camera feed — keyed so a retry fully remounts the webcam element */}
       <Webcam
+        key={retryKey}
         ref={webcamRef}
         audio={false}
         videoConstraints={{
@@ -185,7 +233,7 @@ export function CameraFeed({
       {/* Model loading indicator */}
       {enableDetection && modelLoading && (
         <div className="absolute top-2 left-2 px-2 py-1 bg-background/80 backdrop-blur rounded text-[11px] font-mono text-primary">
-          Loading vision model...
+          Loading vision model…
         </div>
       )}
 
@@ -196,10 +244,10 @@ export function CameraFeed({
         </div>
       )}
 
-      {/* Model error */}
-      {enableDetection && modelError && (
-        <div className="absolute top-2 left-2 px-2 py-1 bg-destructive/80 backdrop-blur rounded text-[11px] font-mono text-destructive-foreground">
-          {modelError}
+      {/* Model error — non-blocking: the camera still works, detection is just off */}
+      {enableDetection && modelError && !modelLoading && (
+        <div className="absolute top-2 left-2 px-2 py-1 bg-background/80 backdrop-blur rounded text-[10px] font-mono text-amber-400">
+          Detection unavailable — camera still works
         </div>
       )}
 

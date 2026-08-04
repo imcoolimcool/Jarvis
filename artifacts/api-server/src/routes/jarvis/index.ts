@@ -13,6 +13,8 @@ import codeRouter from "./code";
 import researchRouter from "./research";
 import pushRouter from "./push";
 import llmKeysRouter from "./llm-keys";
+import terminalRouter from "./terminal";
+import verifyRouter from "./verify";
 
 const router = Router();
 
@@ -30,5 +32,7 @@ router.use(codeRouter);
 router.use(researchRouter);
 router.use(pushRouter);
 router.use(llmKeysRouter);
+router.use(terminalRouter);
+router.use(verifyRouter);
 
 export default router;

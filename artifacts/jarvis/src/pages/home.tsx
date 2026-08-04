@@ -10,9 +10,9 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, Paperclip, FileText, X, ChevronDown, Sparkles, MessageCircle, Globe, AlarmClock, Plus, Camera, Bug, Image as ImageIcon, Monitor, Bot, Webcam, Minimize2, Maximize2, AudioWaveform, BrainCircuit, BarChart3, SquarePen, MoreHorizontal } from 'lucide-react';
-import type { Widget } from '@/types/widget';
-import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget } from '@/components/widgets';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, Paperclip, FileText, X, Sparkles, Globe, AlarmClock, Plus, Bug, Image as ImageIcon, Monitor, Search, Minimize2, Maximize2, AudioWaveform, ArrowLeft, SquarePen, MoreHorizontal, Camera, Hammer, FolderTree, LayoutGrid, Palette, Music2 } from 'lucide-react';
+import type { Widget, TerminalResult } from '@/types/widget';
+import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, CommandCard } from '@/components/widgets';
 import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
 import { useScreenShare } from '@/hooks/use-screen-share';
 import { JarvisBrowser } from '@/components/jarvis-browser';
@@ -25,6 +25,9 @@ import { ResearchPanel, type ResearchJob } from '@/components/research-panel';
 import { GemDialog } from '@/components/gem-dialog';
 import { DataLab } from '@/components/data-lab';
 import { CommandPalette } from '@/components/command-palette';
+import { DesignStudio } from '@/components/design-studio';
+import { MusicStudio } from '@/components/music-studio';
+import { StudiosHub, type StudioId } from '@/components/studios-hub';
 import { ensurePushSubscription } from '@/lib/push';
 
 type Theme = 'dark' | 'light' | 'auto';
@@ -136,7 +139,6 @@ export default function Home() {
   const [generatingImagePrompt, setGeneratingImagePrompt] = useState('');
   const [screenShareActive, setScreenShareActive] = useState(false);
   const [pipBrowserOpen, setPipBrowserOpen] = useState(false);
-  const [pipCameraOpen, setPipCameraOpen] = useState(false);
   const [pipFullscreen, setPipFullscreen] = useState<'browser' | 'camera' | null>(null);
   const [agentModeActive, setAgentModeActive] = useState(false);
   const [agentGoal, setAgentGoal] = useState<string | null>(null);
@@ -151,6 +153,15 @@ export default function Home() {
   // Wave 2 — user-defined gems + Data Lab
   const [gemDialogOpen, setGemDialogOpen] = useState(false);
   const [dataLabOpen, setDataLabOpen] = useState(false);
+  const [buildPanelOpen, setBuildPanelOpen] = useState(false);
+  const [studiosOpen, setStudiosOpen] = useState(false);
+  const [designStudioOpen, setDesignStudioOpen] = useState(false);
+  const [musicStudioOpen, setMusicStudioOpen] = useState(false);
+  const [buildTab, setBuildTab] = useState<'terminal' | 'files'>('terminal');
+  const [buildFiles, setBuildFiles] = useState<{ path: string; type: 'file' | 'dir'; size: number }[]>([]);
+  const [sessionCommands, setSessionCommands] = useState<TerminalResult[]>([]);
+  const [commandInput, setCommandInput] = useState('');
+  const [commandBusy, setCommandBusy] = useState(false);
   // Command palette (Cmd+K) — search memory + run anything
   const [paletteOpen, setPaletteOpen] = useState(false);
   // Header dots menu (ChatGPT-style)
@@ -674,7 +685,7 @@ export default function Home() {
     );
   }, [synthesizeSpeech, handleError, iosUnlockedAudioRef]);
 
-  const processUserText = useCallback(async (userText: string, file?: AttachedFile | null, speak = true, codeAllowance?: boolean) => {
+  const processUserText = useCallback(async (userText: string, file?: AttachedFile | null, speak = true, codeAllowance?: boolean, researchMode = false, buildAllowance?: boolean) => {
     // ── "Use code for this answer?" confirmation gate ─────────────
     // If the message looks like a question about Jarvis's own code and the
     // user hasn't decided yet, show the confirmation card first. Confirm
@@ -709,13 +720,15 @@ export default function Home() {
           body.fileMimeType = 'image/jpeg';
         }
       }
-      if (webSearchEnabled) body.webSearchEnabled = 'true';
+      if (webSearchEnabled || researchMode) body.webSearchEnabled = 'true';
       if (thinkingEnabled) body.thinkingEnabled = 'true';
+      if (researchMode) body.agentMode = 'true';
       body.responseStyle = isChatMode ? 'chat' : 'voice';
       const detectedEmotion = voiceEmotionRef.current;
       if (detectedEmotion !== 'neutral') body.emotion = detectedEmotion;
       if (codeAllowance === true) body.allowSourceCode = 'true';
       else if (codeAllowance === false) body.allowSourceCode = 'false';
+      if (buildAllowance === true) body.allowBuildMode = 'true';
 
       const res = await fetch('/api/jarvis/chat', {
         method: 'POST',
@@ -793,6 +806,25 @@ export default function Home() {
               case 'widget':
                 widget = parsed.widget ?? null;
                 break;
+              case 'terminal_result':
+                // The AI ran a shell command — show it as a clean minimal card
+                // on the current assistant message and log it for Build Mode.
+                {
+                  const tr: TerminalResult = { command: parsed.command, exitCode: parsed.exitCode ?? 0, output: parsed.output ?? '' };
+                  setSessionCommands(prev => [...prev, tr]);
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    if (last && last.role === 'assistant') {
+                      updated[updated.length - 1] = {
+                        ...last,
+                        terminalResults: [...(last.terminalResults ?? []), tr],
+                      };
+                    }
+                    return updated;
+                  });
+                }
+                break;
               case 'agent_browser_detected':
                 // Auto-open PiP browser and kick off the autonomous agent loop
                 setPipBrowserOpen(true);
@@ -814,6 +846,18 @@ export default function Home() {
                 });
                 // If in voice mode, switch to chat so card is visible
                 if (mode === 'voice') setMode('chat');
+                break;
+              case 'build_mode_detected':
+                if (mode === 'voice') setMode('chat');
+                setMessages(prev => {
+                  const withoutEmpty = prev.slice(0, -1);
+                  return [...withoutEmpty, {
+                    role: 'assistant' as const,
+                    content: '',
+                    timestamp: Date.now(),
+                    pendingBuildMode: { userText: parsed.confirmationMessage ?? '' },
+                  }];
+                });
                 break;
               case 'image_request_detected':
                 // If in voice mode, switch to chat mode so the confirmation card is visible
@@ -968,12 +1012,9 @@ export default function Home() {
     setChatInput('');
     setAttachedFile(null);
 
-    // Agent mode: open browser PiP and start the autonomous agent loop
+    // Agent mode: research-style answer with live web search (no browser theater)
     if (agentModeActive) {
-      setPipBrowserOpen(true);
-      setPipFullscreen(null);
-      setMessages(prev => [...prev, { role: 'user', content: text, timestamp: Date.now() }, { role: 'assistant', content: `Agent mode — searching for "${text}"...`, timestamp: Date.now() }]);
-      setAgentGoal(`search for ${text}`);
+      processUserText(text, file, false, undefined, true);
       return;
     }
 
@@ -1065,7 +1106,33 @@ export default function Home() {
   const processUserTextRef = useRef<typeof processUserText | null>(null);
   useEffect(() => { processUserTextRef.current = processUserText; }, [processUserText]);
   // Pending "Use code for this answer?" confirmation payload
+  const refreshBuildFiles = useCallback(async () => {
+    try {
+      const res = await fetch('/api/jarvis/workspace');
+      const data = await res.json();
+      if (Array.isArray(data.files)) setBuildFiles(data.files);
+    } catch { /* keep stale list */ }
+  }, []);
+
   const pendingCodeRef = useRef<{ userText: string; file: AttachedFile | null; speak: boolean } | null>(null);
+  const pendingBuildRef = useRef<{ userText: string; file: AttachedFile | null; speak: boolean } | null>(null);
+
+  /** Studios hub — route a selected studio to its feature. */
+  const handleStudioSelect = useCallback((id: StudioId) => {
+    haptics.medium?.();
+    setStudiosOpen(false);
+    switch (id) {
+      case 'chat': setMode('chat'); break;
+      case 'voice': setMode('voice'); break;
+      case 'camera': setMode('camera'); break;
+      case 'research': setResearchPanelOpen(true); break;
+      case 'build': setBuildPanelOpen(true); refreshBuildFiles(); break;
+      case 'design': setDesignStudioOpen(true); break;
+      case 'music': setMusicStudioOpen(true); break;
+      case 'factcheck': setMode('chat'); break; // fact-check lives on each message
+      case 'datalab': setDataLabOpen(true); break;
+    }
+  }, [refreshBuildFiles]);
 
   // Auto-grow/shrink the chat textarea when input changes
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -1337,9 +1404,22 @@ export default function Home() {
           {/* ── CAMERA MODE — full-screen object detection ── */}
           {mode === 'camera' && (
             <div className="flex-1 flex flex-col min-h-0 relative">
+              {/* Back to chat */}
+              <button
+                onClick={() => { haptics.light(); setMode('chat'); }}
+                className="absolute top-3 left-3 z-30 w-9 h-9 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 text-foreground flex items-center justify-center shadow-sm hover:bg-secondary/70 active:scale-95 transition-all"
+                aria-label={t('voice.backToChat')}
+                title={t('voice.backToChat')}
+              >
+                <ArrowLeft className="w-[18px] h-[18px]" />
+              </button>
               <div className="flex-1 min-h-0 p-4 sm:p-8 flex flex-col">
                 <div className="liquid-glass-soft rounded-2xl overflow-hidden flex-1 min-h-0 relative">
-                  <CameraFeed className="h-full" enableDetection />
+                  <CameraFeed
+                    className="h-full"
+                    enableDetection
+                    onUploadPhoto={() => cameraInputRef.current?.click()}
+                  />
                 </div>
                 <p className="text-center text-xs text-muted-foreground mt-3">
                   {t('header.mode.camera')} — object detection runs 100% in your browser
@@ -1400,7 +1480,7 @@ export default function Home() {
                       agentModeActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
-                    <Bot className="w-3 h-3 inline mr-1" />
+                    <Search className="w-3 h-3 inline mr-1" />
                     {agentModeActive ? t('voice.agentOn') : t('voice.agent')}
                   </button>
                   <button
@@ -1411,15 +1491,6 @@ export default function Home() {
                   >
                     <Globe className="w-3 h-3 inline mr-1" />
                     {pipBrowserOpen ? t('voice.browserOn') : t('voice.browser')}
-                  </button>
-                  <button
-                    onClick={() => { haptics.light(); setPipCameraOpen(c => !c); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all ${
-                      pipCameraOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
-                    }`}
-                  >
-                    <Webcam className="w-3 h-3 inline mr-1" />
-                    {pipCameraOpen ? t('voice.camOn') : t('voice.cam')}
                   </button>
                   <button
                     onClick={() => { haptics.light(); setMode('camera'); }}
@@ -1557,7 +1628,7 @@ export default function Home() {
                       agentModeActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
                     }`}
                   >
-                    <Bot className="w-3 h-3 inline mr-1" />
+                    <Search className="w-3 h-3 inline mr-1" />
                     {agentModeActive ? t('voice.agentOn') : t('voice.agent')}
                   </button>
                   <button
@@ -1568,15 +1639,6 @@ export default function Home() {
                   >
                     <Globe className="w-3 h-3 inline mr-1" />
                     {pipBrowserOpen ? t('voice.browserOn') : t('voice.browser')}
-                  </button>
-                  <button
-                    onClick={() => { setPipCameraOpen(c => !c); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all ${
-                      pipCameraOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
-                    }`}
-                  >
-                    <Webcam className="w-3 h-3 inline mr-1" />
-                    {pipCameraOpen ? 'Cam On' : 'Cam'}
                   </button>
                   <button
                     onClick={() => { haptics.light(); setMode('camera'); }}
@@ -1652,6 +1714,20 @@ export default function Home() {
                     pendingCodeRef.current = null;
                     setMessages(prev => prev.filter(m => !m.pendingSourceCode));
                     if (pending) processUserTextRef.current?.(pending.userText, pending.file, pending.speak, false);
+                  }}
+                  onBuildModeConfirm={() => {
+                    const pending = pendingBuildRef.current;
+                    pendingBuildRef.current = null;
+                    setMessages(prev => prev.filter(m => !m.pendingBuildMode));
+                    setBuildPanelOpen(true);
+                    refreshBuildFiles();
+                    if (pending) processUserTextRef.current?.(pending.userText, pending.file, pending.speak, undefined, false, true);
+                  }}
+                  onBuildModeCancel={() => {
+                    const pending = pendingBuildRef.current;
+                    pendingBuildRef.current = null;
+                    setMessages(prev => prev.filter(m => !m.pendingBuildMode));
+                    if (pending) processUserTextRef.current?.(pending.userText, pending.file, pending.speak, undefined, false, false);
                   }}
                 />
 
@@ -1731,7 +1807,7 @@ export default function Home() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-[10px] font-mono text-foreground/80 tracking-widest truncate">{attachedFile.fileName}</p>
-                        <p className="text-[9px] font-mono text-muted-foreground/50 tracking-widest">FILE ATTACHED</p>
+                        <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest">FILE ATTACHED</p>
                       </div>
                     </div>
                   )}
@@ -1768,8 +1844,25 @@ export default function Home() {
                           : 'text-foreground/70 hover:text-foreground hover:bg-secondary/70'
                       }`}
                     >
-                      <BrainCircuit
+                      <Sparkles
                         className={`w-[18px] h-[18px] transition-transform ${thinkingEnabled ? 'scale-110' : ''}`}
+                        strokeWidth={2}
+                      />
+                    </button>
+
+                    {/* Agent mode toggle — Jarvis researches with live web search */}
+                    <button
+                      onClick={() => { haptics.light(); setAgentModeActive(a => !a); }}
+                      disabled={isBusy}
+                      title={agentModeActive ? t('input.agentModeOn') : t('input.agentMode')}
+                      className={`p-2 rounded-full transition-all flex-shrink-0 disabled:opacity-30 ${
+                        agentModeActive
+                          ? 'text-primary bg-primary/10'
+                          : 'text-foreground/70 hover:text-foreground hover:bg-secondary/70'
+                      }`}
+                    >
+                      <Search
+                        className={`w-[18px] h-[18px] transition-transform ${agentModeActive ? 'scale-110' : ''}`}
                         strokeWidth={2}
                       />
                     </button>
@@ -1805,12 +1898,6 @@ export default function Home() {
                         disabled={isBusy}
                         className="w-full bg-transparent text-foreground placeholder:text-muted-foreground/50 placeholder:text-center font-sans text-[15px] px-2 py-2.5 outline-none resize-none min-h-[24px] max-h-[140px]"
                       />
-                      {/* Character count */}
-                      {chatInput.length > 0 && (
-                        <span className="absolute bottom-1.5 right-3 text-[9px] font-mono text-muted-foreground/30 pointer-events-none">
-                          {chatInput.length}
-                        </span>
-                      )}
                     </div>
                     <button onClick={handleChatMicToggle} disabled={isBusy}
                       title={chatDictating ? t('input.stopDictate') : t('input.dictate')}
@@ -1845,99 +1932,59 @@ export default function Home() {
                             className="fixed z-50 w-56 rounded-xl border border-border/50 bg-background shadow-xl overflow-hidden max-h-[min(70vh,480px)] flex flex-col"
                             style={{ top: plusMenuCoords.top, left: plusMenuCoords.left }}
                           >
-                          {/* ── ADD ── */}
-                          <p className="px-3 pt-2 pb-1 text-[9px] font-semibold tracking-widest text-muted-foreground/40">{t('menu.section.add')}</p>
+                          <p className="px-3 pt-1.5 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Attach</p>
                           <button
                             onClick={() => { closePlusMenu(); fileInputRef.current?.click(); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
                             <Paperclip className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
                             {t('input.attachFile')}
                           </button>
                           <button
-                            onClick={() => { closePlusMenu(); cameraInputRef.current?.click(); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            onClick={() => { closePlusMenu(); setMode('camera'); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
                             <Camera className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            {t('input.camera')}
-                          </button>
-                          <button
-                            onClick={() => { closePlusMenu(); setMode('camera'); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            <Webcam className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
                             {t('header.mode.camera')}
                           </button>
 
-                          {/* ── CREATE ── */}
-                          <p className="px-3 pt-2 pb-1 text-[9px] font-semibold tracking-widest text-muted-foreground/40">{t('menu.section.create')}</p>
+                          <p className="px-3 pt-2 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Create</p>
                           <button
                             onClick={() => { closePlusMenu(); setGemDialogOpen(true); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
                             <Sparkles className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
                             {t('gem.menuItem')}
                           </button>
                           <button
-                            onClick={() => { closePlusMenu(); setDataLabOpen(true); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            <BarChart3 className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            {t('datalab.menuItem')}
-                          </button>
-                          <button
                             onClick={() => { closePlusMenu(); setTimeout(() => inputRef.current?.focus(), 50); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
                             <ImageIcon className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
                             {t('input.generateImage')}
                           </button>
 
-                          {/* ── POWER ── */}
-                          <p className="px-3 pt-2 pb-1 text-[9px] font-semibold tracking-widest text-muted-foreground/40">{t('menu.section.power')}</p>
+                          <p className="px-3 pt-2 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Studios</p>
                           <button
-                            onClick={() => { closePlusMenu(); setResearchPanelOpen(true); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            onClick={() => { closePlusMenu(); setStudiosOpen(true); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-foreground hover:bg-muted/50 transition-colors"
                           >
-                            <BrainCircuit className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            {t('research.title')}
+                            <LayoutGrid className="w-4 h-4 flex-shrink-0 text-primary" strokeWidth={1.8} />
+                            All Studios
                           </button>
                           <button
-                            onClick={() => { closePlusMenu(); handleToggleScreenShare(); }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] transition-colors ${
-                              screenShareActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                            }`}
+                            onClick={() => { closePlusMenu(); setDesignStudioOpen(true); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
-                            <Monitor className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            {screenShareActive ? t('input.stopSharing') : t('input.shareScreen')}
+                            <Palette className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
+                            Design Studio
                           </button>
                           <button
-                            onClick={() => { closePlusMenu(); handleToggleWebSearch(); }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] transition-colors ${
-                              webSearchEnabled ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                            }`}
+                            onClick={() => { closePlusMenu(); setMusicStudioOpen(true); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
-                            <Globe className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            {t('input.webSearch')}
-                          </button>
-                          <button
-                            onClick={() => { closePlusMenu(); setAgentModeActive(a => !a); }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] transition-colors ${
-                              agentModeActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                            }`}
-                          >
-                            <Bot className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            {agentModeActive ? t('input.agentModeOn') : t('input.agentMode')}
-                          </button>
-
-                          {/* ── SHARE ── */}
-                          <p className="px-3 pt-2 pb-1 text-[9px] font-semibold tracking-widest text-muted-foreground/40">{t('menu.section.share')}</p>
-                          <button
-                            onClick={() => { closePlusMenu(); window.open(`https://wa.me/?text=${encodeURIComponent('Hey Jarvis, can you help me with...')}`, '_blank'); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          >
-                            <MessageCircle className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
-                            {t('input.whatsapp')}
+                            <Music2 className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
+                            Music Studio
                           </button>
                           </motion.div>
                         </>
@@ -1949,8 +1996,8 @@ export default function Home() {
                   {/* Agent mode indicator */}
                   {agentModeActive && (
                     <div className="flex items-center gap-1.5 px-1 pb-1">
-                      <Bot className="w-3 h-3 text-primary" />
-                      <span className="text-[9px] font-mono text-primary/70 tracking-wider">AGENT MODE ON — your message will search the web</span>
+                      <Search className="w-3 h-3 text-primary" />
+                      <span className="text-[10px] font-mono text-primary/70 tracking-wider">AGENT MODE ON — your message will search the web</span>
                     </div>
                   )}
 
@@ -2018,39 +2065,6 @@ export default function Home() {
             </motion.div>
           )}
 
-          {pipCameraOpen && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-              className={`fixed z-50 bg-card border border-border/50 rounded-xl shadow-apple-lg overflow-hidden flex flex-col ${
-                pipFullscreen === 'camera'
-                  ? 'inset-4'
-                  : pipBrowserOpen
-                    ? 'bottom-20 right-[340px] w-64 h-48'
-                    : 'bottom-20 right-4 w-64 h-48'
-              }`}
-            >
-              <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <Webcam className="w-3.5 h-3.5 text-primary/60" />
-                  <span className="text-[10px] font-medium text-muted-foreground">{t('header.mode.camera')}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => setPipFullscreen(f => f === 'camera' ? null : 'camera')} className="p-1 rounded hover:bg-secondary/80 text-muted-foreground transition-colors">
-                    {pipFullscreen === 'camera' ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
-                  </button>
-                  <button onClick={() => { setPipCameraOpen(false); setPipFullscreen(null); }} className="p-1 rounded hover:bg-secondary/80 text-muted-foreground transition-colors">
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 min-h-0">
-                <CameraFeed className="h-full rounded-b-xl" enableDetection />
-              </div>
-            </motion.div>
-          )}
         </AnimatePresence>
       </div>
 
@@ -2098,6 +2112,146 @@ export default function Home() {
         )}
       </AnimatePresence>
 
+      {/* ── Build Mode workspace panel ── */}
+      <AnimatePresence>
+        {buildPanelOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+            className="fixed inset-0 z-40 bg-background/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setBuildPanelOpen(false)}
+          >
+            <motion.div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full sm:max-w-3xl h-[85vh] sm:h-[80vh] bg-background border border-border/50 rounded-t-3xl sm:rounded-3xl shadow-apple-2xl overflow-hidden flex flex-col"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Hammer className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold">{t('build.title')}</span>
+                  <span className="text-[10px] font-mono text-muted-foreground/50 hidden sm:inline">artifacts/workspace</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => { setBuildTab('terminal'); }}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors ${buildTab === 'terminal' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Terminal
+                  </button>
+                  <button
+                    onClick={() => { setBuildTab('files'); refreshBuildFiles(); }}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors ${buildTab === 'files' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Files
+                  </button>
+                  <button
+                    onClick={() => setBuildPanelOpen(false)}
+                    className="p-2 rounded-full hover:bg-muted/50 text-muted-foreground transition-colors ml-1"
+                    title="Close"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                {buildTab === 'terminal' ? (
+                  <div className="p-3">
+                    <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 uppercase mb-2">
+                      Commands the AI ran
+                    </p>
+                    {sessionCommands.length === 0 ? (
+                      <p className="text-xs text-muted-foreground/60 mb-3">
+                        No commands yet — ask Jarvis to build something and every command shows up here as a clean card.
+                      </p>
+                    ) : (
+                      <div className="space-y-1 mb-3">
+                        {sessionCommands.map((tr, i) => <CommandCard key={i} result={tr} />)}
+                      </div>
+                    )}
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const cmd = commandInput.trim();
+                        if (!cmd || commandBusy) return;
+                        setCommandBusy(true);
+                        try {
+                          const res = await fetch('/api/jarvis/terminal', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ sessionId: 'default', command: cmd }),
+                          });
+                          const data = await res.json();
+                          const tr: TerminalResult = {
+                            command: cmd,
+                            exitCode: data.exitCode ?? (data.error ? 1 : 0),
+                            output: data.error ? String(data.error) : `${data.stdout ?? ''}${data.stderr ?? ''}`.trim() || '(no output)',
+                          };
+                          setSessionCommands(prev => [...prev, tr]);
+                        } catch {
+                          setSessionCommands(prev => [...prev, { command: cmd, exitCode: 1, output: 'Network error' }]);
+                        }
+                        setCommandInput('');
+                        setCommandBusy(false);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="font-mono text-[11px] text-muted-foreground/50">$</span>
+                      <input
+                        value={commandInput}
+                        onChange={(e) => setCommandInput(e.target.value)}
+                        placeholder={commandBusy ? 'running…' : 'run a command (optional)'}
+                        className="flex-1 min-w-0 bg-muted/40 border border-border/30 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-primary/40 transition-colors"
+                        spellCheck={false}
+                      />
+                      <button
+                        type="submit"
+                        disabled={commandBusy}
+                        className="px-3 py-2 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/15 transition-colors disabled:opacity-50"
+                      >
+                        Run
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  <div className="p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 uppercase">Workspace files</p>
+                      <button
+                        onClick={() => refreshBuildFiles()}
+                        className="flex items-center gap-1 text-[10px] text-primary/70 hover:text-primary transition-colors"
+                      >
+                        <FolderTree className="w-3.5 h-3.5" /> refresh
+                      </button>
+                    </div>
+                    {buildFiles.length === 0 ? (
+                      <p className="text-xs text-muted-foreground/60">Empty workspace — ask Jarvis to build something, then run files here.</p>
+                    ) : (
+                      <div className="rounded-xl border border-border/30 bg-muted/20 divide-y divide-border/20">
+                        {buildFiles.map((f) => (
+                          <div key={f.path} className="flex items-center justify-between px-3 py-1.5 text-xs">
+                            <span className={`font-mono truncate ${f.type === 'dir' ? 'text-foreground/80 font-medium' : 'text-muted-foreground'}`}>
+                              {f.type === 'dir' ? '📁 ' : '📄 '}{f.path}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground/40 font-mono flex-shrink-0 ml-2">
+                              {f.type === 'file' ? `${f.size} B` : ''}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Pulsing chip when a research job is running in the background */}
       <AnimatePresence>
         {!researchPanelOpen && researchJobs.some(j => j.status === 'queued' || j.status === 'running') && (
@@ -2108,11 +2262,30 @@ export default function Home() {
             onClick={() => setResearchPanelOpen(true)}
             className="fixed z-40 bottom-24 right-4 flex items-center gap-2 px-3 py-2 rounded-full border border-border/60 bg-background/90 backdrop-blur-xl shadow-apple-lg hover:bg-secondary/70 transition-colors"
           >
-            <BrainCircuit className="w-3.5 h-3.5 text-primary animate-pulse" />
+            <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
             <span className="text-[10px] font-mono text-muted-foreground">DEEP RESEARCH</span>
           </motion.button>
         )}
       </AnimatePresence>
+
+      {/* ── Studios hub — one launcher for every studio ── */}
+      <StudiosHub
+        open={studiosOpen}
+        onClose={() => setStudiosOpen(false)}
+        onSelect={handleStudioSelect}
+      />
+
+      {/* ── Design Studio — photo editing / Canva replacement ── */}
+      <DesignStudio
+        open={designStudioOpen}
+        onClose={() => setDesignStudioOpen(false)}
+      />
+
+      {/* ── Music Studio — Suno replacement (Web Audio, free) ── */}
+      <MusicStudio
+        open={musicStudioOpen}
+        onClose={() => setMusicStudioOpen(false)}
+      />
 
       <SettingsPanel
         open={settingsOpen}

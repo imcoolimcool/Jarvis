@@ -2,12 +2,13 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { FileText, Copy, Check, RotateCcw, Pencil, X, Send, Globe, Timer, ChevronDown, Image, Eye, EyeOff, Sunrise, BrainCircuit, Volume2, ThumbsUp, ThumbsDown, Share, MoreHorizontal } from 'lucide-react';
+import { FileText, Copy, Check, RotateCcw, Pencil, X, Send, Globe, Timer, ChevronDown, Image, Eye, EyeOff, Sunrise, BrainCircuit, Volume2, ThumbsUp, ThumbsDown, Share, MoreHorizontal, ShieldCheck, Loader2 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { haptics } from '@/lib/haptics';
-import type { Widget } from '@/types/widget';
-import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget } from '@/components/widgets';
-import { ImageConfirmationCard, ImageGeneratingCard, ScreenShareConfirmationCard, AgentBrowserConfirmationCard, SourceCodeConfirmationCard } from '@/components/image-confirmation-card';
+import type { Widget, VerifyClaim, TerminalResult } from '@/types/widget';
+import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, ImageResultsWidget, DateWidget, CalculatorWidget, DefineWidget, UnitConverterWidget, CurrencyWidget, MapWidget, RandomWidget, MusicWidget } from '@/components/widgets';
+import { CommandCard } from '@/components/widgets/CommandCard';
+import { ImageConfirmationCard, ImageGeneratingCard, ScreenShareConfirmationCard, AgentBrowserConfirmationCard, SourceCodeConfirmationCard, BuildModeConfirmationCard } from '@/components/image-confirmation-card';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -27,8 +28,13 @@ export interface ChatMessage {
   pendingSourceCode?: { // "Use code for this answer?" confirmation
     userText: string;
   };
+  pendingBuildMode?: { // "Open Build Mode?" confirmation
+    userText: string;
+  };
   /** Thinking mode — private reasoning chain shown in a collapsible block. */
   reasoning?: string;
+  /** Terminal command cards the AI ran while answering (from run_terminal). */
+  terminalResults?: TerminalResult[];
 }
 
 interface ConversationFeedProps {
@@ -50,6 +56,8 @@ interface ConversationFeedProps {
   onAgentBrowserCancel?: () => void;
   onSourceCodeConfirm?: () => void;
   onSourceCodeCancel?: () => void;
+  onBuildModeConfirm?: () => void;
+  onBuildModeCancel?: () => void;
 }
 
 /** Collapsible "Thinking" block — shows Jarvis's private reasoning pass.
@@ -123,6 +131,24 @@ function InlineWidget({ widget }: { widget: Widget }) {
       return <AlarmWidget time={widget.time} label={widget.label} />;
     case 'calendar':
       return <CalendarWidget events={widget.events} weekStart={widget.weekStart} />;
+    case 'images':
+      return <ImageResultsWidget query={widget.query} results={widget.results} />;
+    case 'date':
+      return <DateWidget />;
+    case 'calculator':
+      return <CalculatorWidget expression={widget.expression} result={widget.result} />;
+    case 'define':
+      return <DefineWidget word={widget.word} phonetic={widget.phonetic} meanings={widget.meanings} />;
+    case 'unit':
+      return <UnitConverterWidget value={widget.value} fromUnit={widget.fromUnit} toUnit={widget.toUnit} category={widget.category} label={widget.label} />;
+    case 'currency':
+      return <CurrencyWidget from={widget.from} to={widget.to} amount={widget.amount} rate={widget.rate} updated={widget.updated} />;
+    case 'map':
+      return <MapWidget query={widget.query} lat={widget.lat} lon={widget.lon} displayName={widget.displayName} />;
+    case 'random':
+      return <RandomWidget kind={widget.kind} value={widget.value} label={widget.label} />;
+    case 'music':
+      return <MusicWidget composition={widget.composition} />;
     default:
       return null;
   }
@@ -144,6 +170,38 @@ function extractHtmlBlock(content: string): string | null {
   return html;
 }
 
+/** Fact-check result card shown under a message after the user taps "Check". */
+function FactCheckCard({ result }: { result: VerifyClaim[] }) {
+  const supported = result.filter((c) => c.verdict === 'supported').length;
+  return (
+    <div className="mt-2 rounded-xl border border-border/40 bg-muted/25 p-3 text-xs space-y-2">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium">
+        <ShieldCheck className={`w-3.5 h-3.5 ${supported === result.length ? 'text-green-500' : 'text-yellow-500'}`} />
+        <span className="text-foreground/80">Fact-check · {supported}/{result.length} claims match web sources</span>
+      </div>
+      {result.map((c, i) => (
+        <div key={i} className="space-y-1">
+          <p className="text-foreground/70 leading-snug">“{c.claim}”</p>
+          <p className={`text-[10px] font-medium ${c.verdict === 'supported' ? 'text-green-500' : 'text-yellow-500'}`}>
+            {c.verdict === 'supported' ? '✓ Supported' : '◦ Not clearly confirmed'}
+          </p>
+          {c.evidence.slice(0, 2).map((e, j) => (
+            <a
+              key={j}
+              href={e.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="block text-[10px] text-primary/70 hover:text-primary transition-colors truncate"
+            >
+              {e.title || e.url}
+            </a>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** ChatGPT-style always-visible action row under a message. */
 function ChatActionRow({ content, isUser, onSpeak, onRegenerate, onEdit }: {
   content: string;
@@ -155,6 +213,26 @@ function ChatActionRow({ content, isUser, onSpeak, onRegenerate, onEdit }: {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [verifyState, setVerifyState] = useState<'idle' | 'checking' | 'done'>('idle');
+  const [verifyResult, setVerifyResult] = useState<VerifyClaim[] | null>(null);
+
+  const handleVerify = useCallback(async () => {
+    if (!content.trim() || verifyState === 'checking') return;
+    haptics.light();
+    setVerifyState('checking');
+    try {
+      const res = await fetch('/api/jarvis/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: content }),
+      });
+      const data = await res.json();
+      setVerifyResult(Array.isArray(data.claims) ? data.claims : []);
+    } catch {
+      setVerifyResult([]);
+    }
+    setVerifyState('done');
+  }, [content, verifyState]);
 
   const handleCopy = useCallback(() => {
     haptics.light();
@@ -205,6 +283,16 @@ function ChatActionRow({ content, isUser, onSpeak, onRegenerate, onEdit }: {
       <button onClick={handleShare} title="Share" className={iconBtn}>
         <Share className="w-4 h-4" />
       </button>
+      {!isUser && (
+        <button
+          onClick={handleVerify}
+          disabled={verifyState === 'checking'}
+          title="Fact-check with live web search"
+          className={`${iconBtn} ${verifyState === 'done' ? 'text-green-500' : ''} disabled:opacity-50`}
+        >
+          {verifyState === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+        </button>
+      )}
       <div className="relative">
         <button onClick={() => { haptics.light(); setMenuOpen(o => !o); }} title="More" className={iconBtn}>
           <MoreHorizontal className="w-4 h-4" />
@@ -247,6 +335,9 @@ function ChatActionRow({ content, isUser, onSpeak, onRegenerate, onEdit }: {
           )}
         </AnimatePresence>
       </div>
+      {verifyState === 'done' && verifyResult && verifyResult.length > 0 && (
+        <FactCheckCard result={verifyResult} />
+      )}
     </div>
   );
 }
@@ -346,6 +437,8 @@ export function ConversationFeed({
   onAgentBrowserCancel,
   onSourceCodeConfirm,
   onSourceCodeCancel,
+  onBuildModeConfirm,
+  onBuildModeCancel,
 }: ConversationFeedProps) {
   const { t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -526,6 +619,13 @@ export function ConversationFeed({
                   onCancel={onSourceCodeCancel}
                 />
               )}
+              {msg.pendingBuildMode && onBuildModeConfirm && onBuildModeCancel && (
+                <BuildModeConfirmationCard
+                  userText={msg.pendingBuildMode.userText}
+                  onConfirm={onBuildModeConfirm}
+                  onCancel={onBuildModeCancel}
+                />
+              )}
 
               {/* Generated image display */}
               {msg.image && (
@@ -598,6 +698,13 @@ export function ConversationFeed({
               {!isUser && msg.widget && (
                 <div className="w-full max-w-xl">
                   <InlineWidget widget={msg.widget} />
+                </div>
+              )}
+
+              {/* Terminal command cards the AI ran — clean minimal boxes */}
+              {!isUser && msg.terminalResults && msg.terminalResults.length > 0 && (
+                <div className="w-full max-w-xl">
+                  {msg.terminalResults.map((tr, i) => <CommandCard key={i} result={tr} />)}
                 </div>
               )}
             </motion.div>

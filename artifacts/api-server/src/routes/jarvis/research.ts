@@ -16,14 +16,16 @@ router.post("/research", async (req, res) => {
     const { prompt, title, mode, depth } = req.body as {
       prompt?: string;
       title?: string;
-      mode?: "agent" | "normal";
-      depth?: "standard" | "deep" | "quantum";
+      mode?: "agent" | "normal" | "both";
+      depth?: "standard" | "deep" | "quantum" | "omni";
     };
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+      req.log.warn({ body: { ...req.body, prompt: typeof req.body?.prompt === "string" ? req.body.prompt.length : typeof req.body?.prompt } }, "Research rejected: prompt is required");
       res.status(400).json({ error: "prompt is required" });
       return;
     }
     if (prompt.trim().length > 8000) {
+      req.log.warn({ promptLength: prompt.trim().length }, "Research rejected: prompt too long");
       res.status(400).json({ error: "prompt is too long (max 8000 chars)" });
       return;
     }
@@ -33,8 +35,8 @@ router.post("/research", async (req, res) => {
       .values({
         title: (title?.trim() || prompt.trim().slice(0, 60)) || "Deep research",
         prompt: prompt.trim(),
-        mode: mode === "normal" ? "normal" : "agent",
-        depth: depth === "standard" || depth === "quantum" ? depth : "deep",
+        mode: mode === "normal" || mode === "both" ? mode : "agent",
+        depth: depth === "standard" || depth === "quantum" || depth === "omni" ? depth : "deep",
       })
       .returning();
 

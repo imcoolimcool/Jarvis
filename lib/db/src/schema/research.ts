@@ -12,10 +12,12 @@ export const researchJobs = pgTable("research_jobs", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
   prompt: text("prompt").notNull(),
-  /** "agent" = full autonomous search + page reading, "normal" = search + synthesis only */
-  mode: text("mode", { enum: ["agent", "normal"] }).notNull().default("agent"),
-  /** "standard" | "deep" | "quantum" — scales the number of phases and pacing */
-  depth: text("depth", { enum: ["standard", "deep", "quantum"] }).notNull().default("deep"),
+  /** "agent" = full autonomous search + page reading, "normal" = search + synthesis only,
+   *  "both" = hybrid — Tavily-first, but a query that comes up empty falls back to
+   *  agent-style searching for that query, then the next query resumes on Tavily. */
+  mode: text("mode", { enum: ["agent", "normal", "both"] }).notNull().default("agent"),
+  /** "standard" | "deep" | "quantum" | "omni" — scales phases, pacing and per-phase digging */
+  depth: text("depth", { enum: ["standard", "deep", "quantum", "omni"] }).notNull().default("deep"),
   /** queued | running | completed | failed | cancelled */
   status: text("status", { enum: ["queued", "running", "completed", "failed", "cancelled"] })
     .notNull()

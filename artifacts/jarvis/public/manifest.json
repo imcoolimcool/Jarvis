@@ -1,11 +1,11 @@
 {
-  "name": "Jarvis Voice Assistant",
+  "name": "Jarvis — Personal AI Assistant",
   "short_name": "Jarvis",
-  "description": "Your AI-powered voice assistant",
+  "description": "Your personal AI assistant — chat, voice, and deep research.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000507",
-  "theme_color": "#000507",
+  "background_color": "#ffffff",
+  "theme_color": "#f5f5f7",
   "orientation": "portrait-primary",
   "icons": [
     {

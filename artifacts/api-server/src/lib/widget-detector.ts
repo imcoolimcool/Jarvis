@@ -8,12 +8,58 @@
 
 export interface ClockTimezone { label: string; tz: string }
 
+export interface ImageResult {
+  url: string;          // full-size image
+  thumbnail: string;    // proxy thumbnail
+  title: string;
+  source: string;       // flickr, wikimedia, etc.
+  creator?: string;
+  license: string;
+  licenseUrl?: string;
+  landingUrl?: string;  // page where the image lives
+  width?: number;
+  height?: number;
+}
+
+export interface DefineMeaning {
+  partOfSpeech: string;
+  definition: string;
+  example?: string;
+}
+
+export interface MusicNote {
+  note: string;   // "C4", "Eb3"...
+  dur: number;    // beats
+  time: number;   // beat offset
+}
+
+export interface MusicComposition {
+  title: string;
+  mood: 'happy' | 'chill' | 'epic' | 'sad';
+  tempo: number;                 // BPM
+  root: string;                  // key root e.g. "C"
+  scale: number[];               // semitone offsets used for melody
+  chords: string[];              // chord progression (root semitones + quality)
+  bass: string[];                // bass note semitones per chord
+  melody: MusicNote[];
+  drumPattern: number[];         // 16 steps, 0/1 for kick, snare, hat
+}
+
 export type Widget =
   | { type: 'clock'; timezones: ClockTimezone[] }
   | { type: 'weather'; location: string; temp_c: number; temp_f: number; feelsLike_c: number; condition: string; conditionCode: number; humidity: number; windSpeed_kmh: number; windDir: string; isDay: boolean; forecast: ForecastDay[] }
   | { type: 'timer'; durationSeconds: number; label?: string; timerAction?: 'set' | 'add' | 'cancel'; deltaSeconds?: number }
   | { type: 'alarm'; time: string; label?: string }    // "HH:MM" 24-h
   | { type: 'calendar'; events: CalendarEvent[]; weekStart: string }
+  | { type: 'images'; query: string; results: ImageResult[] }
+  | { type: 'date' }
+  | { type: 'calculator'; expression: string; result: string }
+  | { type: 'define'; word: string; phonetic?: string; meanings: DefineMeaning[] }
+  | { type: 'unit'; value: number; fromUnit: string; toUnit: string; category: string; label: string }
+  | { type: 'currency'; from: string; to: string; amount: number; rate: number; updated: string }
+  | { type: 'map'; query: string; lat: number; lon: number; displayName: string }
+  | { type: 'random'; kind: 'dice' | 'coin' | 'number'; value: number; label: string }
+  | { type: 'music'; composition: MusicComposition }
 
 
 export interface ForecastDay {
@@ -35,7 +81,7 @@ export interface CalendarEvent {
 
 // ─── Intent detection ────────────────────────────────────────────────────────
 
-type Intent = 'clock' | 'weather' | 'timer' | 'timer_edit' | 'timer_cancel' | 'alarm' | 'calendar' | null;
+type Intent = 'clock' | 'weather' | 'timer' | 'timer_edit' | 'timer_cancel' | 'alarm' | 'calendar' | 'images' | 'date' | 'calculator' | 'define' | 'unit' | 'currency' | 'map' | 'random' | 'music' | null;
 
 function detectIntent(msg: string): Intent {
   const t = msg.toLowerCase();
@@ -56,6 +102,30 @@ function detectIntent(msg: string): Intent {
   if (/\b(countdown|count down)\b/.test(t)) return 'timer';
   if (/\b(set( an?)? alarm|wake me up( at)?|alarm( at| for)?|remind me at)\b/.test(t)) return 'alarm';
   if (/\b(calendar|my schedule|agenda|upcoming events?|what('?s| is) (on|happening)|this week|next week|show me (my )?(events?|calendar))\b/.test(t)) return 'calendar';
+  // Images — "show me an image of a dog" → REAL web image search (not generation)
+  if (/\b(show|find|get|give)\s+(me\s+)?(a\s+|an\s+|some\s+)?(image|picture|photo|pic|pictures|photos|images)\s+of\b/.test(t)
+    || /\b(what does|what does a|what does an)\s+[a-z]+.*\blook like\b/.test(t)
+    || /\bshow me what .* looks like\b/.test(t)
+    || /\b(picture|image|photo|pictures|images|photos)s?\s+of\b/.test(t)) return 'images';
+  // Date — "what's the date", "what day is it", "today's date"
+  if (/\b(what('?s| is) (the )?date|what day is it|today('?s)? date|date today|what date is it)\b/.test(t)) return 'date';
+  // Calculator — "what is 15% of 200", "calculate 5*7+2"
+  const hasMath = /[0-9]/.test(t) && /[+\-*/%^]|%\s+of/.test(t);
+  const mathAsk = /\b(what('?s| is)|calculate|how much is|how much)\b/.test(t);
+  if (hasMath && (mathAsk || /%\s+of\b/.test(t))) return 'calculator';
+  // Define — "define serendipity", "what does serendipity mean"
+  if (/\bdefine\b|\bmeaning of\b|\bwhat does [a-z]+ mean\b/.test(t)) return 'define';
+  // Unit conversion — "convert 5 miles to km", "how many feet in 2 meters", "5kg in lbs"
+  if (/\b(convert|how many|how much is|in)\b/.test(t) && /\b(km|kilometers?|kilometres?|miles?|meters?|metres?|feet|foot|inches?|pounds?|lbs?|kilograms?|kilos?|grams?|ounces?|liters?|litres?|gallons?|celsius|fahrenheit|°c|°f|cm|mm)\b/.test(t)) return 'unit';
+  // Currency — "convert 100 usd to eur", "how much is 50 euros in dollars"
+  if (/\b(usd|eur|gbp|yen|jpy|euros?|dollars?|pounds sterling|currency)\b/.test(t) && /\b(convert|how much|to|in)\b/.test(t)) return 'currency';
+  // Map — "where is paris", "show me a map of tokyo", "map of london"
+  if (/\b(where is|where's|show me (a map|the location)|map of|location of)\b/.test(t)) return 'map';
+  // Random — "roll a dice", "flip a coin", "pick a random number between 1 and 100"
+  if (/\b(roll|dice|die|flip|coin|heads|tails|random number|pick a number)\b/.test(t)) return 'random';
+  // Music — "play some music", "make a song", "compose a beat", "play something chill/happy"
+  if (/\b(play|make|compose|create|write|hear|sing)\s+(me\s+)?(some|a|an)?\s*(music|song|melody|beat|tune|track|jam|audio)\b/.test(t)
+    || /\b(play something|some music|make music|music please)\b/.test(t)) return 'music';
 
   return null;
 }
@@ -299,6 +369,464 @@ function parseAlarmWidget(msg: string): Extract<Widget, { type: 'alarm' }> | nul
   return { type: 'alarm', time };
 }
 
+// ─── Images (real web image search via Openverse — free, no API key) ─────────
+
+/** Extract the image-search query from a message like "show me an image of a dog". */
+function extractImageQuery(msg: string): string | null {
+  const t = msg.toLowerCase();
+  const m = t.match(/(?:show|find|get|give)\s+(?:me\s+)?(?:a\s+|an\s+|some\s+)?(?:image|picture|photo|pic|pictures|photos|images)\s+of\s+(.+)/i)
+    ?? t.match(/(?:picture|image|photo|pictures|images|photos)s?\s+of\s+(?:a\s+|an\s+|the\s+)?(.+)/i)
+    ?? t.match(/what does (?:a\s+|an\s+|the\s+)?([a-z ,']+?)\s+look like/i)
+    ?? t.match(/show me what ([a-z ,']+?) looks like/i);
+  if (!m) return null;
+  const q = (m[1] ?? m[0]).trim()
+    .replace(/[?.!]+$/g, '')
+    .replace(/\s+for me\s*$/i, '')
+    .replace(/^to me\s*/i, '')
+    .trim();
+  return q.length >= 2 ? q : null;
+}
+
+async function fetchImagesWidget(msg: string): Promise<Extract<Widget, { type: 'images' }> | null> {
+  const query = extractImageQuery(msg);
+  if (!query) return null;
+  try {
+    const url = `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}&page_size=6&license_type=all`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'JarvisAssistant/1.0', 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(7000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { results?: Array<Record<string, unknown>> };
+    const results: ImageResult[] = (data.results ?? [])
+      .slice(0, 6)
+      .map((r) => ({
+        url: String(r.url ?? r.thumbnail ?? ''),
+        thumbnail: String(r.thumbnail ?? r.url ?? ''),
+        title: String(r.title ?? ''),
+        source: String(r.source ?? r.provider ?? ''),
+        creator: r.creator ? String(r.creator) : undefined,
+        license: String(r.license ?? ''),
+        licenseUrl: r.license_url ? String(r.license_url) : undefined,
+        landingUrl: r.foreign_landing_url ? String(r.foreign_landing_url) : undefined,
+        width: typeof r.width === 'number' ? r.width : undefined,
+        height: typeof r.height === 'number' ? r.height : undefined,
+      }))
+      .filter((r) => r.url);
+    if (results.length === 0) return null;
+    return { type: 'images', query, results };
+  } catch {
+    return null;
+  }
+}
+
+// ─── Date ─────────────────────────────────────────────────────────────────────
+
+function buildDateWidget(): Extract<Widget, { type: 'date' }> {
+  return { type: 'date' };
+}
+
+// ─── Calculator (safe, no eval) ──────────────────────────────────────────────
+
+/** Tiny safe arithmetic parser: + - * / ^ % and parentheses. */
+function safeEvaluate(expr: string): number | null {
+  const tokens = expr.replace(/\s+/g, '').match(/\d+\.?\d*|[+\-*/^%()]/g);
+  if (!tokens || tokens.length === 0) return null;
+
+  let pos = 0;
+  const peek = () => tokens[pos];
+  const consume = () => tokens[pos++];
+
+  function parseExpr(): number | null {
+    let left = parseTerm();
+    if (left === null) return null;
+    while (peek() === '+' || peek() === '-') {
+      const op = consume();
+      const right = parseTerm();
+      if (right === null) return null;
+      left = op === '+' ? left + right : left - right;
+    }
+    return left;
+  }
+
+  function parseTerm(): number | null {
+    let left = parseFactor();
+    if (left === null) return null;
+    while (peek() === '*' || peek() === '/' || peek() === '%') {
+      const op = consume();
+      const right = parseFactor();
+      if (right === null) return null;
+      if (op === '*') left = left * right;
+      else if (op === '/') { if (right === 0) return null; left = left / right; }
+      else left = left % right;
+    }
+    return left;
+  }
+
+  function parseFactor(): number | null {
+    const tok = peek();
+    if (tok === '(') {
+      consume();
+      const inner = parseExpr();
+      if (inner === null || consume() !== ')') return null;
+      return parsePow(inner);
+    }
+    const n = Number(consume());
+    if (Number.isNaN(n)) return null;
+    return parsePow(n);
+  }
+
+  function parsePow(base: number): number {
+    if (peek() === '^') {
+      consume();
+      const exp = Number(consume());
+      if (!Number.isNaN(exp)) return Math.pow(base, exp);
+    }
+    return base;
+  }
+
+  const result = parseExpr();
+  if (result === null || pos !== tokens.length) return null;
+  if (!Number.isFinite(result)) return null;
+  return Math.round(result * 1e8) / 1e8;
+}
+
+function buildCalculatorWidget(msg: string): Extract<Widget, { type: 'calculator' }> | null {
+  const t = msg.toLowerCase();
+
+  // "15% of 200" → 15/100 * 200
+  const pctOf = t.match(/(\d+(?:\.\d+)?)%\s+of\s+(\d+(?:\.\d+)?)/);
+  if (pctOf) {
+    const result = (parseFloat(pctOf[1]) / 100) * parseFloat(pctOf[2]);
+    const rounded = Math.round(result * 1e6) / 1e6;
+    return { type: 'calculator', expression: `${pctOf[1]}% of ${pctOf[2]}`, result: String(rounded) };
+  }
+
+  // Strip the question prefix, keep the expression
+  const cleaned = t
+    .replace(/^(what('?s| is| does)|calculate|how much is|how much)\s*/i, '')
+    .replace(/\s*\?$/, '')
+    .replace(/^(the answer to|solve)\s*/i, '')
+    .trim();
+  const result = safeEvaluate(cleaned);
+  if (result === null) return null;
+  return { type: 'calculator', expression: cleaned, result: String(result) };
+}
+
+// ─── Define (dictionaryapi.dev — free, no API key) ───────────────────────────
+
+function extractDefineWord(msg: string): string | null {
+  const t = msg.toLowerCase();
+  const m = t.match(/\bdefine\s+([a-z][a-z'-]*)/)
+    ?? t.match(/\bmeaning of\s+([a-z][a-z'-]*)/)
+    ?? t.match(/\bwhat does\s+([a-z][a-z'-]*)\s+mean/);
+  return m ? m[1] : null;
+}
+
+async function fetchDefineWidget(msg: string): Promise<Extract<Widget, { type: 'define' }> | null> {
+  const word = extractDefineWord(msg);
+  if (!word) return null;
+  try {
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, {
+      headers: { 'User-Agent': 'JarvisAssistant/1.0' },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as Array<Record<string, unknown>>;
+    const entry = data[0];
+    if (!entry) return null;
+    const meanings: DefineMeaning[] = [];
+    for (const m of (entry.meanings as Array<{ partOfSpeech?: string; definitions?: Array<{ definition?: string; example?: string }> }> ?? [])) {
+      for (const d of (m.definitions ?? []).slice(0, 2)) {
+        if (!d.definition) continue;
+        meanings.push({
+          partOfSpeech: m.partOfSpeech ?? '',
+          definition: d.definition,
+          example: d.example,
+        });
+        if (meanings.length >= 3) break;
+      }
+      if (meanings.length >= 3) break;
+    }
+    if (meanings.length === 0) return null;
+    return { type: 'define', word: String(entry.word ?? word), phonetic: entry.phonetic ? String(entry.phonetic) : undefined, meanings };
+  } catch {
+    return null;
+  }
+}
+
+// ─── Unit converter ─────────────────────────────────────────────────────────────
+
+const UNIT_ALIASES: Record<string, { unit: string; toMeters: number | null; toKg: number | null; toLiters: number | null; toCelsius: null | 'toF' | 'fromF' }> = {
+  'km': { unit: 'km', toMeters: 1000, toKg: null, toLiters: null, toCelsius: null },
+  'kilometer': { unit: 'km', toMeters: 1000, toKg: null, toLiters: null, toCelsius: null },
+  'kilometers': { unit: 'km', toMeters: 1000, toKg: null, toLiters: null, toCelsius: null },
+  'kilometre': { unit: 'km', toMeters: 1000, toKg: null, toLiters: null, toCelsius: null },
+  'kilometres': { unit: 'km', toMeters: 1000, toKg: null, toLiters: null, toCelsius: null },
+  'm': { unit: 'm', toMeters: 1, toKg: null, toLiters: null, toCelsius: null },
+  'meter': { unit: 'm', toMeters: 1, toKg: null, toLiters: null, toCelsius: null },
+  'meters': { unit: 'm', toMeters: 1, toKg: null, toLiters: null, toCelsius: null },
+  'metre': { unit: 'm', toMeters: 1, toKg: null, toLiters: null, toCelsius: null },
+  'metres': { unit: 'm', toMeters: 1, toKg: null, toLiters: null, toCelsius: null },
+  'cm': { unit: 'cm', toMeters: 0.01, toKg: null, toLiters: null, toCelsius: null },
+  'mm': { unit: 'mm', toMeters: 0.001, toKg: null, toLiters: null, toCelsius: null },
+  'mile': { unit: 'mi', toMeters: 1609.344, toKg: null, toLiters: null, toCelsius: null },
+  'miles': { unit: 'mi', toMeters: 1609.344, toKg: null, toLiters: null, toCelsius: null },
+  'foot': { unit: 'ft', toMeters: 0.3048, toKg: null, toLiters: null, toCelsius: null },
+  'feet': { unit: 'ft', toMeters: 0.3048, toKg: null, toLiters: null, toCelsius: null },
+  'inch': { unit: 'in', toMeters: 0.0254, toKg: null, toLiters: null, toCelsius: null },
+  'inches': { unit: 'in', toMeters: 0.0254, toKg: null, toLiters: null, toCelsius: null },
+  'kg': { unit: 'kg', toMeters: null, toKg: 1, toLiters: null, toCelsius: null },
+  'kilogram': { unit: 'kg', toMeters: null, toKg: 1, toLiters: null, toCelsius: null },
+  'kilograms': { unit: 'kg', toMeters: null, toKg: 1, toLiters: null, toCelsius: null },
+  'kilo': { unit: 'kg', toMeters: null, toKg: 1, toLiters: null, toCelsius: null },
+  'kilos': { unit: 'kg', toMeters: null, toKg: 1, toLiters: null, toCelsius: null },
+  'g': { unit: 'g', toMeters: null, toKg: 0.001, toLiters: null, toCelsius: null },
+  'gram': { unit: 'g', toMeters: null, toKg: 0.001, toLiters: null, toCelsius: null },
+  'grams': { unit: 'g', toMeters: null, toKg: 0.001, toLiters: null, toCelsius: null },
+  'lb': { unit: 'lb', toMeters: null, toKg: 0.45359237, toLiters: null, toCelsius: null },
+  'lbs': { unit: 'lb', toMeters: null, toKg: 0.45359237, toLiters: null, toCelsius: null },
+  'pound': { unit: 'lb', toMeters: null, toKg: 0.45359237, toLiters: null, toCelsius: null },
+  'pounds': { unit: 'lb', toMeters: null, toKg: 0.45359237, toLiters: null, toCelsius: null },
+  'ounce': { unit: 'oz', toMeters: null, toKg: 0.028349523125, toLiters: null, toCelsius: null },
+  'ounces': { unit: 'oz', toMeters: null, toKg: 0.028349523125, toLiters: null, toCelsius: null },
+  'l': { unit: 'l', toMeters: null, toKg: null, toLiters: 1, toCelsius: null },
+  'liter': { unit: 'l', toMeters: null, toKg: null, toLiters: 1, toCelsius: null },
+  'liters': { unit: 'l', toMeters: null, toKg: null, toLiters: 1, toCelsius: null },
+  'litre': { unit: 'l', toMeters: null, toKg: null, toLiters: 1, toCelsius: null },
+  'litres': { unit: 'l', toMeters: null, toKg: null, toLiters: 1, toCelsius: null },
+  'gallon': { unit: 'gal', toMeters: null, toKg: null, toLiters: 3.785411784, toCelsius: null },
+  'gallons': { unit: 'gal', toMeters: null, toKg: null, toLiters: 3.785411784, toCelsius: null },
+  'celsius': { unit: '°C', toMeters: null, toKg: null, toLiters: null, toCelsius: 'fromF' },
+  '°c': { unit: '°C', toMeters: null, toKg: null, toLiters: null, toCelsius: 'fromF' },
+  'centigrade': { unit: '°C', toMeters: null, toKg: null, toLiters: null, toCelsius: 'fromF' },
+  'fahrenheit': { unit: '°F', toMeters: null, toKg: null, toLiters: null, toCelsius: 'toF' },
+  '°f': { unit: '°F', toMeters: null, toKg: null, toLiters: null, toCelsius: 'toF' },
+};
+
+function findUnitToken(t: string): { alias: string; unit: string } | null {
+  // longest-first so "kilometers" wins over "km" overlaps etc.
+  const keys = Object.keys(UNIT_ALIASES).sort((a, b) => b.length - a.length);
+  for (const k of keys) {
+    if (new RegExp(`\\b${k.replace(/[.+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(t)) {
+      const info = UNIT_ALIASES[k];
+      return { alias: k, unit: info.unit };
+    }
+  }
+  return null;
+}
+
+function buildUnitWidget(msg: string): Extract<Widget, { type: 'unit' }> | null {
+  const t = msg.toLowerCase();
+  const valueMatch = t.match(/(\d+(?:\.\d+)?)\s*(?:\s|$)/);
+  const value = valueMatch ? parseFloat(valueMatch[1]) : 1;
+  if (value <= 0) return null;
+
+  // "convert 5 miles to km" / "5 miles in km" / "how many feet in 2 meters"
+  const first = findUnitToken(t);
+  if (!first) return null;
+  let second: { alias: string; unit: string } | null = null;
+  const rest = t.replace(new RegExp(`(convert\\s+)?\\d+(?:\\.\\d+)?\\s*${first.alias}\\s*(to|in|into)?\\s*`, 'i'), ' ').replace(/^\s+|\s+$/g, '');
+  if (rest) second = findUnitToken(rest);
+  if (!second || second.unit === first.unit) return null;
+
+  const f = UNIT_ALIASES[first.alias];
+  const sInfo = UNIT_ALIASES[second.alias];
+  const category = f.toMeters !== null && sInfo.toMeters !== null ? 'length'
+    : f.toKg !== null && sInfo.toKg !== null ? 'weight'
+    : f.toLiters !== null && sInfo.toLiters !== null ? 'volume'
+    : f.toCelsius && sInfo.toCelsius ? 'temperature' : null;
+  if (!category) return null;
+
+  return {
+    type: 'unit',
+    value,
+    fromUnit: first.unit,
+    toUnit: second.unit,
+    category,
+    label: `${value} ${first.unit} → ${second.unit}`,
+  };
+}
+
+// ─── Currency (open.er-api.com — free, no key) ───────────────────────────────
+
+const CURRENCY_ALIASES: Record<string, string> = {
+  'usd': 'USD', 'dollar': 'USD', 'dollars': 'USD', '$': 'USD',
+  'eur': 'EUR', 'euro': 'EUR', 'euros': 'EUR', '€': 'EUR',
+  'gbp': 'GBP', 'pound': 'GBP', 'pounds': 'GBP', 'pounds sterling': 'GBP', '£': 'GBP',
+  'jpy': 'JPY', 'yen': 'JPY', '¥': 'JPY',
+  'cad': 'CAD', 'aud': 'AUD', 'chf': 'CHF', 'cny': 'CNY', 'inr': 'INR', 'brl': 'BRL',
+  'krw': 'KRW', 'sgd': 'SGD', 'nzd': 'NZD', 'try': 'TRY', 'sek': 'SEK', 'nok': 'NOK',
+  'dkk': 'DKK', 'pln': 'PLN', 'zar': 'ZAR',
+};
+
+function findCurrencyToken(t: string): string | null {
+  const keys = Object.keys(CURRENCY_ALIASES).sort((a, b) => b.length - a.length);
+  for (const k of keys) {
+    if (new RegExp(`\\b${k.replace(/[.+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(t)) {
+      return CURRENCY_ALIASES[k];
+    }
+  }
+  return null;
+}
+
+async function fetchCurrencyWidget(msg: string): Promise<Extract<Widget, { type: 'currency' }> | null> {
+  const t = msg.toLowerCase();
+  const amountMatch = t.match(/(\d+(?:\.\d+)?)/);
+  const amount = amountMatch ? parseFloat(amountMatch[1]) : 1;
+
+  const first = findCurrencyToken(t);
+  if (!first) return null;
+  let second: string | null = null;
+  const rest = t.replace(new RegExp(`(convert\\s+)?\\d+(?:\\.\\d+)?\\s*${first === 'USD' ? '(usd|dollars?|\$)' : first.toLowerCase()}\\s*(to|in|into)?\\s*`, 'i'), ' ').replace(/^\s+|\s+$/g, '');
+  if (rest) second = findCurrencyToken(rest);
+  if (!second || second === first) return null;
+
+  try {
+    const res = await fetch(`https://open.er-api.com/v6/latest/${first}`, {
+      signal: AbortSignal.timeout(7000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { rates?: Record<string, number>; time_last_update_utc?: string };
+    const rate = data.rates?.[second];
+    if (typeof rate !== 'number' || !Number.isFinite(rate)) return null;
+    return {
+      type: 'currency',
+      from: first,
+      to: second,
+      amount,
+      rate: Math.round(rate * 1e6) / 1e6,
+      updated: data.time_last_update_utc ?? '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ─── Map (Nominatim geocode → OSM embed, free) ───────────────────────────────
+
+async function fetchMapWidget(msg: string): Promise<Extract<Widget, { type: 'map' }> | null> {
+  const m = msg.match(/(?:where is|where's|map of|location of|show me (?:a map of|the location of))\s+([a-zA-Z ,'-]{2,60})/i);
+  const query = m ? m[1].trim() : null;
+  if (!query) return null;
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`, {
+      headers: { 'User-Agent': 'JarvisAssistant/1.0' },
+      signal: AbortSignal.timeout(7000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as Array<{ lat: string; lon: string; display_name: string }>;
+    const hit = data[0];
+    if (!hit) return null;
+    return {
+      type: 'map',
+      query,
+      lat: parseFloat(hit.lat),
+      lon: parseFloat(hit.lon),
+      displayName: hit.display_name,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ─── Random (dice / coin / number) ───────────────────────────────────────────
+
+function buildRandomWidget(msg: string): Extract<Widget, { type: 'random' }> | null {
+  const t = msg.toLowerCase();
+  if (/\b(dice|die|roll)\b/.test(t)) {
+    const d = /\b(\d+)\s*d(?:ice)?\b/.exec(t);
+    const sides = d ? Math.min(100, Math.max(2, parseInt(d[1]))) : 6;
+    return { type: 'random', kind: 'dice', value: Math.floor(Math.random() * sides) + 1, label: `1d${sides}` };
+  }
+  if (/\b(flip|coin|heads|tails)\b/.test(t)) {
+    return { type: 'random', kind: 'coin', value: Math.random() < 0.5 ? 0 : 1, label: 'coin flip' };
+  }
+  if (/\brandom number\b|\bpick a number\b|\bnumber between\b/.test(t)) {
+    const range = t.match(/between\s+(\d+)\s+and\s+(\d+)/) ?? t.match(/(\d+)\s*(?:and|-|to)\s*(\d+)/);
+    if (range) {
+      const lo = Math.min(parseInt(range[1]), parseInt(range[2]));
+      const hi = Math.max(parseInt(range[1]), parseInt(range[2]));
+      if (hi - lo <= 1_000_000) {
+        return { type: 'random', kind: 'number', value: lo + Math.floor(Math.random() * (hi - lo + 1)), label: `${lo}–${hi}` };
+      }
+    }
+    return { type: 'random', kind: 'number', value: Math.floor(Math.random() * 100) + 1, label: '1–100' };
+  }
+  return null;
+}
+
+// ─── Music (mood-aware composition — played client-side with Web Audio) ─────
+
+const NOTE_SEMITONES: Record<string, number> = {
+  'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4, 'F': 5,
+  'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11,
+};
+
+/** Deterministic PRNG so the same request yields the same composition. */
+function seededRandom(seed: number): () => number {
+  let t = seed >>> 0;
+  return () => {
+    t += 0x6d2b79f5;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const MOODS = {
+  happy: { tempo: 128, root: 'C', scale: [0, 2, 4, 5, 7, 9, 11], chords: [0, 5, 7, 9], bass: [0, 5, 7, 9], title: 'Sunshine Groove', drum: [1,0,0,0, 1,0,1,0, 0,0,1,0, 1,0,1,1] },
+  chill:  { tempo: 88,  root: 'A', scale: [0, 2, 3, 5, 7, 9, 10], chords: [9, 5, 7, 0], bass: [9, 5, 7, 0], title: 'Midnight Drive', drum: [1,0,0,1, 0,0,1,0, 1,0,0,0, 0,1,1,0] },
+  epic:   { tempo: 140, root: 'D', scale: [0, 2, 3, 5, 7, 8, 10], chords: [5, 0, 7, 3], bass: [5, 0, 7, 3], title: 'Rise of Heroes', drum: [1,0,0,0, 1,1,0,0, 1,0,1,0, 1,1,1,0] },
+  sad:    { tempo: 72,  root: 'E', scale: [0, 2, 3, 5, 7, 8, 10], chords: [0, 8, 5, 3], bass: [0, 8, 5, 3], title: 'Rainy Window', drum: [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,1] },
+};
+
+function buildMusicWidget(msg: string): Extract<Widget, { type: 'music' }> {
+  const t = msg.toLowerCase();
+  let mood: MusicComposition['mood'] = 'happy';
+  if (/\b(sad|melancholy|depressing|rainy|down)\b/.test(t)) mood = 'sad';
+  else if (/\b(epic|heroic|intense|action|dramatic)\b/.test(t)) mood = 'epic';
+  else if (/\b(chill|calm|relax|ambient|lofi|slow|sleep)\b/.test(t)) mood = 'chill';
+
+  const cfg = MOODS[mood];
+  const seed = [...msg].reduce((a, c) => a + c.charCodeAt(0), 0) || 1;
+  const rnd = seededRandom(seed);
+
+  const scale = cfg.scale;
+  // 4-bar chord progression, each chord 1 bar (4 beats at 16th-note grid = 16 steps/bar)
+  const chordSemis = cfg.chords;
+  const chords = chordSemis.map((semi) => `${cfg.root}${semi >= 12 ? 4 : 3}`);
+  const bass = cfg.bass.map((semi) => `${cfg.root}${semi >= 12 ? 3 : 2}`);
+
+  // Melody: 4 bars x 4 beats, pick from scale, occasional rests
+  const melody: MusicNote[] = [];
+  let time = 0;
+  for (let bar = 0; bar < 4; bar++) {
+    for (let beat = 0; beat < 4; beat++) {
+      if (rnd() < 0.28) { time += 1; continue; } // rest
+      const semi = scale[Math.floor(rnd() * scale.length)];
+      const oct = 4 + Math.floor(rnd() * 2); // mostly octave 4/5
+      melody.push({ note: `${cfg.root}${oct}`, dur: 1, time });
+      time += 1;
+    }
+  }
+
+  return {
+    type: 'music',
+    composition: {
+      title: cfg.title,
+      mood,
+      tempo: cfg.tempo,
+      root: cfg.root,
+      scale,
+      chords,
+      bass,
+      melody,
+      drumPattern: cfg.drum,
+    },
+  };
+}
+
 // ─── Calendar ────────────────────────────────────────────────────────────────
 
 export async function fetchCalendarWidget(calendars: { url: string; name?: string }[]): Promise<Extract<Widget, { type: 'calendar' }> | null> {
@@ -462,6 +990,42 @@ export async function detectAndBuildWidget(
         .map(n => ({ url: settings[`calendar_ics_url_${n}`], name: settings[`calendar_name_${n}`] || undefined }))
         .filter(c => c.url) as { url: string; name?: string }[];
       return await fetchCalendarWidget(calendars);
+    }
+
+    case 'images': {
+      return await fetchImagesWidget(userMessage);
+    }
+
+    case 'date': {
+      return buildDateWidget();
+    }
+
+    case 'calculator': {
+      return buildCalculatorWidget(userMessage);
+    }
+
+    case 'define': {
+      return await fetchDefineWidget(userMessage);
+    }
+
+    case 'unit': {
+      return buildUnitWidget(userMessage);
+    }
+
+    case 'currency': {
+      return await fetchCurrencyWidget(userMessage);
+    }
+
+    case 'map': {
+      return await fetchMapWidget(userMessage);
+    }
+
+    case 'random': {
+      return buildRandomWidget(userMessage);
+    }
+
+    case 'music': {
+      return buildMusicWidget(userMessage);
     }
 
   }

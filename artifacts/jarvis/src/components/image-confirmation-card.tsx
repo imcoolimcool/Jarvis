@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Image, Check, X, Loader2, Monitor, Globe, Code2 } from 'lucide-react';
+import { Image, Check, X, Loader2, Monitor, Globe, Code2 , TerminalSquare } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 
 interface ImageConfirmationCardProps {
@@ -268,6 +268,66 @@ export function SourceCodeConfirmationCard({ userText, onConfirm, onCancel }: So
           >
             <X className="w-3.5 h-3.5" />
             {t('chat.useCodeCancel')}
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+
+interface BuildModeConfirmationCardProps {
+  userText: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+/** "Open Build Mode?" — Confirm gives Jarvis a Linux terminal + workspace to
+ *  set up the requested project (Replit-style). Cancel sends the message
+ *  normally, no shell access. */
+export function BuildModeConfirmationCard({ userText, onConfirm, onCancel }: BuildModeConfirmationCardProps) {
+  const { t } = useI18n();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.95 }}
+      transition={{ duration: 0.25 }}
+      className="max-w-[420px] self-start"
+    >
+      <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/5 overflow-hidden">
+        <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-2">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
+            <TerminalSquare className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-display font-semibold tracking-wider text-emerald-300">
+              BUILD MODE
+            </p>
+            <p className="text-[11px] font-mono text-muted-foreground/60 truncate">
+              Jarvis gets a Linux terminal + workspace to set this up
+            </p>
+          </div>
+        </div>
+        <div className="px-4 pb-2">
+          <div className="px-3 py-2 rounded-lg bg-background/50 border border-border/30">
+            <p className="text-[11px] font-mono text-foreground/70 leading-relaxed line-clamp-3">
+              {userText}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 px-4 pb-3.5">
+          <button
+            onClick={onConfirm}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[11px] font-display font-semibold tracking-wider hover:bg-emerald-500/30 hover:border-emerald-400/50 transition-all active:scale-[0.97]"
+          >
+            OPEN BUILD MODE
+          </button>
+          <button
+            onClick={onCancel}
+            className="flex-1 px-3 py-2 rounded-lg bg-muted/40 text-muted-foreground text-[11px] font-display font-semibold tracking-wider hover:bg-muted/60 transition-all active:scale-[0.97]"
+          >
+            SKIP
           </button>
         </div>
       </div>

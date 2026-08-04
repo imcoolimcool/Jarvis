@@ -29,20 +29,37 @@ import { logger } from "./logger";
 import { notifyAll } from "./web-push";
 import { runWithLLM, LLMAllKeysCoolingError } from "./llm-client";
 
-const SLEEP_SECONDS: Record<"standard" | "deep" | "quantum", [number, number]> = {
+const SLEEP_SECONDS: Record<JobDepth, [number, number]> = {
   standard: [30, 75],
   deep: [90, 180],
   quantum: [150, 300],
+  omni: [240, 420],
 };
 
-const BASE_PHASES: Record<"standard" | "deep" | "quantum", [number, number]> = {
-  standard: [8, 14],
-  deep: [15, 25],
-  quantum: [30, 60],
+const BASE_PHASES: Record<JobDepth, [number, number]> = {
+  standard: [10, 16],
+  deep: [20, 32],
+  quantum: [40, 70],
+  omni: [70, 120],
 };
+
+/** Per-depth deepening — how many sources per query, pages read, chars per
+ *  page, and sources gathered before a phase stops digging. */
+const DEPTH_RESULTS: Record<JobDepth, number> = { standard: 5, deep: 6, quantum: 7, omni: 8 };
+const DEPTH_READS: Record<JobDepth, number> = { standard: 4, deep: 5, quantum: 6, omni: 8 };
+const DEPTH_CHARS: Record<JobDepth, number> = { standard: 8000, deep: 12000, quantum: 16000, omni: 20000 };
+const DEPTH_GATHER: Record<JobDepth, number> = { standard: 10, deep: 12, quantum: 14, omni: 16 };
+
+/** Follow-up phases proposed per replan round — the deeper the tier, the more
+ *  the research keeps branching out instead of saturating. */
+const FOLLOWUP_MAX: Record<JobDepth, number> = { standard: 2, deep: 3, quantum: 4, omni: 5 };
+
+/** Hard ceiling on total phases so a runaway job can't explode — far above
+ *  what the tiers normally reach, but bounded. */
+const MAX_TOTAL_PHASES: Record<JobDepth, number> = { standard: 40, deep: 120, quantum: 400, omni: 2000 };
 
 type JobStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
-type JobDepth = "standard" | "deep" | "quantum";
+type JobDepth = "standard" | "deep" | "quantum" | "omni";
 
 /** Patch shape accepted by the research_jobs row updater. */
 interface JobPatch {
@@ -98,42 +115,48 @@ async function llm(
 }
 
 /* ────────────────────────────────────────────────────────────────
- * Web search — Tavily when a key exists, otherwise free DDG scrape
+ * Web search — Tavily is the primary source; per-query agent-style
+ * fallback kicks in when Tavily comes up empty, then the next query
+ * resumes on Tavily (hybrid "both" behaviour).
  * ──────────────────────────────────────────────────────────────── */
 
-async function searchWeb(query: string, maxResults = 5): Promise<{ title: string; url: string; snippet: string }[]> {
-  const tavilyKey = process.env["TAVILY_API_KEY"] ?? process.env["WEB_SEARCH_API_KEY"];
-  if (tavilyKey) {
-    try {
-      const res = await fetch("https://api.tavily.com/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          api_key: tavilyKey,
-          query,
-          search_depth: "advanced",
-          max_results: maxResults,
-        }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as {
-          results?: { title?: string; url?: string; content?: string }[];
-        };
-        return (data.results ?? [])
-          .filter((r) => r.url)
-          .map((r) => ({
-            title: r.title ?? r.url ?? "",
-            url: r.url ?? "",
-            snippet: (r.content ?? "").slice(0, 400),
-          }));
-      }
-    } catch {
-      /* fall through to DDG */
-    }
-  }
+type SearchResult = { title: string; url: string; snippet: string };
+type SearchMode = "agent" | "normal" | "both";
 
-  // Free DuckDuckGo HTML endpoint (no key needed) — best effort.
+/** Tavily search — primary source. Returns [] when no key, unavailable, or empty. */
+async function searchTavily(query: string, maxResults: number): Promise<SearchResult[]> {
+  const tavilyKey = process.env["TAVILY_API_KEY"] ?? process.env["WEB_SEARCH_API_KEY"];
+  if (!tavilyKey) return [];
+  try {
+    const res = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: tavilyKey,
+        query,
+        search_depth: "advanced",
+        max_results: maxResults,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      results?: { title?: string; url?: string; content?: string }[];
+    };
+    return (data.results ?? [])
+      .filter((r) => r.url)
+      .map((r) => ({
+        title: r.title ?? r.url ?? "",
+        url: r.url ?? "",
+        snippet: (r.content ?? "").slice(0, 400),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/** Free DuckDuckGo HTML endpoint (no key needed) — best effort. */
+async function searchDuckDuckGo(query: string, maxResults: number): Promise<SearchResult[]> {
   try {
     const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
       headers: { "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0 Safari/537.36" },
@@ -142,7 +165,7 @@ async function searchWeb(query: string, maxResults = 5): Promise<{ title: string
     if (!res.ok) return [];
     const html = await res.text();
     const $ = cheerioLoad(html);
-    const results: { title: string; url: string; snippet: string }[] = [];
+    const results: SearchResult[] = [];
     $(".result").each((_, el) => {
       if (results.length >= maxResults) return;
       const link = $(el).find("a.result__a").first();
@@ -162,6 +185,37 @@ async function searchWeb(query: string, maxResults = 5): Promise<{ title: string
   } catch {
     return [];
   }
+}
+
+/**
+ * Hybrid web search, evaluated per query:
+ *  1. Tavily first (cheap + high quality) — the "continues on Tavily" part.
+ *  2. If Tavily returns NOTHING for this specific query, switch to agent mode
+ *     for that query only: try DuckDuckGo, then a couple of reformulations.
+ *  3. The next query starts over on Tavily, so one dead end never derails the
+ *     rest of the research.
+ */
+async function searchWeb(query: string, maxResults: number, mode: SearchMode = "both"): Promise<SearchResult[]> {
+  const tavily = await searchTavily(query, maxResults);
+  if (tavily.length > 0) return tavily;
+
+  // Tavily found nothing for this query → agent-style persistence (agent + both modes).
+  if (mode === "agent" || mode === "both") {
+    const variants = [
+      query,
+      `${query} 2026`,
+      query.replace(/[()"'“”‘’]/g, "").slice(0, 120),
+    ];
+    for (const variant of variants) {
+      const found = await searchDuckDuckGo(variant, maxResults);
+      if (found.length > 0) return found;
+      await sleep(600 + Math.random() * 900);
+    }
+    return [];
+  }
+
+  // Normal mode: a single DDG retry, then give up on this query.
+  return searchDuckDuckGo(query, maxResults);
 }
 
 /** Fetch a page and return readable text (cheerio extraction, best effort). */
@@ -240,7 +294,13 @@ async function planPhases(job: JobMeta, resumeNotes: string): Promise<Phase[]> {
     "Return ONLY valid JSON — an array of objects: [{\"title\": string, \"description\": string, \"queries\": string[]}].";
   const user =
     `Research goal: ${job.prompt}\n` +
-    `Mode: ${job.mode === "agent" ? "agent (full autonomy, explore tangents, verify claims)" : "normal (focused)"}\n` +
+    `Mode: ${
+      job.mode === "agent"
+        ? "agent (full autonomy, explore tangents, verify claims)"
+        : job.mode === "both"
+          ? "both (hybrid — Tavily-first, with automatic agent-mode fallback whenever a specific query comes up empty)"
+          : "normal (focused)"
+    }\n` +
     `Target number of phases: between ${minPhases} and ${maxPhases}. More phases = deeper research.\n` +
     (resumeNotes ? `\nResearch already completed so far — plan the REMAINING phases to go even deeper, not repeats:\n${resumeNotes.slice(-40_000)}` : "");
   try {
@@ -267,6 +327,7 @@ async function proposeFollowups(job: JobMeta, notes: string, gaps: string): Prom
   const system =
     "You are an obsessive researcher. Given the gaps found in a research phase, propose 0-3 follow-up phases that would genuinely deepen understanding. " +
     "Return ONLY valid JSON: [{\"title\": string, \"description\": string, \"queries\": string[]}]. Return [] if the topic is fully saturated.";
+  const maxFollow = FOLLOWUP_MAX[job.depth] ?? 3;
   const user = `Goal: ${job.prompt}\n\nKnowledge so far (tail):\n${notes.slice(-20_000)}\n\nGaps found:\n${gaps.slice(-8000)}`;
   try {
     const raw = await llm(system, user, { maxTokens: 2500, temperature: 0.6 });
@@ -276,7 +337,7 @@ async function proposeFollowups(job: JobMeta, notes: string, gaps: string): Prom
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter((p) => p && typeof p.title === "string" && Array.isArray(p.queries))
-      .slice(0, 3)
+      .slice(0, maxFollow)
       .map((p) => ({ title: String(p.title).slice(0, 200), description: String(p.description ?? "").slice(0, 500), queries: p.queries.slice(0, 4).map((q) => String(q).slice(0, 300)) }));
   } catch {
     return [];
@@ -296,26 +357,30 @@ async function runPhase(
   // 1. Gather sources across all queries
   const gathered: { title: string; url: string; snippet: string; text: string }[] = [];
   const seen = new Set<string>();
+  const mode = job.mode as SearchMode;
+  const maxResults = Math.max(mode === "agent" ? 8 : mode === "both" ? 6 : 5, DEPTH_RESULTS[job.depth] ?? 5);
+  const readCount = Math.max(mode === "agent" ? 5 : 4, DEPTH_READS[job.depth] ?? 4);
+  const gatherCap = DEPTH_GATHER[job.depth] ?? 10;
+  const pageChars = DEPTH_CHARS[job.depth] ?? 8000;
   for (const query of phase.queries) {
-    const results = await searchWeb(query, job.mode === "agent" ? 6 : 4);
+    const results = await searchWeb(query, maxResults, mode);
     for (const r of results) {
-      if (seen.has(r.url) || gathered.length >= 8) continue;
+      if (seen.has(r.url) || gathered.length >= gatherCap) continue;
       seen.add(r.url);
       gathered.push({ ...r, text: "" });
     }
     await sleep(1200 + Math.random() * 2500); // gentle pacing
   }
 
-  // 2. Read the top pages (agent mode reads more)
-  const readCount = job.mode === "agent" ? 4 : 3;
+  // 2. Read the top pages (deeper tiers read more, and read each page deeper)
   for (const item of gathered.slice(0, readCount)) {
-    const text = await readPage(item.url, 6000);
+    const text = await readPage(item.url, pageChars);
     if (text) item.text = text;
     await sleep(800 + Math.random() * 2000);
   }
 
   const sourcesText = gathered
-    .map((g) => `### ${g.title}\nURL: ${g.url}\nSnippet: ${g.snippet}\n${g.text ? `Content:\n${g.text.slice(0, 5000)}` : "(page unreadable)"}`)
+    .map((g) => `### ${g.title}\nURL: ${g.url}\nSnippet: ${g.snippet}\n${g.text ? `Content:\n${g.text.slice(0, Math.min(8000, pageChars))}` : "(page unreadable)"}`)
     .join("\n\n");
 
   // 3. Synthesize
@@ -324,8 +389,8 @@ async function runPhase(
     "Use markdown bullets. Cite sources inline as [source: domain]. Note uncertainty, conflicting claims, and missing evidence explicitly. " +
     "Be precise and dense — every bullet should carry real information, not filler.";
   const synthUser =
-    `Research goal: ${job.prompt}\nPhase: ${phase.title}\n\nSOURCES:\n${sourcesText.slice(0, 55_000)}`;
-  const notesChunk = await llm(synthSystem, synthUser, { maxTokens: 2500, temperature: 0.3 });
+    `Research goal: ${job.prompt}\nPhase: ${phase.title}\n\nSOURCES:\n${sourcesText.slice(0, 95_000)}`;
+  const notesChunk = await llm(synthSystem, synthUser, { maxTokens: 4000, temperature: 0.3 });
   await appendNotes(jobId, `## ${phase.title}\n${notesChunk}`);
   await appendLog(jobId, `Synthesized "${phase.title}" (${gathered.filter((g) => g.text).length} pages read)`);
 
@@ -477,14 +542,20 @@ async function runJob(jobId: string): Promise<void> {
       completed += 1;
       await updateJob(jobId, { phasesCompleted: completed });
 
-      // Replan: propose follow-up phases from the critique (no hard limit — this is how the research deepens forever)
-      if (gapSummary && index % 2 === 1) {
+      // Replan: propose follow-up phases from the critique. Deeper tiers replan
+      // more aggressively (omni/quantum after EVERY phase, deep every 2nd,
+      // standard every 3rd) so the research branches out instead of saturating.
+      const replanEvery = job.depth === "standard" ? 3 : job.depth === "deep" ? 2 : 1;
+      if (gapSummary && index % replanEvery === 0) {
         const [fresh] = await db.select({ notes: researchJobs.notes }).from(researchJobs).where(eq(researchJobs.id, jobId));
         if (fresh) row = { ...row, notes: fresh.notes };
         const followups = await proposeFollowups(job, row.notes, gapSummary);
-        if (followups.length > 0) {
+        const cap = MAX_TOTAL_PHASES[job.depth] ?? 100;
+        if (followups.length > 0 && phases.length + followups.length <= cap) {
           phases.splice(index, 0, ...followups);
           await appendLog(jobId, `Replanning: +${followups.length} follow-up phase(s) from critique. Total now ${phases.length}.`);
+        } else if (followups.length > 0) {
+          await appendLog(jobId, `Replanning skipped — phase ceiling reached (${cap}).`);
         }
       }
     } catch (phaseErr) {

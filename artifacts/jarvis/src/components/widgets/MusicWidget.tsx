@@ -1,199 +1,188 @@
-import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Play, Pause, SkipBack, SkipForward, Music2, X, Volume2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Play, Square, Music2 } from 'lucide-react';
+import type { MusicComposition } from '@/types/widget';
 
 interface MusicWidgetProps {
-  track?: string;
-  artist?: string;
-  album?: string;
-  albumArt?: string | null;
-  playing?: boolean;
-  query?: string;
-  onClose?: () => void;
+  composition: MusicComposition;
 }
 
-interface NowPlaying {
-  playing: boolean;
-  track?: string;
-  artist?: string;
-  album?: string;
-  albumArt?: string | null;
-  progressMs?: number;
-  durationMs?: number;
+const NOTE_FREQ: Record<string, number> = { 'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11 };
+
+function noteToFreq(note: string): number {
+  const m = note.match(/^([A-G])(#?)(\d)$/);
+  if (!m) return 440;
+  const semi = NOTE_FREQ[m[1]] + (m[2] === '#' ? 1 : 0) + (parseInt(m[3]) - 4) * 12;
+  return 440 * Math.pow(2, semi / 12);
 }
 
-export function MusicWidget({ track: initTrack, artist: initArtist, albumArt: initArt, playing: initPlaying, query, onClose }: MusicWidgetProps) {
-  const [now, setNow] = useState<NowPlaying>({
-    playing: initPlaying ?? false,
-    track: initTrack,
-    artist: initArtist,
-    albumArt: initArt ?? null,
-  });
-  const [loading, setLoading] = useState(false);
-  const [spotifyConnected, setSpotifyConnected] = useState<boolean | null>(null);
+/** A tiny Web Audio engine: plays the composition with pads, bass, plucks + drums. */
+export function MusicWidget({ composition }: MusicWidgetProps) {
+  const { chords } = composition;
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const ctxRef = useRef<AudioContext | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const stopRef = useRef<(() => void) | null>(null);
 
-  const fetchCurrent = useCallback(async () => {
-    try {
-      const r = await fetch('/api/jarvis/spotify/current');
-      if (r.ok) {
-        const data = await r.json();
-        setNow(data);
-      }
-    } catch { /* noop */ }
+  const tone = useCallback((ctx: AudioContext, dest: AudioNode, freq: number, start: number, dur: number, type: OscillatorType, gain: number) => {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, start);
+    g.gain.linearRampToValueAtTime(gain, start + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    osc.connect(g).connect(dest);
+    osc.start(start);
+    osc.stop(start + dur + 0.05);
   }, []);
 
-  // Check Spotify connection + start playing if query provided
-  useEffect(() => {
-    fetch('/api/jarvis/spotify/status')
-      .then(r => r.json())
-      .then(d => {
-        setSpotifyConnected(d.connected);
-        if (d.connected) {
-          fetchCurrent();
-          if (query) {
-            control('play', query);
+  const play = useCallback(() => {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = ctxRef.current ?? new Ctx();
+    ctxRef.current = ctx;
+    void ctx.resume();
+
+    const master = ctx.createGain();
+    master.gain.value = 0.55;
+    master.connect(ctx.destination);
+
+    const delay = ctx.createDelay();
+    delay.delayTime.value = 0.24;
+    const fb = ctx.createGain();
+    fb.gain.value = 0.25;
+    delay.connect(fb).connect(delay);
+    const wet = ctx.createGain();
+    wet.gain.value = 0.18;
+    delay.connect(wet).connect(master);
+
+    const { tempo, chords, bass, melody, drumPattern, root } = composition;
+    const stepDur = 60 / tempo / 4; // one 16th-note
+    const chordRoot = NOTE_FREQ[root] ?? 0;
+    const rootFreq = noteToFreq(`${root}3`);
+
+    // Chords: semitone offsets from root (major/minor shapes)
+    const chordShapes: Record<string, number[]> = {
+      'major': [0, 4, 7], 'minor': [0, 3, 7],
+    };
+    // Build a simple progression by alternating qualities
+    const qualities: Array<keyof typeof chordShapes> = ['major', 'minor', 'major', 'major'];
+
+    let t = ctx.currentTime + 0.05;
+    const totalBeats = 16;
+    for (let bar = 0; bar < 4; bar++) {
+      const chordSemi = chords.length > 0 ? ((NOTE_FREQ[chords[bar % chords.length][0]] ?? 0) + rootFreq) : 0;
+      const chordFreqs = chordShapes[qualities[bar % 4]].map((s) => rootFreq * Math.pow(2, (chordSemi + s) / 12));
+      // Pad chord (soft saw)
+      for (const f of chordFreqs) tone(ctx, master, f, t, stepDur * 4 * 0.9, 'sawtooth', 0.06);
+      // Bass
+      const bassNote = bass.length > 0 ? bass[bar % bass.length] : `${root}2`;
+      tone(ctx, master, noteToFreq(bassNote), t, stepDur * 4 * 0.9, 'triangle', 0.22);
+      // Drums (16 steps per bar)
+      for (let s = 0; s < 16; s++) {
+        const step = drumPattern[bar * 4 + (s % 16)] ?? drumPattern[s % 16];
+        const stepTime = t + s * stepDur;
+        if (step === 1) {
+          // kick
+          const kick = ctx.createOscillator();
+          const kg = ctx.createGain();
+          kick.type = 'sine';
+          kick.frequency.setValueAtTime(120, stepTime);
+          kick.frequency.exponentialRampToValueAtTime(45, stepTime + 0.1);
+          kg.gain.setValueAtTime(0.5, stepTime);
+          kg.gain.exponentialRampToValueAtTime(0.001, stepTime + 0.12);
+          kick.connect(kg).connect(master);
+          kick.start(stepTime); kick.stop(stepTime + 0.15);
+          // hat on off-beats
+          if (s % 2 === 1) {
+            const hat = ctx.createOscillator();
+            const hg = ctx.createGain();
+            hat.type = 'square';
+            hat.frequency.value = 6000;
+            hg.gain.setValueAtTime(0.06, stepTime);
+            hg.gain.exponentialRampToValueAtTime(0.001, stepTime + 0.04);
+            hat.connect(hg).connect(master);
+            hat.start(stepTime); hat.stop(stepTime + 0.05);
           }
         }
-      })
-      .catch(() => setSpotifyConnected(false));
-  }, [query]);
+      }
+      // Melody plucks
+      for (const n of melody) {
+        const noteTime = t + n.time * stepDur;
+        const f = noteToFreq(n.note);
+        tone(ctx, master, f, noteTime, n.dur * stepDur * 0.85, 'triangle', 0.16);
+      }
+      t += stepDur * 16;
+    }
 
-  // Poll current track every 5s while playing
-  useEffect(() => {
-    if (!spotifyConnected || !now.playing) return;
-    const id = setInterval(fetchCurrent, 5000);
-    return () => clearInterval(id);
-  }, [spotifyConnected, now.playing, fetchCurrent]);
+    // Progress + stop timer
+    const durMs = totalBeats * 4 * stepDur * 1000;
+    const startAt = Date.now();
+    const tick = () => {
+      const el = Date.now() - startAt;
+      setProgress(Math.min(1, el / durMs));
+      if (el >= durMs) {
+        setPlaying(false);
+        setProgress(0);
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      }
+    };
+    timerRef.current = window.setInterval(tick, 100);
+    setPlaying(true);
+    stopRef.current = () => {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      try { void ctx.close(); } catch { /* noop */ }
+      ctxRef.current = null;
+      setPlaying(false);
+      setProgress(0);
+    };
+  }, [composition, tone]);
 
-  const control = async (action: string, actionQuery?: string) => {
-    setLoading(true);
-    try {
-      await fetch('/api/jarvis/spotify/control', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, query: actionQuery }),
-      });
-      setTimeout(fetchCurrent, 600);
-    } catch { /* noop */ }
-    finally { setLoading(false); }
+  const stop = useCallback(() => {
+    stopRef.current?.();
+  }, []);
+
+  useEffect(() => () => { stopRef.current?.(); }, []);
+
+  const moodColor: Record<string, string> = {
+    happy: 'text-amber-400', chill: 'text-sky-400', epic: 'text-rose-400', sad: 'text-indigo-400',
   };
 
-  if (spotifyConnected === false) {
-    return (
-      <div className="relative rounded-2xl border border-border/40 bg-background/60 backdrop-blur-sm p-4 w-full">
-        {onClose && (
-          <button onClick={onClose} className="absolute top-3 right-3 p-1 rounded-full hover:bg-muted/50 text-muted-foreground/50 hover:text-foreground transition-colors">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-        <div className="flex items-center gap-3 mb-3">
-          <Music2 className="w-5 h-5 text-primary/70" />
+  return (
+    <div className="mt-3 rounded-2xl border border-border/40 bg-background/60 backdrop-blur-sm p-4 shadow-lg w-full">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Music2 className={`w-4 h-4 ${moodColor[composition.mood] ?? 'text-primary'}`} />
           <div>
-            <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 uppercase">Music</p>
-            <p className="text-sm font-display text-foreground/80">Spotify not connected</p>
+            <p className="text-sm font-semibold text-foreground leading-tight">{composition.title}</p>
+            <p className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">
+              {composition.mood} · {composition.tempo} BPM · key of {composition.root}
+            </p>
           </div>
         </div>
         <button
-          onClick={() => window.open('/api/jarvis/spotify/auth', 'spotify_auth', 'width=500,height=700,left=200,top=100')}
-          className="w-full py-2 rounded-xl border border-green-500/40 text-green-400 hover:bg-green-500/10 text-xs font-display tracking-wider transition-all"
+          onClick={playing ? stop : play}
+          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-95 ${
+            playing ? 'bg-red-500/15 text-red-500' : 'bg-primary text-primary-foreground hover:opacity-90'
+          }`}
+          title={playing ? 'Stop' : 'Play'}
         >
-          Connect Spotify
+          {playing ? <Square className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
         </button>
       </div>
-    );
-  }
-
-  const progressPct = now.durationMs && now.progressMs
-    ? (now.progressMs / now.durationMs) * 100
-    : 0;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="relative rounded-2xl border border-border/40 bg-background/60 backdrop-blur-sm overflow-hidden w-full"
-    >
-      {/* Album art background */}
-      {now.albumArt && (
+      <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
         <div
-          className="absolute inset-0 opacity-10 bg-cover bg-center"
-          style={{ backgroundImage: `url(${now.albumArt})`, filter: 'blur(20px)', transform: 'scale(1.2)' }}
+          className="h-full rounded-full bg-primary transition-[width] duration-100"
+          style={{ width: `${progress * 100}%` }}
         />
-      )}
-
-      {onClose && (
-        <button onClick={onClose} className="absolute top-3 right-3 z-10 p-1 rounded-full hover:bg-muted/50 text-muted-foreground/50 hover:text-foreground transition-colors">
-          <X className="w-3.5 h-3.5" />
-        </button>
-      )}
-
-      <div className="relative z-10 p-4">
-        <div className="flex items-center gap-3">
-          {/* Album art */}
-          <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-primary/10 flex items-center justify-center border border-border/30">
-            {now.albumArt ? (
-              <img src={now.albumArt} alt="Album" className="w-full h-full object-cover" />
-            ) : (
-              <motion.div
-                animate={now.playing ? { rotate: 360 } : { rotate: 0 }}
-                transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-              >
-                <Music2 className="w-6 h-6 text-primary/50" />
-              </motion.div>
-            )}
-          </div>
-
-          {/* Track info */}
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 uppercase flex items-center gap-1">
-              <Volume2 className="w-3 h-3" /> {now.playing ? 'Now playing' : 'Paused'}
-            </p>
-            <p className="text-sm font-display font-semibold text-foreground truncate">
-              {now.track ?? (query ? `Searching: ${query}` : 'Nothing playing')}
-            </p>
-            <p className="text-[11px] font-mono text-muted-foreground/70 truncate">
-              {now.artist ?? '—'}
-            </p>
-          </div>
-        </div>
-
-        {/* Progress bar */}
-        {now.durationMs ? (
-          <div className="mt-3 h-1 bg-muted/30 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-primary/60 rounded-full"
-              initial={{ width: `${progressPct}%` }}
-              animate={{ width: `${progressPct}%` }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
-        ) : null}
-
-        {/* Controls */}
-        <div className="flex items-center justify-center gap-4 mt-3">
-          <button
-            onClick={() => control('previous')}
-            disabled={loading}
-            className="p-2 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all disabled:opacity-30"
-          >
-            <SkipBack className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => control(now.playing ? 'pause' : 'play')}
-            disabled={loading}
-            className="p-3 rounded-full bg-primary/20 text-primary hover:bg-primary/30 border border-primary/40 transition-all disabled:opacity-30"
-          >
-            {now.playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-          </button>
-          <button
-            onClick={() => control('next')}
-            disabled={loading}
-            className="p-2 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all disabled:opacity-30"
-          >
-            <SkipForward className="w-4 h-4" />
-          </button>
-        </div>
       </div>
-    </motion.div>
+      <div className="mt-2 flex items-center justify-between">
+        <p className="text-[10px] font-mono text-muted-foreground/50">
+          {chords.join(' · ')}
+        </p>
+        <p className="text-[10px] text-muted-foreground/40">synth · plays in your browser</p>
+      </div>
+    </div>
   );
 }

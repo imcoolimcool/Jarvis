@@ -1,11 +1,12 @@
 # Jarvis Voice Assistant
 
-A polished voice AI assistant prototype. Speak → Jarvis transcribes → thinks → speaks back. Built with OpenAI Whisper (STT), OpenAI GPT-4o (LLM), and ElevenLabs (TTS).
+A personal AI assistant — chat, voice, deep research, memory, and integrations (Spotify, Gmail, Calendar, Weather). Built with NVIDIA NIM (`openai/gpt-oss-120b`), Whisper (STT), and ElevenLabs (TTS).
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/jarvis run dev` — run the frontend (port auto-assigned)
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
+- `sh scripts/start-dev.sh` — **one-command launcher** (API server on 8080 + frontend on 5173)
+- `pnpm --filter @workspace/jarvis run dev` — run the frontend only (port 5173)
+- `pnpm --filter @workspace/api-server run dev` — run the API server only (port 8080)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -13,13 +14,13 @@ A polished voice AI assistant prototype. Speak → Jarvis transcribes → thinks
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- Frontend: React + Vite, Tailwind CSS, Framer Motion, Orbitron/Inter/Space Mono fonts
+- Frontend: React + Vite, Tailwind CSS, Framer Motion, self-hosted SF Pro Display + SF Pro Rounded fonts
 - API: Express 5
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
-- STT: OpenAI Whisper (`whisper-1`)
-- LLM: OpenAI GPT-4o
+- STT: NVIDIA NIM Whisper Large v3 (`openai/whisper-large-v3`)
+- LLM: NVIDIA NIM (`openai/gpt-oss-120b`, configurable)
 - TTS: ElevenLabs (`eleven_multilingual_v2`)
 
 ## Where things live
@@ -27,7 +28,7 @@ A polished voice AI assistant prototype. Speak → Jarvis transcribes → thinks
 - `artifacts/jarvis/` — React frontend (the Jarvis UI)
 - `artifacts/api-server/src/routes/jarvis/` — backend route handlers
   - `transcribe.ts` — Whisper STT endpoint
-  - `chat.ts` — GPT-4o conversation endpoint
+  - `chat.ts` — LLM conversation endpoint (SSE streaming, thinking mode, agent mode)
   - `speak.ts` — ElevenLabs TTS endpoint
 - `artifacts/api-server/src/config/jarvis.ts` — **edit this to change model, voice, or system prompt**
 - `lib/api-spec/openapi.yaml` — single source of truth for API contracts
@@ -37,7 +38,7 @@ A polished voice AI assistant prototype. Speak → Jarvis transcribes → thinks
 - API keys are never exposed to the frontend — all AI calls go through the Express backend
 - Three separate env vars for Whisper vs LLM keys (user may have different rate limits/billing)
 - TTS audio is returned as base64 JSON (not a binary stream) for simplicity and caching friendliness
-- Conversation history is held client-side in React state (no DB needed for v1)
+- Conversation history is persisted in PostgreSQL (Drizzle) — conversations, messages, memories, settings
 - Multipart audio upload uses multer with memory storage — no temp files on disk
 
 ## Customization
@@ -50,12 +51,12 @@ Edit `artifacts/api-server/src/config/jarvis.ts` to change:
 
 ## Required secrets
 
-Set these via the Replit Secrets panel (never committed to git):
+Set these via the Freebuff API Keys panel or environment (never committed to git):
 
 | Secret | Purpose |
 |--------|---------|
 | `OPENAI_WHISPER_API_KEY` | NVIDIA NIM key for Whisper Large v3 STT (build.nvidia.com) |
-| `OPENAI_LLM_API_KEY` | NVIDIA NIM key for gpt-oss-20b LLM (build.nvidia.com) |
+| `OPENAI_LLM_API_KEY` | NVIDIA NIM key for gpt-oss-120b LLM (build.nvidia.com) |
 | `ELEVENLABS_API_KEY` | ElevenLabs TTS |
 | `SPOTIFY_CLIENT_ID` | Spotify OAuth client ID |
 | `SPOTIFY_CLIENT_SECRET` | Spotify OAuth client secret |
@@ -92,7 +93,7 @@ This project uses NVIDIA's hosted NIM endpoints (OpenAI-compatible):
 - **STT base URL**: `https://ai.api.nvidia.com/v1` — model `openai/whisper-large-v3`
 - **LLM base URL**: `https://integrate.api.nvidia.com/v1` — model configurable in `artifacts/api-server/src/config/jarvis.ts`
 
-Both base URLs are hardcoded in the respective route handlers (`transcribe.ts`, `chat.ts`). The active LLM model is `openai/gpt-oss-20b`.
+Both base URLs are hardcoded in the respective route handlers (`transcribe.ts`, `chat.ts`). The active LLM model is `openai/gpt-oss-120b`.
 
 ## User preferences
 

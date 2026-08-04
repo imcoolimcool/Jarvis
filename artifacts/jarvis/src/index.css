@@ -104,7 +104,7 @@
 
   --app-font-sans: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
   --app-font-rounded: 'SF Pro Rounded', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --app-font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  --app-font-mono: 'SF Pro Display', 'SF Pro Rounded', ui-monospace, monospace;
   --radius: 0.75rem;
 }
 
@@ -134,7 +134,7 @@
 
   --app-font-sans: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
   --app-font-rounded: 'SF Pro Rounded', 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --app-font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  --app-font-mono: 'SF Pro Display', 'SF Pro Rounded', ui-monospace, monospace;
   --radius: 0.75rem;
 }
 
@@ -142,7 +142,7 @@
 .platform-apple {
   --app-font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
   --app-font-rounded: 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
-  --app-font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  --app-font-mono: 'SF Pro Display', 'SF Pro Rounded', ui-monospace, monospace;
 }
 
 @layer base {
