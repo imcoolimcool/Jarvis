@@ -1,0 +1,5390 @@
+{
+  "url": "http://localhost:21662/",
+  "chromiumPath": "/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium",
+  "screenshotCount": 281,
+  "screenshots": [
+    "0001-voice-home-initial.png",
+    "0002-voice-home-1-Back-to-chat.png",
+    "0003-voice-home-2-Open-history.png",
+    "0004-voice-home-3-New-Chat.png",
+    "0005-voice-home-4-Menu.png",
+    "0006-voice-home-5-Settings.png",
+    "0007-voice-home-6-Search.png",
+    "0008-voice-home-7-Chat.png",
+    "0009-voice-home-8-Browser.png",
+    "0010-voice-home-9-Settings.png",
+    "0011-voice-home-10-Close.png",
+    "0012-chat-home-initial.png",
+    "0013-chat-home-1-Open-history.png",
+    "0014-chat-home-2-New-Chat.png",
+    "0015-chat-home-3-Menu.png",
+    "0016-chat-home-4-Settings.png",
+    "0017-chat-home-5-Search.png",
+    "0018-chat-home-6-Chat.png",
+    "0019-chat-home-7-Browser.png",
+    "0020-chat-home-8-Settings.png",
+    "0021-chat-home-9-Close.png",
+    "0022-plus-menu-initial.png",
+    "0023-plus-menu-1-Open-history.png",
+    "0024-plus-menu-2-New-Chat.png",
+    "0025-plus-menu-3-Menu.png",
+    "0026-plus-menu-4-Settings.png",
+    "0027-plus-menu-5-Search.png",
+    "0028-plus-menu-6-Chat.png",
+    "0029-plus-menu-7-Browser.png",
+    "0030-plus-menu-8-Settings.png",
+    "0031-plus-menu-9-Close.png",
+    "0032-sidebar-initial.png",
+    "0033-sidebar-1-Open-history.png",
+    "0034-sidebar-2-New-Chat.png",
+    "0035-sidebar-3-Menu.png",
+    "0036-sidebar-4-Settings.png",
+    "0037-sidebar-5-Search.png",
+    "0038-sidebar-6-Chat.png",
+    "0039-sidebar-7-Browser.png",
+    "0040-sidebar-8-Settings.png",
+    "0041-sidebar-9-Close.png",
+    "0042-command-palette-initial.png",
+    "0043-command-palette-1-Open-history.png",
+    "0044-command-palette-2-New-Chat.png",
+    "0045-command-palette-3-Menu.png",
+    "0046-command-palette-4-Settings.png",
+    "0047-command-palette-5-Search.png",
+    "0048-command-palette-6-Chat.png",
+    "0049-command-palette-7-Browser.png",
+    "0050-command-palette-8-Settings.png",
+    "0051-command-palette-9-Close.png",
+    "0052-command-palette-10-Chat-G.png",
+    "0053-command-palette-11-idle.png",
+    "0054-command-palette-12-Agent.png",
+    "0055-command-palette-13-Agent-On.png",
+    "0056-command-palette-14-Browser-On.png",
+    "0057-command-palette-15-Camera-mode.png",
+    "0058-command-palette-16-Back-to-chat.png",
+    "0059-command-palette-17-Good-morning-give-me-the-day-s-briefing.png",
+    "0060-command-palette-18-Copy.png",
+    "0061-command-palette-19-Good-response.png",
+    "0062-command-palette-20-Bad-response.png",
+    "0063-command-palette-21-Share.png",
+    "0064-command-palette-22-More.png",
+    "0065-command-palette-23-Edit-message.png",
+    "0066-command-palette-24-button.png",
+    "0067-command-palette-25-Read-aloud.png",
+    "0068-command-palette-26-Fact-check-with-live-web-search.png",
+    "0069-command-palette-27-Attach-camera-or-search.png",
+    "0070-command-palette-28-Thinking-mode.png",
+    "0071-research-initial.png",
+    "0072-research-1-Open-history.png",
+    "0073-research-2-New-Chat.png",
+    "0074-research-3-Menu.png",
+    "0075-research-4-Settings.png",
+    "0076-research-5-Search.png",
+    "0077-research-6-Chat.png",
+    "0078-research-7-Browser.png",
+    "0079-research-8-button.png",
+    "0080-research-9-Settings.png",
+    "0081-research-10-Close.png",
+    "0082-research-11-Close-research.png",
+    "0083-gem-initial.png",
+    "0084-gem-1-Open-history.png",
+    "0085-gem-2-New-Chat.png",
+    "0086-gem-3-Menu.png",
+    "0087-gem-4-Settings.png",
+    "0088-gem-5-Search.png",
+    "0089-gem-6-Chat.png",
+    "0090-gem-7-Browser.png",
+    "0091-gem-8-Settings.png",
+    "0092-gem-9-Close.png",
+    "0093-gem-10-Personalization-How-Jarvis-talks-and-responds.png",
+    "0094-gem-11-Auto-AI-decides-.png",
+    "0095-gem-12-Balanced.png",
+    "0096-gem-13-Talkative.png",
+    "0097-gem-14-Helpful.png",
+    "0098-gem-15-Just-gets-it-done.png",
+    "0099-gem-16-Custom.png",
+    "0100-gem-17-Save-now.png",
+    "0101-studios-initial.png",
+    "0102-studios-1-Open-history.png",
+    "0103-studios-2-New-Chat.png",
+    "0104-studios-3-Menu.png",
+    "0105-studios-4-Settings.png",
+    "0106-studios-5-Search.png",
+    "0107-studios-6-Chat.png",
+    "0108-studios-7-Browser.png",
+    "0109-studios-8-Settings.png",
+    "0110-studios-9-Close.png",
+    "0111-studios-10-Close.png",
+    "0112-design-studio-initial.png",
+    "0113-design-studio-1-Open-history.png",
+    "0114-design-studio-2-New-Chat.png",
+    "0115-design-studio-3-Menu.png",
+    "0116-design-studio-4-Settings.png",
+    "0117-design-studio-5-Search.png",
+    "0118-design-studio-6-Chat.png",
+    "0119-design-studio-7-Browser.png",
+    "0120-design-studio-8-Settings.png",
+    "0121-design-studio-9-Close.png",
+    "0122-design-studio-10-Close.png",
+    "0123-music-studio-initial.png",
+    "0124-music-studio-1-Open-history.png",
+    "0125-music-studio-2-New-Chat.png",
+    "0126-music-studio-3-Menu.png",
+    "0127-music-studio-4-Settings.png",
+    "0128-music-studio-5-Search.png",
+    "0129-music-studio-6-Chat.png",
+    "0130-music-studio-7-Browser.png",
+    "0131-music-studio-8-Settings.png",
+    "0132-music-studio-9-Close.png",
+    "0133-music-studio-10-Close.png",
+    "0134-data-lab-initial.png",
+    "0135-data-lab-1-Open-history.png",
+    "0136-data-lab-2-New-Chat.png",
+    "0137-data-lab-3-Menu.png",
+    "0138-data-lab-4-Settings.png",
+    "0139-data-lab-5-Search.png",
+    "0140-data-lab-6-Chat.png",
+    "0141-data-lab-7-Browser.png",
+    "0142-data-lab-8-Settings.png",
+    "0143-data-lab-9-Close.png",
+    "0144-camera-initial.png",
+    "0145-camera-1-Open-history.png",
+    "0146-camera-2-New-Chat.png",
+    "0147-camera-3-Menu.png",
+    "0148-camera-4-Settings.png",
+    "0149-camera-5-Search.png",
+    "0150-camera-6-Chat.png",
+    "0151-camera-7-Browser.png",
+    "0152-camera-8-Settings.png",
+    "0153-camera-9-Close.png",
+    "0154-agent-initial.png",
+    "0155-agent-1-Open-history.png",
+    "0156-agent-2-New-Chat.png",
+    "0157-agent-3-Menu.png",
+    "0158-agent-4-Settings.png",
+    "0159-agent-5-Search.png",
+    "0160-agent-6-Chat.png",
+    "0161-agent-7-Browser.png",
+    "0162-agent-8-Settings.png",
+    "0163-agent-9-button.png",
+    "0164-agent-10-Back.png",
+    "0165-agent-11-Forward.png",
+    "0166-agent-12-Reload.png",
+    "0167-agent-13-Show-click-grid-tiny-cubes-.png",
+    "0168-agent-14-Hide-click-grid.png",
+    "0169-agent-15-Minimize.png",
+    "0170-agent-16-Jarvis-s-Browser.png",
+    "0171-agent-17-Fullscreen.png",
+    "0172-agent-18-Collapse.png",
+    "0173-agent-19-Run.png",
+    "0174-agent-20-Retry-Connection.png",
+    "0175-agent-21-Scroll-Up.png",
+    "0176-agent-22-Scroll-Down.png",
+    "0177-agent-23-Type-Test.png",
+    "0178-agent-24-Close.png",
+    "0179-browser-initial.png",
+    "0180-browser-1-Open-history.png",
+    "0181-browser-2-New-Chat.png",
+    "0182-browser-3-Menu.png",
+    "0183-browser-4-Settings.png",
+    "0184-browser-5-Search.png",
+    "0185-browser-6-Chat.png",
+    "0186-browser-7-Browser.png",
+    "0187-browser-8-Settings.png",
+    "0188-browser-9-Close.png",
+    "0189-settings-personalization-initial.png",
+    "0190-settings-personalization-1-Open-history.png",
+    "0191-settings-personalization-2-New-Chat.png",
+    "0192-settings-personalization-3-Menu.png",
+    "0193-settings-personalization-4-Settings.png",
+    "0194-settings-personalization-5-Search.png",
+    "0195-settings-personalization-6-Chat.png",
+    "0196-settings-personalization-7-Browser.png",
+    "0197-settings-personalization-8-Settings.png",
+    "0198-settings-personalization-9-Close.png",
+    "0199-settings-memory-initial.png",
+    "0200-settings-memory-1-Open-history.png",
+    "0201-settings-memory-2-New-Chat.png",
+    "0202-settings-memory-3-Menu.png",
+    "0203-settings-memory-4-Settings.png",
+    "0204-settings-memory-5-Search.png",
+    "0205-settings-memory-6-Chat.png",
+    "0206-settings-memory-7-Browser.png",
+    "0207-settings-memory-8-Settings.png",
+    "0208-settings-memory-9-Close.png",
+    "0209-settings-language-initial.png",
+    "0210-settings-language-1-Open-history.png",
+    "0211-settings-language-2-New-Chat.png",
+    "0212-settings-language-3-Menu.png",
+    "0213-settings-language-4-Settings.png",
+    "0214-settings-language-5-Search.png",
+    "0215-settings-language-6-Chat.png",
+    "0216-settings-language-7-Browser.png",
+    "0217-settings-language-8-Settings.png",
+    "0218-settings-language-9-Close.png",
+    "0219-settings-gmail-initial.png",
+    "0220-settings-gmail-1-Open-history.png",
+    "0221-settings-gmail-2-New-Chat.png",
+    "0222-settings-gmail-3-Menu.png",
+    "0223-settings-gmail-4-Settings.png",
+    "0224-settings-gmail-5-Search.png",
+    "0225-settings-gmail-6-Chat.png",
+    "0226-settings-gmail-7-Browser.png",
+    "0227-settings-gmail-8-Settings.png",
+    "0228-settings-gmail-9-Close.png",
+    "0229-settings-spotify-initial.png",
+    "0230-settings-spotify-1-Open-history.png",
+    "0231-settings-spotify-2-New-Chat.png",
+    "0232-settings-spotify-3-Menu.png",
+    "0233-settings-spotify-4-Settings.png",
+    "0234-settings-spotify-5-Search.png",
+    "0235-settings-spotify-6-Chat.png",
+    "0236-settings-spotify-7-Browser.png",
+    "0237-settings-spotify-8-Settings.png",
+    "0238-settings-spotify-9-Close.png",
+    "0239-settings-accent-color-initial.png",
+    "0240-settings-accent-color-1-Open-history.png",
+    "0241-settings-accent-color-2-New-Chat.png",
+    "0242-settings-accent-color-3-Menu.png",
+    "0243-settings-accent-color-4-Settings.png",
+    "0244-settings-accent-color-5-Search.png",
+    "0245-settings-accent-color-6-Chat.png",
+    "0246-settings-accent-color-7-Browser.png",
+    "0247-settings-accent-color-8-Settings.png",
+    "0248-settings-accent-color-9-Close.png",
+    "0249-settings-web-search-data-initial.png",
+    "0250-settings-web-search-data-1-Open-history.png",
+    "0251-settings-web-search-data-2-New-Chat.png",
+    "0252-settings-web-search-data-3-Menu.png",
+    "0253-settings-web-search-data-4-Settings.png",
+    "0254-settings-web-search-data-5-Search.png",
+    "0255-settings-web-search-data-6-Chat.png",
+    "0256-settings-web-search-data-7-Browser.png",
+    "0257-settings-web-search-data-8-Settings.png",
+    "0258-settings-web-search-data-9-Close.png",
+    "0259-settings-llm-keys-initial.png",
+    "0260-settings-llm-keys-1-Open-history.png",
+    "0261-settings-llm-keys-2-New-Chat.png",
+    "0262-settings-llm-keys-3-Menu.png",
+    "0263-settings-llm-keys-4-Settings.png",
+    "0264-settings-llm-keys-5-Search.png",
+    "0265-settings-llm-keys-6-Chat.png",
+    "0266-settings-llm-keys-7-Browser.png",
+    "0267-settings-llm-keys-8-Settings.png",
+    "0268-settings-llm-keys-9-Close.png",
+    "0269-settings-about-initial.png",
+    "0270-settings-about-1-Open-history.png",
+    "0271-settings-about-2-New-Chat.png",
+    "0272-settings-about-3-Menu.png",
+    "0273-settings-about-4-Settings.png",
+    "0274-settings-about-5-Search.png",
+    "0275-settings-about-6-Chat.png",
+    "0276-settings-about-7-Browser.png",
+    "0277-settings-about-8-Settings.png",
+    "0278-settings-about-9-Close.png",
+    "0279-oauth-gmail-oauth-login.png",
+    "0280-oauth-spotify-oauth-login.png",
+    "0281-final-reset-before.png"
+  ],
+  "protectedControls": [],
+  "errors": [
+    "[voice-home] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[chat-home] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[plus-menu] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[sidebar] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[command-palette] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[command-palette] WebSocket connection to 'ws://localhost:21662/browser-ws' failed: Connection closed before receiving a handshake response",
+    "[research] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[gem] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[studios] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[design-studio] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[music-studio] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[data-lab] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[camera] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[agent] WebSocket connection to 'ws://localhost:21662/browser-ws' failed: Connection closed before receiving a handshake response",
+    "[agent] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[agent] Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "[browser] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-personalization] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-memory] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-language] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-gmail] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-spotify] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-accent-color] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-web-search-data] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-llm-keys] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[settings-about] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[oauth-gmail] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. ",
+    "[oauth-spotify] Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version. "
+  ],
+  "results": [
+    {
+      "flow": "voice-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Back to chat",
+        "title": "Back to chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Back to chat|Back to chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0002-voice-home-1-Back-to-chat.png"
+    },
+    {
+      "flow": "voice-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0003-voice-home-2-Open-history.png"
+    },
+    {
+      "flow": "voice-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0004-voice-home-3-New-Chat.png"
+    },
+    {
+      "flow": "voice-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0005-voice-home-4-Menu.png"
+    },
+    {
+      "flow": "voice-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0006-voice-home-5-Settings.png"
+    },
+    {
+      "flow": "voice-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0007-voice-home-6-Search.png"
+    },
+    {
+      "flow": "voice-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0008-voice-home-7-Chat.png"
+    },
+    {
+      "flow": "voice-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0009-voice-home-8-Browser.png"
+    },
+    {
+      "flow": "voice-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0010-voice-home-9-Settings.png"
+    },
+    {
+      "flow": "voice-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0011-voice-home-10-Close.png"
+    },
+    {
+      "flow": "voice-home",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 10,
+      "attempts": 10,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "chat-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0013-chat-home-1-Open-history.png"
+    },
+    {
+      "flow": "chat-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0014-chat-home-2-New-Chat.png"
+    },
+    {
+      "flow": "chat-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0015-chat-home-3-Menu.png"
+    },
+    {
+      "flow": "chat-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0016-chat-home-4-Settings.png"
+    },
+    {
+      "flow": "chat-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0017-chat-home-5-Search.png"
+    },
+    {
+      "flow": "chat-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0018-chat-home-6-Chat.png"
+    },
+    {
+      "flow": "chat-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0019-chat-home-7-Browser.png"
+    },
+    {
+      "flow": "chat-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0020-chat-home-8-Settings.png"
+    },
+    {
+      "flow": "chat-home",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0021-chat-home-9-Close.png"
+    },
+    {
+      "flow": "chat-home",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0023-plus-menu-1-Open-history.png"
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0024-plus-menu-2-New-Chat.png"
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0025-plus-menu-3-Menu.png"
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0026-plus-menu-4-Settings.png"
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0027-plus-menu-5-Search.png"
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0028-plus-menu-6-Chat.png"
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0029-plus-menu-7-Browser.png"
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0030-plus-menu-8-Settings.png"
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0031-plus-menu-9-Close.png"
+    },
+    {
+      "flow": "plus-menu",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "sidebar",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0033-sidebar-1-Open-history.png"
+    },
+    {
+      "flow": "sidebar",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0034-sidebar-2-New-Chat.png"
+    },
+    {
+      "flow": "sidebar",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0035-sidebar-3-Menu.png"
+    },
+    {
+      "flow": "sidebar",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0036-sidebar-4-Settings.png"
+    },
+    {
+      "flow": "sidebar",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0037-sidebar-5-Search.png"
+    },
+    {
+      "flow": "sidebar",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0038-sidebar-6-Chat.png"
+    },
+    {
+      "flow": "sidebar",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0039-sidebar-7-Browser.png"
+    },
+    {
+      "flow": "sidebar",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0040-sidebar-8-Settings.png"
+    },
+    {
+      "flow": "sidebar",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0041-sidebar-9-Close.png"
+    },
+    {
+      "flow": "sidebar",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0043-command-palette-1-Open-history.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0044-command-palette-2-New-Chat.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0045-command-palette-3-Menu.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0046-command-palette-4-Settings.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0047-command-palette-5-Search.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0048-command-palette-6-Chat.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0049-command-palette-7-Browser.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0050-command-palette-8-Settings.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0051-command-palette-9-Close.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat G",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat G||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0052-command-palette-10-Chat-G.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "DIV",
+        "id": "",
+        "text": "",
+        "aria": "idle",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "DIV|||idle|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0053-command-palette-11-idle.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Agent",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Agent||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0054-command-palette-12-Agent.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Agent On",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Agent On||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0055-command-palette-13-Agent-On.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser On",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser On||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0056-command-palette-14-Browser-On.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Camera mode",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Camera mode||"
+      },
+      "category": "media",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0057-command-palette-15-Camera-mode.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Back to chat",
+        "title": "Back to chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Back to chat|Back to chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0058-command-palette-16-Back-to-chat.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Good morning — give me the day's briefing",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Good morning — give me the day's briefing||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0059-command-palette-17-Good-morning-give-me-the-day-s-briefing.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Copy",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Copy"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0060-command-palette-18-Copy.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Good response",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Good response"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0061-command-palette-19-Good-response.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Bad response",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Bad response"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0062-command-palette-20-Bad-response.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Share",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Share"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0063-command-palette-21-Share.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "More",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||More"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0064-command-palette-22-More.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Edit message",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Edit message||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0065-command-palette-23-Edit-message.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0066-command-palette-24-button.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Read aloud",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Read aloud"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0067-command-palette-25-Read-aloud.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Fact-check with live web search",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Fact-check with live web search"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0068-command-palette-26-Fact-check-with-live-web-search.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "plus-menu-button",
+        "text": "",
+        "aria": "",
+        "title": "Attach, camera, or search",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|plus-menu-button|||Attach, camera, or search"
+      },
+      "category": "media",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0069-command-palette-27-Attach-camera-or-search.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Thinking mode",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Thinking mode"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0070-command-palette-28-Thinking-mode.png"
+    },
+    {
+      "flow": "command-palette",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 28,
+      "attempts": 28,
+      "remainingVisibleControls": 37
+    },
+    {
+      "flow": "research",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0072-research-1-Open-history.png"
+    },
+    {
+      "flow": "research",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0073-research-2-New-Chat.png"
+    },
+    {
+      "flow": "research",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0074-research-3-Menu.png"
+    },
+    {
+      "flow": "research",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0075-research-4-Settings.png"
+    },
+    {
+      "flow": "research",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0076-research-5-Search.png"
+    },
+    {
+      "flow": "research",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0077-research-6-Chat.png"
+    },
+    {
+      "flow": "research",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0078-research-7-Browser.png"
+    },
+    {
+      "flow": "research",
+      "kind": "button",
+      "control": {
+        "tag": "SPAN",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "SPAN||||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0079-research-8-button.png"
+    },
+    {
+      "flow": "research",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0080-research-9-Settings.png"
+    },
+    {
+      "flow": "research",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0081-research-10-Close.png"
+    },
+    {
+      "flow": "research",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close research",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close research|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0082-research-11-Close-research.png"
+    },
+    {
+      "flow": "research",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 11,
+      "attempts": 11,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0084-gem-1-Open-history.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0085-gem-2-New-Chat.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0086-gem-3-Menu.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0087-gem-4-Settings.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0088-gem-5-Search.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0089-gem-6-Chat.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0090-gem-7-Browser.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0091-gem-8-Settings.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0092-gem-9-Close.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Personalization How Jarvis talks and responds",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Personalization How Jarvis talks and responds||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0093-gem-10-Personalization-How-Jarvis-talks-and-responds.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Auto (AI decides)",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Auto (AI decides)||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0094-gem-11-Auto-AI-decides-.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Balanced",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Balanced||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0095-gem-12-Balanced.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Talkative",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Talkative||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0096-gem-13-Talkative.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Helpful",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Helpful||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0097-gem-14-Helpful.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Just gets it done",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Just gets it done||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0098-gem-15-Just-gets-it-done.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Custom",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Custom||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0099-gem-16-Custom.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Save now",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Save now||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0100-gem-17-Save-now.png"
+    },
+    {
+      "flow": "gem",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 17,
+      "attempts": 17,
+      "remainingVisibleControls": 17
+    },
+    {
+      "flow": "studios",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0102-studios-1-Open-history.png"
+    },
+    {
+      "flow": "studios",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0103-studios-2-New-Chat.png"
+    },
+    {
+      "flow": "studios",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0104-studios-3-Menu.png"
+    },
+    {
+      "flow": "studios",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0105-studios-4-Settings.png"
+    },
+    {
+      "flow": "studios",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0106-studios-5-Search.png"
+    },
+    {
+      "flow": "studios",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0107-studios-6-Chat.png"
+    },
+    {
+      "flow": "studios",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0108-studios-7-Browser.png"
+    },
+    {
+      "flow": "studios",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0109-studios-8-Settings.png"
+    },
+    {
+      "flow": "studios",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Close",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Close"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0110-studios-9-Close.png"
+    },
+    {
+      "flow": "studios",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0111-studios-10-Close.png"
+    },
+    {
+      "flow": "studios",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 10,
+      "attempts": 10,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "design-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0113-design-studio-1-Open-history.png"
+    },
+    {
+      "flow": "design-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0114-design-studio-2-New-Chat.png"
+    },
+    {
+      "flow": "design-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0115-design-studio-3-Menu.png"
+    },
+    {
+      "flow": "design-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0116-design-studio-4-Settings.png"
+    },
+    {
+      "flow": "design-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0117-design-studio-5-Search.png"
+    },
+    {
+      "flow": "design-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0118-design-studio-6-Chat.png"
+    },
+    {
+      "flow": "design-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0119-design-studio-7-Browser.png"
+    },
+    {
+      "flow": "design-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0120-design-studio-8-Settings.png"
+    },
+    {
+      "flow": "design-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Close",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Close"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0121-design-studio-9-Close.png"
+    },
+    {
+      "flow": "design-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0122-design-studio-10-Close.png"
+    },
+    {
+      "flow": "design-studio",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 10,
+      "attempts": 10,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "music-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0124-music-studio-1-Open-history.png"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0125-music-studio-2-New-Chat.png"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0126-music-studio-3-Menu.png"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0127-music-studio-4-Settings.png"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0128-music-studio-5-Search.png"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0129-music-studio-6-Chat.png"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0130-music-studio-7-Browser.png"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0131-music-studio-8-Settings.png"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Close",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Close"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0132-music-studio-9-Close.png"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0133-music-studio-10-Close.png"
+    },
+    {
+      "flow": "music-studio",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 10,
+      "attempts": 10,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "data-lab",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0135-data-lab-1-Open-history.png"
+    },
+    {
+      "flow": "data-lab",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0136-data-lab-2-New-Chat.png"
+    },
+    {
+      "flow": "data-lab",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0137-data-lab-3-Menu.png"
+    },
+    {
+      "flow": "data-lab",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0138-data-lab-4-Settings.png"
+    },
+    {
+      "flow": "data-lab",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0139-data-lab-5-Search.png"
+    },
+    {
+      "flow": "data-lab",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0140-data-lab-6-Chat.png"
+    },
+    {
+      "flow": "data-lab",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0141-data-lab-7-Browser.png"
+    },
+    {
+      "flow": "data-lab",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0142-data-lab-8-Settings.png"
+    },
+    {
+      "flow": "data-lab",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0143-data-lab-9-Close.png"
+    },
+    {
+      "flow": "data-lab",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 9
+    },
+    {
+      "flow": "camera",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0145-camera-1-Open-history.png"
+    },
+    {
+      "flow": "camera",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0146-camera-2-New-Chat.png"
+    },
+    {
+      "flow": "camera",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0147-camera-3-Menu.png"
+    },
+    {
+      "flow": "camera",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0148-camera-4-Settings.png"
+    },
+    {
+      "flow": "camera",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0149-camera-5-Search.png"
+    },
+    {
+      "flow": "camera",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0150-camera-6-Chat.png"
+    },
+    {
+      "flow": "camera",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0151-camera-7-Browser.png"
+    },
+    {
+      "flow": "camera",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0152-camera-8-Settings.png"
+    },
+    {
+      "flow": "camera",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0153-camera-9-Close.png"
+    },
+    {
+      "flow": "camera",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0155-agent-1-Open-history.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0156-agent-2-New-Chat.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0157-agent-3-Menu.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0158-agent-4-Settings.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0159-agent-5-Search.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0160-agent-6-Chat.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0161-agent-7-Browser.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0162-agent-8-Settings.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0163-agent-9-button.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Back",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Back"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0164-agent-10-Back.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Forward",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Forward"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0165-agent-11-Forward.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Reload",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Reload"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0166-agent-12-Reload.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Show click grid (tiny cubes)",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Show click grid (tiny cubes)"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0167-agent-13-Show-click-grid-tiny-cubes-.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Hide click grid",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Hide click grid"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0168-agent-14-Hide-click-grid.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Minimize",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Minimize"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0169-agent-15-Minimize.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Jarvis's Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Jarvis's Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0170-agent-16-Jarvis-s-Browser.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Fullscreen",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Fullscreen"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0171-agent-17-Fullscreen.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "",
+        "title": "Collapse",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||||Collapse"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0172-agent-18-Collapse.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Run",
+        "aria": "",
+        "title": "Start the agent",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Run||Start the agent"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0173-agent-19-Run.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Retry Connection",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Retry Connection||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0174-agent-20-Retry-Connection.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Scroll Up",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Scroll Up||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0175-agent-21-Scroll-Up.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Scroll Down",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Scroll Down||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0176-agent-22-Scroll-Down.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Type Test",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Type Test||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0177-agent-23-Type-Test.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0178-agent-24-Close.png"
+    },
+    {
+      "flow": "agent",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 24,
+      "attempts": 24,
+      "remainingVisibleControls": 20
+    },
+    {
+      "flow": "browser",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0180-browser-1-Open-history.png"
+    },
+    {
+      "flow": "browser",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0181-browser-2-New-Chat.png"
+    },
+    {
+      "flow": "browser",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0182-browser-3-Menu.png"
+    },
+    {
+      "flow": "browser",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0183-browser-4-Settings.png"
+    },
+    {
+      "flow": "browser",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0184-browser-5-Search.png"
+    },
+    {
+      "flow": "browser",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0185-browser-6-Chat.png"
+    },
+    {
+      "flow": "browser",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0186-browser-7-Browser.png"
+    },
+    {
+      "flow": "browser",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0187-browser-8-Settings.png"
+    },
+    {
+      "flow": "browser",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0188-browser-9-Close.png"
+    },
+    {
+      "flow": "browser",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0190-settings-personalization-1-Open-history.png"
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0191-settings-personalization-2-New-Chat.png"
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0192-settings-personalization-3-Menu.png"
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0193-settings-personalization-4-Settings.png"
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0194-settings-personalization-5-Search.png"
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0195-settings-personalization-6-Chat.png"
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0196-settings-personalization-7-Browser.png"
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0197-settings-personalization-8-Settings.png"
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0198-settings-personalization-9-Close.png"
+    },
+    {
+      "flow": "settings-personalization",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0200-settings-memory-1-Open-history.png"
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0201-settings-memory-2-New-Chat.png"
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0202-settings-memory-3-Menu.png"
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0203-settings-memory-4-Settings.png"
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0204-settings-memory-5-Search.png"
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0205-settings-memory-6-Chat.png"
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0206-settings-memory-7-Browser.png"
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0207-settings-memory-8-Settings.png"
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0208-settings-memory-9-Close.png"
+    },
+    {
+      "flow": "settings-memory",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "settings-language",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0210-settings-language-1-Open-history.png"
+    },
+    {
+      "flow": "settings-language",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0211-settings-language-2-New-Chat.png"
+    },
+    {
+      "flow": "settings-language",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0212-settings-language-3-Menu.png"
+    },
+    {
+      "flow": "settings-language",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0213-settings-language-4-Settings.png"
+    },
+    {
+      "flow": "settings-language",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0214-settings-language-5-Search.png"
+    },
+    {
+      "flow": "settings-language",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0215-settings-language-6-Chat.png"
+    },
+    {
+      "flow": "settings-language",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0216-settings-language-7-Browser.png"
+    },
+    {
+      "flow": "settings-language",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0217-settings-language-8-Settings.png"
+    },
+    {
+      "flow": "settings-language",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0218-settings-language-9-Close.png"
+    },
+    {
+      "flow": "settings-language",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0220-settings-gmail-1-Open-history.png"
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0221-settings-gmail-2-New-Chat.png"
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0222-settings-gmail-3-Menu.png"
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0223-settings-gmail-4-Settings.png"
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0224-settings-gmail-5-Search.png"
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0225-settings-gmail-6-Chat.png"
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0226-settings-gmail-7-Browser.png"
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0227-settings-gmail-8-Settings.png"
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0228-settings-gmail-9-Close.png"
+    },
+    {
+      "flow": "settings-gmail",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0230-settings-spotify-1-Open-history.png"
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0231-settings-spotify-2-New-Chat.png"
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0232-settings-spotify-3-Menu.png"
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0233-settings-spotify-4-Settings.png"
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0234-settings-spotify-5-Search.png"
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0235-settings-spotify-6-Chat.png"
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0236-settings-spotify-7-Browser.png"
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0237-settings-spotify-8-Settings.png"
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0238-settings-spotify-9-Close.png"
+    },
+    {
+      "flow": "settings-spotify",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "settings-accent-color",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0240-settings-accent-color-1-Open-history.png"
+    },
+    {
+      "flow": "settings-accent-color",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0241-settings-accent-color-2-New-Chat.png"
+    },
+    {
+      "flow": "settings-accent-color",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0242-settings-accent-color-3-Menu.png"
+    },
+    {
+      "flow": "settings-accent-color",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0243-settings-accent-color-4-Settings.png"
+    },
+    {
+      "flow": "settings-accent-color",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0244-settings-accent-color-5-Search.png"
+    },
+    {
+      "flow": "settings-accent-color",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0245-settings-accent-color-6-Chat.png"
+    },
+    {
+      "flow": "settings-accent-color",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0246-settings-accent-color-7-Browser.png"
+    },
+    {
+      "flow": "settings-accent-color",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0247-settings-accent-color-8-Settings.png"
+    },
+    {
+      "flow": "settings-accent-color",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0248-settings-accent-color-9-Close.png"
+    },
+    {
+      "flow": "settings-accent-color",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "settings-web-search-data",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0250-settings-web-search-data-1-Open-history.png"
+    },
+    {
+      "flow": "settings-web-search-data",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0251-settings-web-search-data-2-New-Chat.png"
+    },
+    {
+      "flow": "settings-web-search-data",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0252-settings-web-search-data-3-Menu.png"
+    },
+    {
+      "flow": "settings-web-search-data",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0253-settings-web-search-data-4-Settings.png"
+    },
+    {
+      "flow": "settings-web-search-data",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0254-settings-web-search-data-5-Search.png"
+    },
+    {
+      "flow": "settings-web-search-data",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0255-settings-web-search-data-6-Chat.png"
+    },
+    {
+      "flow": "settings-web-search-data",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0256-settings-web-search-data-7-Browser.png"
+    },
+    {
+      "flow": "settings-web-search-data",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0257-settings-web-search-data-8-Settings.png"
+    },
+    {
+      "flow": "settings-web-search-data",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0258-settings-web-search-data-9-Close.png"
+    },
+    {
+      "flow": "settings-web-search-data",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "settings-llm-keys",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0260-settings-llm-keys-1-Open-history.png"
+    },
+    {
+      "flow": "settings-llm-keys",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0261-settings-llm-keys-2-New-Chat.png"
+    },
+    {
+      "flow": "settings-llm-keys",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0262-settings-llm-keys-3-Menu.png"
+    },
+    {
+      "flow": "settings-llm-keys",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0263-settings-llm-keys-4-Settings.png"
+    },
+    {
+      "flow": "settings-llm-keys",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0264-settings-llm-keys-5-Search.png"
+    },
+    {
+      "flow": "settings-llm-keys",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0265-settings-llm-keys-6-Chat.png"
+    },
+    {
+      "flow": "settings-llm-keys",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0266-settings-llm-keys-7-Browser.png"
+    },
+    {
+      "flow": "settings-llm-keys",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0267-settings-llm-keys-8-Settings.png"
+    },
+    {
+      "flow": "settings-llm-keys",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0268-settings-llm-keys-9-Close.png"
+    },
+    {
+      "flow": "settings-llm-keys",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "settings-about",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Open history",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Open history|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0270-settings-about-1-Open-history.png"
+    },
+    {
+      "flow": "settings-about",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "New Chat",
+        "title": "New Chat",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||New Chat|New Chat"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0271-settings-about-2-New-Chat.png"
+    },
+    {
+      "flow": "settings-about",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Menu",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Menu|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0272-settings-about-3-Menu.png"
+    },
+    {
+      "flow": "settings-about",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Settings",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Settings||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0273-settings-about-4-Settings.png"
+    },
+    {
+      "flow": "settings-about",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Search",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Search|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0274-settings-about-5-Search.png"
+    },
+    {
+      "flow": "settings-about",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Chat",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Chat||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0275-settings-about-6-Chat.png"
+    },
+    {
+      "flow": "settings-about",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Browser",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Browser||"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0276-settings-about-7-Browser.png"
+    },
+    {
+      "flow": "settings-about",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Settings",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Settings|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0277-settings-about-8-Settings.png"
+    },
+    {
+      "flow": "settings-about",
+      "kind": "button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "",
+        "aria": "Close",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON|||Close|"
+      },
+      "category": "normal",
+      "outcome": {
+        "ok": true
+      },
+      "after": "0278-settings-about-9-Close.png"
+    },
+    {
+      "flow": "settings-about",
+      "kind": "surface-summary",
+      "uniqueControlsActivatedOrProtected": 9,
+      "attempts": 9,
+      "remainingVisibleControls": 8
+    },
+    {
+      "flow": "oauth-gmail",
+      "kind": "oauth-button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Connect Google account (Gmail + Calendar)",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Connect Google account (Gmail + Calendar)||"
+      },
+      "outcome": {
+        "ok": true
+      },
+      "outcomePolicy": "no-login-no-consent"
+    },
+    {
+      "flow": "oauth-gmail",
+      "kind": "oauth-popup",
+      "url": "https://accounts.google.com/signin/oauth/error?authError=Cg5pbnZhbGlkX2NsaWVudBIfVGhlIE9BdXRoIGNsaWVudCB3YXMgbm90IGZvdW5kLiCRAw&flowName=GeneralOAuthLite&client_id=1065065357717-6mrptb69uh6pg02ar6at-bo501re5rsif.apps.googleusercontent.com&aes=AVQXgOCDqAOK-lIMa6kIQ4er-a3E",
+      "screenshot": "0279-oauth-gmail-oauth-login.png",
+      "outcome": "opened-without-login"
+    },
+    {
+      "flow": "oauth-spotify",
+      "kind": "oauth-button",
+      "control": {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Connect Spotify",
+        "aria": "",
+        "title": "",
+        "disabled": false,
+        "visible": true,
+        "signature": "BUTTON||Connect Spotify||"
+      },
+      "outcome": {
+        "ok": true
+      },
+      "outcomePolicy": "no-login-no-consent"
+    },
+    {
+      "flow": "oauth-spotify",
+      "kind": "oauth-popup",
+      "url": "https://accounts.spotify.com/en/login?continue=https%3A%2F%2Faccounts.spotify.com%2Fauthorize%3Fscope%3Duser-read-playback-state%2Buser-modify-playback-state%2Buser-read-currently-playing%2Bstreaming%2Buser-read-email%2Buser-read-private%2Bplaylist-read-private%2Buser-library-read%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252F9d2b9df0-748a-4afe-82f8-7c1d27c82b34-00-33wvqt2nsicbd.kirk.replit.dev%252Fapi%252Fjarvis%252Fspotify%252Fcallback%26client_id%3D7bc72a7bf6bd465a8dfcde4e9d5e9355%26show_dialog%3Dtrue&client_id=7bc72a7bf6bd465a8dfcde4e9d5e9355",
+      "screenshot": "0280-oauth-spotify-oauth-login.png",
+      "outcome": "opened-without-login"
+    },
+    {
+      "flow": "final-reset",
+      "kind": "reset",
+      "outcome": "clear-all-not-found"
+    }
+  ],
+  "counts": {
+    "buttonRecords": 255,
+    "successfulActivations": 255,
+    "failedActivations": 0,
+    "protectedApiKeyControls": 0,
+    "oauthButtons": 2,
+    "oauthPopups": 2
+  }
+}

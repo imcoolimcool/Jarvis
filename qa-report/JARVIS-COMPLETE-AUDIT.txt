@@ -719,3 +719,40 @@ The most urgent product improvements are:
 The app is a promising foundation, but the first-run experience and
 provider-dependent failure states need attention before calling it production
 ready.
+
+
+12. FOLLOW-UP FULL BUTTON PASS
+-------------------------------
+
+After the earlier incomplete audit was corrected, a separate bounded browser
+pass was run from fresh UI states for the major surfaces and each Settings
+subview.
+
+Latest pass evidence:
+
+- 255 distinct visible button/control activations were recorded.
+- 255 activations returned successfully from the QA runner.
+- 0 activation failures were recorded by this pass.
+- 281 screenshots were captured in:
+  qa-report/complete-button-pass/
+- Gmail OAuth entry was pressed and opened an external Google login/error page.
+  No credentials were entered and no consent was granted.
+- Spotify OAuth entry was pressed and opened the Spotify login page. No
+  credentials were entered and no consent was granted.
+- API-key and secret-management controls were not pressed.
+- Browser/Agent actions still produce the existing browser-service failure.
+- React duplicate-key warnings remain present.
+
+This is stronger evidence than the original 344-click sweep, but it still
+means "distinct visible controls activated from the tested fresh surfaces,"
+not proof that every data-dependent workflow succeeded. File, microphone,
+camera, screen-share, LLM, image-generation, and mutation-dependent flows
+remain subject to their documented device/provider/service limitations.
+
+App-data reset:
+
+- The visible Clear All control was not present during the final reset attempt.
+- A read-only check of the conversation endpoint returned an empty list.
+- Therefore no destructive reset request was issued; there were no chat records
+  present to clear.
+- Code, secrets, API keys, and application source were not changed.
