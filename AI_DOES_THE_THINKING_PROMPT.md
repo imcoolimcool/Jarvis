@@ -3,8 +3,8 @@
 This is the LAST prompt. Execute it in phases, in order. Every phase must leave the app
 building and the locked list (section 13) intact. Commit after each phase. When all phases
 are done, the project is done: a ChatGPT / Gemini / Claude / Grok competitor for chat and
-research, a best-free-technology Suno competitor (music), a best-free Canva-AI competitor
-(design), a best-free Replit competitor (build), plus a personal-assistant layer (voice,
+research, a Replit-grade Build Studio, a Canva-grade Design Studio, a free-tech Suno-style
+Music Studio (instrumental, honestly labeled), plus a personal-assistant layer (voice,
 camera, timers, web agent, widgets) none of them have.
 
 "Done" is defined per studio by the BEST FREE TECHNOLOGY AVAILABLE, labeled honestly in the
@@ -27,8 +27,9 @@ start the next phase until the current one passes its gate. Keep the app green t
 - **Phase C — Groupchats + accounts.** Accounts and invite codes (section 5c), AI persona
   roundtables, human group chats, group settings.
   Gate: two devices can join a group via code; personas converse; build mode runs unattended.
-- **Phase D — Studios to free-parity.** Music, Design, Build (section 14).
-  Gate: each studio produces a real artifact end to end.
+- **Phase D — Studios to full-parity.** Music, Design, Build (section 14).
+  Gate: each studio is feature-complete per its full surface in section 14, produces a real
+  artifact end to end, and is honestly labeled where free tech caps a feature.
 - **Phase E — Polish + QA.** Full acceptance matrix (section 15), broken-controls audit,
   dedupe, i18n both languages, performance, final grep gates.
 
@@ -42,7 +43,10 @@ toggles in the default flow. Tool selection is replaced by automatic intent rout
 become hidden overrides.
 
 The studios reach the best possible quality with free technology, and the UI says honestly
-what they are (section 14). Nothing is a stub.
+what they are (section 14). Nothing is a stub. Build and Design are held to the FULL
+competitor feature surface (Replit-grade, Canva-grade): build every feature in section 14;
+where free/local tech caps a specific feature, ship the best free version and label it
+honestly in the UI rather than stubbing it.
 
 ## 2. GLOBAL HARD RULES
 
@@ -269,31 +273,62 @@ changes. The files DB lives in the separate Neon database; everything else in th
 - `use-chat-stream.ts` hook contract and the `processUserText` flow.
 - Group/account features degrade gracefully when single-user.
 
-## 14. STUDIOS — BEST FREE TECH, HONEST LABELS
+## 14. STUDIOS — FULL COMPETITOR SURFACE, BEST FREE TECH, HONEST LABELS
 
-Each studio is labeled honestly about what it is. "Done" = a complete studio at the best
-free/local quality, producing a real artifact end to end. None is a stub; none overclaims.
+Each studio is built to the FULL feature surface below. Where free/local tech caps a feature,
+ship the best free version and label it honestly in the UI (never a silent stub). "Done" for
+each = every feature listed exists and works end to end. This is the bar the user demands:
+Build must be Replit-grade, Design must be Canva-grade.
 
-- **Music Studio** ("free AI music, lo-fi/ambient/electronic focus"). CURRENT STATE (verified):
-  it is ONLY a 166-line procedural Web Audio synth that composes a seed+mood melody in the
-  browser and plays it live. No prompt, no model, no server, no API. The Suno-style
-  prompt-to-track pipeline is a FROM-SCRATCH build in Phase D, not an extension.
-  - Build: local MusicGen worker. `scripts/music-gen-worker/` (Python FastAPI +
-    transformers, `facebook/musicgen-small` or `medium`). api-server calls it via
-    `MUSIC_GEN_WORKER_URL`. Free and unlimited; runs on the user's machine.
-  - FALLBACK: HuggingFace Inference API with a free HF token (`HF_API_TOKEN`), MusicGen
-    model, pay-as-you-go, with graceful "out of free credits" handling.
-  - Keep the existing browser synth as an OFFLINE fallback when no worker/key is configured,
-    labeled "procedural preview".
-  - UI: prompt, genre/mood/duration controls, playback, download, history/queue, provider
-    selector in studio settings.
-- **Design Studio** ("AI image studio"). Generate images, edit existing images, style
-  presets, export. Receives edits from chat (onEditImage). Complete, not a stub.
-- **Build Studio** ("code + terminal workspace"). Real terminal + workspace, clone GitHub
-  repos, run commands, stream output, write and run code, save each build as a build-app
-  (stored via 12.1, listed in the Gallery with name + preview + launch).
-- **Research Studio** ("deep multi-source research"). Multi-phase, sources, estimate,
-  deep/standard, cancellation, honest limits.
+### 14.1 BUILD STUDIO (Replit-grade)
+CURRENT STATE (verified): backend has a real sandbox workspace (`lib/workspace.ts`: terminal
+via execFile, read/write/list files), but the FRONTEND has no IDE. The user sees only a card
+feed of commands/results. Everything below that is missing must be built.
+- **Code editor**: Monaco or CodeMirror. Multi-file open tabs, syntax highlighting, save.
+- **File tree**: browse/open/create/rename/delete files and folders in the workspace.
+- **Terminal**: real shell, run/stop, clear, scrollback, history. Output streams live.
+- **Run & preview**: start servers/apps from the workspace, show running ports, preview the
+  app in an embedded browser iframe with live reload.
+- **Packages & env**: run package installs (npm, pip, etc.); per-project environment
+  variables.
+- **Git**: init, clone, commit, push from the UI.
+- **AI pair**: Jarvis writes, edits, and debugs via the terminal and file tools; can
+  scaffold an entire project from a one-line ask.
+- **Persistence**: each project is a saved build-app (stored via 12.1) that reopens with its
+  files, terminal state, and dependencies; listed in the Gallery with name + preview +
+  launch.
+
+### 14.2 DESIGN STUDIO (Canva-grade)
+CURRENT STATE (verified): only text-to-image generation plus loading a base64 image for
+editing. Everything below that is missing must be built.
+- **Canvas editor**: a real design canvas with layers, shapes, text boxes, images; drag,
+  resize, rotate, align, z-order, group; undo/redo.
+- **Templates & presets**: template gallery (social, poster, card, logo) plus blank canvas
+  with preset sizes.
+- **AI (Canva-AI bar)**: text-to-image (exists, keep), AI edit of a selected region
+  (regenerate/erase/fill), background removal, upscale.
+- **Style**: color themes, font pairs, filters/presets.
+- **Export**: PNG, JPG, PDF, SVG; resize presets.
+- **Projects**: saved designs list, reopen, version history.
+- **Chat flow**: receives edits from chat (existing onEditImage) and from image generation.
+
+### 14.3 MUSIC STUDIO (Suno surface, honest ceiling)
+CURRENT STATE (verified): only a 166-line procedural Web Audio synth (seed+mood melody, no
+prompt/model/server). The prompt-to-track pipeline is a FROM-SCRATCH build.
+- **Prompt to track**: local MusicGen worker (`scripts/music-gen-worker/`, Python FastAPI +
+  transformers, `facebook/musicgen-small`/`medium`) called via `MUSIC_GEN_WORKER_URL`. Free,
+  unlimited. Falls back to HuggingFace Inference API (free token `HF_API_TOKEN`) with
+  graceful "out of free credits" handling.
+- **Controls**: prompt, genre/mood/duration, playback, download, history/queue, provider
+  selector in studio settings.
+- **Honest ceiling (label in the UI)**: free MusicGen makes strong lo-fi/ambient/electronic/
+  beat instrumentals. Vocals, lyrics, and exact-cover fidelity are NOT possible with free
+  tech; label the studio "instrumental focus" rather than claiming Suno vocal parity.
+- **Offline fallback**: the existing browser synth, labeled "procedural preview".
+
+### 14.4 RESEARCH STUDIO (Gemini-grade bar)
+Multi-phase research, inline sources, an estimate before launch, deep/standard depths,
+cancellation, honest limits. Already exists; keep and polish to parity.
 
 ## 15. ACCEPTANCE CRITERIA (run per phase; no tool selection allowed)
 
@@ -322,11 +357,16 @@ Phase C (groupchats + accounts):
     the AI toggle (always vs @Jarvis) changes behavior.
 16. Group Settings button appears next to the 3-dot menu for group chats.
 
-Phase D (studios):
-17. Music Studio generates playable audio via the worker, plays, downloads; 30+ tracks a
-    month cost nothing.
-18. Design Studio generates and edits images end to end.
-19. Build Studio runs code, clones a repo, and saves a build-app visible in the Gallery.
+Phase D (studios, per the full surface in section 14):
+17. Music Studio: prompt to a playable track via the worker, playback, download, history;
+    the instrumental ceiling is labeled; 30+ tracks a month cost nothing; offline
+    procedural fallback works.
+18. Design Studio: canvas editor with layers/shapes/text/images, templates and presets,
+    AI edit + background removal + upscale, style presets, PNG/JPG/PDF/SVG export, saved
+    projects with history. It is genuinely Canva-grade, not generate-and-edit-only.
+19. Build Studio: multi-file editor + file tree + terminal + run/preview with live reload,
+    package/env support, git clone/commit, AI scaffolding, saved build-apps that reopen,
+    listed in the Gallery with launch. It is genuinely Replit-grade, not a card feed.
 
 Phase E (polish):
 20. Broken-controls audit clean; dedupe done; both languages complete; app is fast.
