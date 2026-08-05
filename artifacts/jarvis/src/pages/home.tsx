@@ -1898,13 +1898,16 @@ export default function Home() {
                          aria-hidden="true"
                          className="flex h-5 items-center justify-center gap-[2px]"
                        >
-                         {[1, 2, 3, 4, 3, 2, 1].map((height, index) => (
+                         {[2, 3, 4, 3, 2].map((height, index) => {
+                           const isDot = index === 0 || index === 4;
+                           return (
                            <span
                              key={index}
-                             className="w-[2px] rounded-full bg-current"
-                             style={{ height: `${height * 4 + 2}px` }}
+                             className={`${isDot ? 'h-1.5 w-[2px]' : 'w-[2px]'} rounded-full bg-current`}
+                             style={isDot ? undefined : { height: `${height * 4 + 2}px` }}
                            />
-                         ))}
+                           );
+                         })}
                        </span>
                     </button>
                   </div>
