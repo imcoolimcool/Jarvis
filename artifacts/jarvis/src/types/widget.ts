@@ -37,6 +37,13 @@ export interface MusicComposition {
   drumPattern: number[];
 }
 
+export interface FileEdit {
+  path: string;
+  bytesWritten: number;
+  oldContent: string;
+  newContent: string;
+}
+
 export type Widget =
   | { type: 'clock'; timezones: ClockTimezone[] }
   | { type: 'weather'; location: string; temp_c: number; temp_f: number; feelsLike_c: number; condition: string; conditionCode: number; humidity: number; windSpeed_kmh: number; windDir: string; isDay: boolean; forecast: ForecastDay[] }

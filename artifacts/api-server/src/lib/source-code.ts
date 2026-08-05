@@ -1,5 +1,5 @@
 import { existsSync } from "fs";
-import { readFile, readdir, stat } from "fs/promises";
+import { readFile, writeFile, readdir, stat, mkdir } from "fs/promises";
 import path from "path";
 
 /**
@@ -71,6 +71,30 @@ export async function listSourceFiles(limit = 2000): Promise<string[]> {
   };
   await walk(REPO_ROOT);
   return out.sort();
+}
+
+/** Write a file to the repository with path-traversal + blocked-pattern safety.
+ *  Returns old content if the file existed (for diff display), or null. */
+export async function writeSourceFile(
+  rel: string,
+  content: string,
+): Promise<
+  | { ok: true; path: string; bytesWritten: number; oldContent: string | null }
+  | { ok: false; error: string }
+> {
+  const abs = safeResolve(rel);
+  if (!abs) return { ok: false, error: "Path not allowed (outside the repository or blocked)." };
+  let oldContent: string | null = null;
+  try {
+    oldContent = await readFile(abs, "utf8");
+  } catch { /* file doesn't exist yet — that's fine */ }
+  try {
+    await mkdir(path.dirname(abs), { recursive: true });
+    await writeFile(abs, content, "utf8");
+    return { ok: true, path: rel, bytesWritten: content.length, oldContent };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Write failed." };
+  }
 }
 
 /** Read a single file (text, capped) or return an error object. */

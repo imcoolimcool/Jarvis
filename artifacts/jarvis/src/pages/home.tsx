@@ -10,7 +10,7 @@ import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
 import { Square, Mic, MessageSquare, Send, Settings, Menu, X, Plus, Bug, Search, Minimize2, Maximize2, AudioWaveform, ArrowLeft, SquarePen, MoreHorizontal, Camera, Globe, AlarmClock, Sparkles, FileText } from 'lucide-react';
-import type { Widget, TerminalResult } from '@/types/widget';
+import type { Widget, TerminalResult, FileEdit } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, CommandCard } from '@/components/widgets';
 import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
 import { useScreenShare } from '@/hooks/use-screen-share';
@@ -134,7 +134,7 @@ export default function Home() {
   const [designStudioOpen, setDesignStudioOpen] = useState(false);
   const [designImage, setDesignImage] = useState<string | null>(null);
   const [musicStudioOpen, setMusicStudioOpen] = useState(false);
-  const [buildTab, setBuildTab] = useState<'terminal' | 'files'>('terminal');
+  const [buildTab, setBuildTab] = useState<'terminal' | 'files' | 'clone'>('terminal');
   const [buildFiles, setBuildFiles] = useState<{ path: string; type: 'file' | 'dir'; size: number }[]>([]);
   const [sessionCommands, setSessionCommands] = useState<TerminalResult[]>([]);
   const [commandInput, setCommandInput] = useState('');
@@ -791,12 +791,42 @@ export default function Home() {
                 break;
               case 'done':
                 convId = parsed.conversationId ?? convId;
+                // Auto-follow-up: when Jarvis signals the next step (Build Mode
+                // multi-step workflows), auto-submit it after a short delay.
+                if (parsed.followUp && typeof parsed.followUp === 'string') {
+                  const task = parsed.followUp.trim().slice(0, 200);
+                  setTimeout(() => {
+                    setMessages(prev => [...prev, {
+                      role: 'user', content: task,
+                      timestamp: Date.now(), id: `fu${Date.now()}`,
+                    }]);
+                    processUserTextRef.current?.(task, null, false);
+                  }, 1800);
+                }
                 break;
               case 'suggestions':
                 newSuggestions = parsed.suggestions ?? [];
                 break;
               case 'widget':
                 widget = parsed.widget ?? null;
+                break;
+              case 'file_edit':
+                // The AI wrote a file — show it as an expandable diff card
+                // on the current assistant message.
+                {
+                  const fe: FileEdit = { path: parsed.path, bytesWritten: parsed.bytesWritten ?? 0, oldContent: parsed.oldContent ?? '', newContent: parsed.newContent ?? '' };
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    if (last && last.role === 'assistant') {
+                      updated[updated.length - 1] = {
+                        ...last,
+                        fileEdits: [...(last.fileEdits ?? []), fe],
+                      };
+                    }
+                    return updated;
+                  });
+                }
                 break;
               case 'terminal_result':
                 // The AI ran a shell command — show it as a clean minimal card
@@ -870,6 +900,19 @@ export default function Home() {
                     },
                   }];
                 });
+                break;
+              case 'follow_up':
+                // Standalone follow-up event — auto-submit the next task
+                if (parsed.task && typeof parsed.task === 'string') {
+                  const task = parsed.task.trim().slice(0, 200);
+                  setTimeout(() => {
+                    setMessages(prev => [...prev, {
+                      role: 'user', content: task,
+                      timestamp: Date.now(), id: `fu${Date.now()}`,
+                    }]);
+                    processUserTextRef.current?.(task, null, false);
+                  }, 1500);
+                }
                 break;
               case 'error':
                 handleError(parsed.message ?? 'Stream error');

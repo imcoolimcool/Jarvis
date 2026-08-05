@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { SettingsPanel } from '@/components/settings-panel';
@@ -11,7 +12,7 @@ import { MusicStudio } from '@/components/music-studio';
 import { StudiosHub, type StudioId } from '@/components/studios-hub';
 import { CommandCard } from '@/components/widgets/CommandCard';
 import type { TerminalResult } from '@/types/widget';
-import { Hammer, X, FolderTree } from 'lucide-react';
+import { Hammer, X, FolderTree, Download } from 'lucide-react';
 
 interface AppOverlaysProps {
   // Settings
@@ -48,8 +49,8 @@ interface AppOverlaysProps {
   onOpenSettings: () => void;
   // Build Mode
   buildPanelOpen: boolean;
-  buildTab: 'terminal' | 'files';
-  setBuildTab: (tab: 'terminal' | 'files') => void;
+  buildTab: 'terminal' | 'files' | 'clone';
+  setBuildTab: (tab: 'terminal' | 'files' | 'clone') => void;
   onCloseBuild: () => void;
   buildFiles: { path: string; type: 'file' | 'dir'; size: number }[];
   onRefreshBuildFiles: () => void;
@@ -69,6 +70,16 @@ interface AppOverlaysProps {
   onCloseMusic: () => void;
   // Research pulse chip
   showResearchPulse: boolean;
+}
+
+function CloneForm({ onClone }: { onClone: (url: string) => void }) {
+  const [url, setUrl] = useState('');
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); if (url.trim()) { onClone(url.trim()); setUrl(''); } }} className="flex items-center gap-2 w-full max-w-sm">
+      <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://github.com/user/repo.git" className="flex-1 min-w-0 bg-muted/40 border border-border/30 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-primary/40 transition-colors" spellCheck={false} />
+      <button type="submit" disabled={!url.trim()} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/15 transition-colors disabled:opacity-40"><Download className="w-3.5 h-3.5" />Clone</button>
+    </form>
+  );
 }
 
 export function AppOverlays(props: AppOverlaysProps) {
@@ -115,12 +126,25 @@ export function AppOverlays(props: AppOverlaysProps) {
                 <div className="flex items-center gap-1">
                   <button onClick={() => props.setBuildTab('terminal')} className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors ${props.buildTab === 'terminal' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}>Terminal</button>
                   <button onClick={() => { props.setBuildTab('files'); props.onRefreshBuildFiles(); }} className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors ${props.buildTab === 'files' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}>Files</button>
+                  <button onClick={() => props.setBuildTab('clone')} className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors ${props.buildTab === 'clone' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}>Clone</button>
                   <button onClick={props.onCloseBuild} className="p-2 rounded-full hover:bg-muted/50 text-muted-foreground transition-colors ml-1" title="Close"><X className="w-4 h-4" /></button>
                 </div>
               </div>
               {/* Body */}
               <div className="flex-1 min-h-0 overflow-y-auto">
-                {props.buildTab === 'terminal' ? (
+                {props.buildTab === 'clone' ? (
+                  <div className="p-4 flex flex-col items-center justify-center text-center gap-3 h-full">
+                    <Download className="w-8 h-8 text-muted-foreground/40" />
+                    <div>
+                      <p className="text-sm font-semibold mb-1">Clone a repository</p>
+                      <p className="text-[10px] font-mono text-muted-foreground/50 max-w-[260px]">Paste a GitHub URL below — Jarvis will clone it and you can ask him to build on top of it.</p>
+                    </div>
+                    <CloneForm onClone={(url) => {
+                      props.setBuildTab('terminal');
+                      props.setCommandInput(`git clone ${url}`);
+                    }} />
+                  </div>
+                ) : props.buildTab === 'terminal' ? (
                   <div className="p-3">
                     <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 uppercase mb-2">Commands the AI ran</p>
                     {props.sessionCommands.length === 0 ? (

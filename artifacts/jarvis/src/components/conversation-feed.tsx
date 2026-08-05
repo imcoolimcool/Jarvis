@@ -7,7 +7,9 @@ import { useI18n } from '@/lib/i18n';
 import { haptics } from '@/lib/haptics';
 import type { Widget, VerifyClaim, TerminalResult } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, ImageResultsWidget, DateWidget, CalculatorWidget, DefineWidget, UnitConverterWidget, CurrencyWidget, MapWidget, RandomWidget, MusicWidget } from '@/components/widgets';
+import type { FileEdit } from '@/types/widget';
 import { CommandCard } from '@/components/widgets/CommandCard';
+import { FileEditCard } from '@/components/widgets/FileEditCard';
 import { ImageConfirmationCard, ImageGeneratingCard, ScreenShareConfirmationCard, AgentBrowserConfirmationCard, SourceCodeConfirmationCard, BuildModeConfirmationCard } from '@/components/image-confirmation-card';
 
 export interface ChatMessage {
@@ -37,6 +39,8 @@ export interface ChatMessage {
   reasoning?: string;
   /** Terminal command cards the AI ran while answering (from run_terminal). */
   terminalResults?: TerminalResult[];
+  /** File edits the AI made while answering (from write_source_file). */
+  fileEdits?: FileEdit[];
 }
 
 interface ConversationFeedProps {
@@ -717,6 +721,9 @@ export function ConversationFeed({
               {!isUser && msg.terminalResults && msg.terminalResults.length > 0 && (
                 <div className="w-full max-w-xl">
                   {msg.terminalResults.map((tr, i) => <CommandCard key={i} result={tr} />)}
+                  {msg.fileEdits?.map((ed, i) => (
+                    <FileEditCard key={`fe-${ed.path}-${i}`} edit={ed} />
+                  ))}
                 </div>
               )}
             </motion.div>
