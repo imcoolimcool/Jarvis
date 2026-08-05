@@ -10,8 +10,13 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-// Auto-create all tables on first boot (idempotent — fast no-op on subsequent boots)
-ensureTables().then(() => {
+// Auto-create all tables on first boot (idempotent — fast no-op on subsequent
+// boots). NEVER gate app.listen on this: if the DB is down, the server must
+// still boot so the health check can report db: disconnected and the frontend
+// gets a real, actionable error instead of "server unreachable".
+ensureTables().catch((err) => {
+  logger.error({ err }, "Database migration skipped — DB unreachable. Server will still start; add DATABASE_URL to bring it online.");
+}).finally(() => {
   app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
