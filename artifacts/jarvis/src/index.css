@@ -187,7 +187,7 @@
    with viewport height on tall phones, but short phones keep the full stack
    inside the available chat stage. */
 .chat-empty-state {
-  transform: translateY(calc(clamp(0px, 3vh, 1.75rem) - 4px));
+  transform: translateY(calc(clamp(0px, 3vh, 1.75rem) - 8px));
 }
 
 @media (max-height: 700px) {
