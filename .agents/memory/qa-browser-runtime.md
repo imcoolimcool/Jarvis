@@ -21,6 +21,12 @@ For mobile chat screenshots, explicitly set the persisted app mode to `chat` bef
 
 **How to apply:** Use a fresh page, set the mode before reload, then open overlays such as the plus menu and capture the target viewport.
 
+Responsive empty states should be checked at both width and height extremes; a fixed vertical transform can look correct on a modern phone while clipping the same content on an iPhone 4-sized viewport.
+
+**Why:** The welcome/orb/suggestion stack and bottom composer share the available viewport, so height—not width alone—determines whether the composition remains balanced.
+
+**How to apply:** Validate at least one 320×480 viewport, one modern phone viewport, and one extra-tall phone viewport before finalizing mobile positioning.
+
 For end-to-end claims, DOM activation counts are not completion evidence. Each
 major surface and mutually exclusive action needs an isolated fresh state,
 post-action assertion, and a status of PASS, FAIL, BLOCKED, NOT TESTED, or

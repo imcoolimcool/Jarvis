@@ -183,11 +183,11 @@
   }
 }
 
-/* The empty chat state needs height-aware positioning: the same vertical
-   offset that feels balanced on a tall phone can push the orb off-screen on
-   compact devices such as the iPhone 4. */
+/* Place the welcome cluster in the flexible middle zone. The offset scales
+   with viewport height on tall phones, but short phones keep the full stack
+   inside the available chat stage. */
 .chat-empty-state {
-  transform: translateY(-5rem);
+  transform: translateY(calc(clamp(0px, 3vh, 1.75rem) - 4px));
 }
 
 @media (max-height: 700px) {
