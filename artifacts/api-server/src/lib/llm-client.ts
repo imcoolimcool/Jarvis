@@ -67,6 +67,29 @@ const envHealth = new Map<string, EnvHealth>();
 
 function envKeyEntries(): LlmKeyEntry[] {
   const out: LlmKeyEntry[] = [];
+
+  // OpenRouter (optional but preferred when set) — the free auto-router
+  // model `openrouter/free` picks the best free provider per request and
+  // routes to a vision-capable model automatically when an image is sent.
+  const openRouterKey = process.env["OPENROUTER_API_KEY"];
+  if (openRouterKey) {
+    const h = envHealth.get(openRouterKey);
+    out.push({
+      id: "env-openrouter",
+      name: "Env: OpenRouter (free auto-router)",
+      baseUrl: "https://openrouter.ai/api/v1",
+      apiKey: openRouterKey,
+      model: process.env["OPENROUTER_MODEL"] ?? "openrouter/free",
+      enabled: true,
+      priority: 1, // highest — tried first, NVIDIA keys become failover
+      source: "env",
+      status: h?.status ?? "healthy",
+      coolDownUntil: h?.coolDownUntil ?? null,
+      uses: h?.uses ?? 0,
+      failures: h?.failures ?? 0,
+    });
+  }
+
   for (let i = 1; i <= 9; i++) {
     const apiKey = process.env[i === 1 ? "OPENAI_LLM_API_KEY" : `OPENAI_LLM_API_KEY_${i}`];
     if (!apiKey) continue;
@@ -250,11 +273,9 @@ async function reportFailure(key: LlmKeyEntry, err: unknown): Promise<void> {
 
 /* ── failover runner ──────────────────────────────────────────── */
 
-let rrIndex = 0;
-
 /**
  * Run `fn(client, model)` with automatic failover across healthy keys.
- * - Round-robins starting key.
+ * - Tries the highest-priority healthy key first (OpenRouter when configured).
  * - On ANY failure: quarantines that key, tries the next one.
  * - Only throws LLMAllKeysCoolingError once every key has failed (or none are healthy).
  */
@@ -262,9 +283,11 @@ export async function runWithLLM<T>(fn: (client: OpenAI, model: string) => Promi
   const keys = await getHealthyKeys();
   if (keys.length === 0) throw new LLMAllKeysCoolingError();
 
-  const start = rrIndex % keys.length;
-  rrIndex = (rrIndex + 1) % keys.length;
-  const order = [...keys.slice(start), ...keys.slice(0, start)];
+  // Always try the highest-priority healthy key first (OpenRouter when
+  // configured), then fail over down the list. Lower priority number =
+  // higher priority. Removed round-robin: with OpenRouter configured the
+  // user expects it to be THE model, not every-other-request.
+  const order = [...keys].sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name));
 
   let lastErr: unknown = null;
   for (const key of order) {

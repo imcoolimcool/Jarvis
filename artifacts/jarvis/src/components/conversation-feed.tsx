@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { FileText, Copy, Check, RotateCcw, Pencil, X, Send, Globe, Timer, ChevronDown, Image, Eye, EyeOff, Sunrise, BrainCircuit, Volume2, ThumbsUp, ThumbsDown, Share, MoreHorizontal, ShieldCheck, Loader2 } from 'lucide-react';
+import { FileText, Copy, Check, RotateCcw, Pencil, X, Send, Globe, Timer, ChevronDown, Image, Eye, EyeOff, Sunrise, BrainCircuit, Volume2, ThumbsUp, ThumbsDown, Share, MoreHorizontal, ShieldCheck, Loader2, Wand2 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { haptics } from '@/lib/haptics';
 import type { Widget, VerifyClaim, TerminalResult } from '@/types/widget';
@@ -11,6 +11,8 @@ import { CommandCard } from '@/components/widgets/CommandCard';
 import { ImageConfirmationCard, ImageGeneratingCard, ScreenShareConfirmationCard, AgentBrowserConfirmationCard, SourceCodeConfirmationCard, BuildModeConfirmationCard } from '@/components/image-confirmation-card';
 
 export interface ChatMessage {
+  /** Stable client-side id — avoids duplicate-key warnings during stream updates. */
+  id?: string;
   role: 'user' | 'assistant';
   content: string;
   file?: { preview?: string; fileName?: string };
@@ -48,6 +50,7 @@ interface ConversationFeedProps {
   onSpeak?: (text: string) => void;
   onImageConfirm?: (prompt: string) => void;
   onImageCancel?: () => void;
+  onEditImage?: (image: string) => void;
   generatingImage?: boolean;
   generatingImagePrompt?: string;
   onScreenShareConfirm?: () => void;
@@ -429,6 +432,7 @@ export function ConversationFeed({
   onSpeak,
   onImageConfirm,
   onImageCancel,
+  onEditImage,
   generatingImage = false,
   generatingImagePrompt = '',
   onScreenShareConfirm,
@@ -563,7 +567,7 @@ export function ConversationFeed({
 
           return (
             <motion.div
-              key={idx}
+              key={msg.id ?? idx}
               initial={{ opacity: 0, y: 16, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.2 }}
@@ -629,8 +633,16 @@ export function ConversationFeed({
 
               {/* Generated image display */}
               {msg.image && (
-                <div className={`rounded-2xl overflow-hidden border border-purple-400/20 bg-card max-w-[360px] ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}>
+                <div className={`relative group rounded-2xl overflow-hidden border border-purple-400/20 bg-card max-w-[360px] ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}>
                   <img src={msg.image} alt="Generated image" className="w-full h-auto" />
+                  {onEditImage && (
+                    <button
+                      onClick={() => onEditImage(msg.image!)}
+                      className="absolute top-2 right-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-black/60 backdrop-blur text-white text-[10px] font-medium opacity-0 group-hover:opacity-100 hover:bg-black/80 transition-all active:scale-95"
+                    >
+                      <Wand2 className="w-3 h-3" /> Edit
+                    </button>
+                  )}
                   {msg.content && (
                     <div className="px-3 py-2 border-t border-border/30">
                       <p className="text-[10px] font-mono text-muted-foreground/60 leading-relaxed">{msg.content}</p>

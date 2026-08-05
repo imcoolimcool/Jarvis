@@ -109,6 +109,17 @@ export default function Home() {
   const [agentGoal, setAgentGoal] = useState<string | null>(null);
   const [plusMenuCoords, setPlusMenuCoords] = useState<{ top: number; left: number } | null>(null);
   const plusButtonRef = useRef<HTMLDivElement>(null);
+  // QA-002: only request/notify about the microphone after the user has shown
+  // explicit intent (tapped the orb / a voice control), never on first load.
+  const micIntentRef = useRef(false);
+  const micGrantedBeforeRef = useRef<string | null>(null);
+  useEffect(() => {
+    try { micGrantedBeforeRef.current = localStorage.getItem('jarvis-mic-granted'); } catch { /* noop */ }
+  }, []);
+  const markMicIntent = useCallback(() => {
+    micIntentRef.current = true;
+    try { localStorage.setItem('jarvis-mic-intent', 'true'); } catch { /* noop */ }
+  }, []);
 
   // Deep research — background jobs + gem chats
   const [researchPanelOpen, setResearchPanelOpen] = useState(false);
@@ -121,6 +132,7 @@ export default function Home() {
   const [buildPanelOpen, setBuildPanelOpen] = useState(false);
   const [studiosOpen, setStudiosOpen] = useState(false);
   const [designStudioOpen, setDesignStudioOpen] = useState(false);
+  const [designImage, setDesignImage] = useState<string | null>(null);
   const [musicStudioOpen, setMusicStudioOpen] = useState(false);
   const [buildTab, setBuildTab] = useState<'terminal' | 'files'>('terminal');
   const [buildFiles, setBuildFiles] = useState<{ path: string; type: 'file' | 'dir'; size: number }[]>([]);
@@ -141,6 +153,8 @@ export default function Home() {
 
 
   const messagesRef = useRef<ChatMessage[]>([]);
+  const nextMsgIdRef = useRef(0);
+  const nextMsgId = useCallback(() => `m${++nextMsgIdRef.current}`, []);
   const activeConvIdRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -196,6 +210,7 @@ export default function Home() {
     autoDetectLang: true,
     onWake: () => {
       if (isChatMode) return;
+      try { localStorage.setItem('jarvis-mic-granted', 'true'); } catch { /* noop */ }
       playWakeSound();
       vibrate([50, 30, 50]);
       setStatus('recording');
@@ -207,7 +222,14 @@ export default function Home() {
       processUserText(text);
     },
     onError: (msg) => {
-      if (msg.includes('denied')) toast({ title: 'Wake word needs mic access', description: msg });
+      // QA-002: keep unsolicited permission failures quiet — the user may not
+      // have asked for voice yet. Only surface a toast after explicit intent.
+      if (msg.includes('denied')) {
+        try { localStorage.removeItem('jarvis-mic-granted'); } catch { /* noop */ }
+        if (micIntentRef.current) {
+          toast({ title: 'Wake word needs mic access', description: msg });
+        }
+      }
       setStatus('idle');
     },
     onCommandTimeout: () => {
@@ -325,8 +347,12 @@ export default function Home() {
     if (isChatMode) { stopWakeWord(); return; }
 
     if (status === 'idle' || status === 'wake') {
-      // Ensure recognizer is running and not suppressed.
-      if (isWakeWordSupported()) startWakeWord(); // guard in hook prevents double-start
+      // Ensure recognizer is running and not suppressed. QA-002: do NOT
+      // auto-request the mic on first load — only after the user has tapped
+      // a voice control (micIntentRef) or previously granted access.
+      if ((micIntentRef.current || micGrantedBeforeRef.current) && isWakeWordSupported()) {
+        startWakeWord(); // guard in hook prevents double-start
+      }
       unsuppressWakeWord();
     } else if (status === 'thinking' || status === 'speaking' || status === 'transcribing') {
       // Suppress instead of stop: keeps the recognizer alive so activateCommand()
@@ -550,7 +576,7 @@ export default function Home() {
             m.content.includes('read_source_code') &&
             (m.content.trim().startsWith('{') || m.content.trim().startsWith('```'))
           ),
-      ).map((m: any) => ({ role: m.role, content: m.content, reasoning: m.reasoning ?? undefined }));
+      ).map((m: any) => ({ id: nextMsgId(), role: m.role, content: m.content, reasoning: m.reasoning ?? undefined }));
       setMessages(cleanMessages);
       setActiveConversationId(id);
       setSuggestions([]);
@@ -663,13 +689,14 @@ export default function Home() {
         role: 'assistant' as const,
         content: '',
         timestamp: Date.now(),
+        id: nextMsgId(),
         pendingSourceCode: { userText },
       }]);
       return;
     }
 
     // Optimistically add message (with file preview if any)
-    setMessages(prev => [...prev, { role: 'user', content: userText, file: file ?? undefined, timestamp: Date.now() }]);
+    setMessages(prev => [...prev, { role: 'user', content: userText, file: file ?? undefined, timestamp: Date.now(), id: nextMsgId() }]);
     setSuggestions([]);
     setStatus('thinking');
     vibrate(20);
@@ -724,7 +751,7 @@ export default function Home() {
       let widget: Widget | null = null;
 
       // Add an empty assistant message that we'll update as tokens arrive
-      setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now() }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), id: nextMsgId() }]);
 
       while (true) {
         const { done, value } = await reader.read();
@@ -806,6 +833,7 @@ export default function Home() {
                     role: 'assistant' as const,
                     content: '',
                     timestamp: Date.now(),
+                    id: nextMsgId(),
                     pendingScreenShare: true,
                   }];
                 });
@@ -820,6 +848,7 @@ export default function Home() {
                     role: 'assistant' as const,
                     content: '',
                     timestamp: Date.now(),
+                    id: nextMsgId(),
                     pendingBuildMode: { userText: parsed.confirmationMessage ?? '' },
                   }];
                 });
@@ -834,6 +863,7 @@ export default function Home() {
                     role: 'assistant' as const,
                     content: '',
                     timestamp: Date.now(),
+                    id: nextMsgId(),
                     pendingImage: {
                       imagePrompt: parsed.imagePrompt,
                       confirmationMessage: parsed.confirmationMessage,
@@ -924,6 +954,7 @@ export default function Home() {
   }, [handleError, refreshSidebar, playTTS, isChatMode, webSearchEnabled, thinkingEnabled, activateCommand, vibrate]);
 
   const handleToggleRecording = useCallback(() => {
+    markMicIntent(); // user explicitly tapped the orb → mic intent established
     unlockAudioForIOS(); // must be called synchronously from user gesture for iOS Safari
     vibrate(30);
     if (status === 'speaking') {
@@ -1008,7 +1039,7 @@ export default function Home() {
     setStatus('thinking');
 
     // Add a user message about the image request
-    setMessages(prev => [...prev, { role: 'user', content: prompt, timestamp: Date.now() }]);
+    setMessages(prev => [...prev, { role: 'user', content: prompt, timestamp: Date.now(), id: nextMsgId() }]);
 
     try {
       const res = await fetch('/api/jarvis/generate-image', {
@@ -1030,6 +1061,7 @@ export default function Home() {
         content: `Here's your image of: ${prompt}`,
         image: data.image,
         timestamp: Date.now(),
+        id: nextMsgId(),
       }]);
     } catch (err) {
       const msg = err instanceof TypeError ? 'Network error — is the server running?' : 'Image generation failed';
@@ -1166,6 +1198,7 @@ export default function Home() {
 
   /** The blue circular waveform button — opens the full-screen voice assistant. */
   const handleOpenVoiceMode = () => {
+    markMicIntent(); // opening voice mode is explicit mic intent
     haptics.heavy();
     setMode('voice');
   };
@@ -1441,8 +1474,8 @@ export default function Home() {
                 <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
                   <button
                     onClick={() => { haptics.light(); setAgentModeActive(a => !a); if (!agentModeActive) setPipBrowserOpen(true); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all ${
-                      agentModeActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-medium font-rounded transition-all ${
+                      agentModeActive ? 'bg-primary/15 text-primary' : 'text-muted-foreground/80 hover:text-foreground'
                     }`}
                   >
                     <Search className="w-3 h-3 inline mr-1" />
@@ -1450,8 +1483,8 @@ export default function Home() {
                   </button>
                   <button
                     onClick={() => { haptics.light(); setPipBrowserOpen(b => !b); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all ${
-                      pipBrowserOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-medium font-rounded transition-all ${
+                      pipBrowserOpen ? 'bg-primary/15 text-primary' : 'text-muted-foreground/80 hover:text-foreground'
                     }`}
                   >
                     <Globe className="w-3 h-3 inline mr-1" />
@@ -1459,7 +1492,7 @@ export default function Home() {
                   </button>
                   <button
                     onClick={() => { haptics.light(); setMode('camera'); }}
-                    className="px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all text-muted-foreground/50 hover:text-foreground"
+                    className="px-3 py-1.5 rounded-lg text-[11px] font-medium font-rounded transition-all text-muted-foreground/80 hover:text-foreground"
                   >
                     <Camera className="w-3 h-3 inline mr-1" />
                     {t('voice.cameraMode')}
@@ -1473,7 +1506,7 @@ export default function Home() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.2 }}
-                      className={`text-lg font-extralight tracking-tight ${
+                      className={`text-lg font-light tracking-tight ${
                         status === 'recording' ? 'text-red-500 dark:text-red-400' :
                         status === 'speaking' ? 'text-green-500 dark:text-green-400' :
                         status === 'thinking' || status === 'transcribing' ? 'text-amber-500 dark:text-amber-400' :
@@ -1543,13 +1576,13 @@ export default function Home() {
                   <div className="space-y-2 min-h-[5rem]">
                     {subtitle?.user && (
                       <p className="text-center text-sm text-muted-foreground/70 leading-snug">
-                        <span className="text-[10px] tracking-widest text-muted-foreground/40 block mb-0.5">YOU</span>
+                        <span className="text-[10px] tracking-widest text-muted-foreground/70 block mb-0.5">YOU</span>
                         {subtitle.user}
                       </p>
                     )}
                     {subtitle?.jarvis && (
                       <p className="text-center text-sm text-primary/80 leading-snug">
-                        <span className="text-[10px] tracking-widest text-primary/40 block mb-0.5">JARVIS</span>
+                        <span className="text-[10px] tracking-widest text-primary/70 block mb-0.5">JARVIS</span>
                         {subtitle.jarvis}
                       </p>
                     )}
@@ -1572,7 +1605,7 @@ export default function Home() {
                 )}
                 <Orb status={status} />
                 <div className="mt-6 text-center space-y-2">
-                  <h2 className="text-2xl font-extralight tracking-tight text-foreground">
+                  <h2 className="text-2xl font-light tracking-tight text-foreground">
                     {statusLabels[status]}
                   </h2>
                 </div>
@@ -1589,8 +1622,8 @@ export default function Home() {
                 <div className="flex items-center gap-2 mt-3">
                   <button
                     onClick={() => { setAgentModeActive(a => !a); if (!agentModeActive) setPipBrowserOpen(true); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all ${
-                      agentModeActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-medium font-rounded transition-all ${
+                      agentModeActive ? 'bg-primary/15 text-primary' : 'text-muted-foreground/80 hover:text-foreground'
                     }`}
                   >
                     <Search className="w-3 h-3 inline mr-1" />
@@ -1598,8 +1631,8 @@ export default function Home() {
                   </button>
                   <button
                     onClick={() => { setPipBrowserOpen(b => !b); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all ${
-                      pipBrowserOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground/50 hover:text-foreground'
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-medium font-rounded transition-all ${
+                      pipBrowserOpen ? 'bg-primary/15 text-primary' : 'text-muted-foreground/80 hover:text-foreground'
                     }`}
                   >
                     <Globe className="w-3 h-3 inline mr-1" />
@@ -1607,7 +1640,7 @@ export default function Home() {
                   </button>
                   <button
                     onClick={() => { haptics.light(); setMode('camera'); }}
-                    className="px-3 py-1.5 rounded-lg text-[10px] font-medium font-rounded transition-all text-muted-foreground/50 hover:text-foreground"
+                    className="px-3 py-1.5 rounded-lg text-[11px] font-medium font-rounded transition-all text-muted-foreground/80 hover:text-foreground"
                   >
                     <Camera className="w-3 h-3 inline mr-1" />
                     {t('voice.cameraMode')}
@@ -1641,6 +1674,10 @@ export default function Home() {
                     // Remove pending image messages and generate
                     setMessages(prev => prev.filter(m => !m.pendingImage));
                     handleGenerateImage(prompt);
+                  }}
+                  onEditImage={(image) => {
+                    setDesignImage(image);
+                    setDesignStudioOpen(true);
                   }}
                   onImageCancel={() => {
                     // Remove pending image messages
@@ -1912,7 +1949,7 @@ export default function Home() {
                   {agentModeActive && (
                     <div className="flex items-center gap-1.5 px-1 pb-1">
                       <Search className="w-3 h-3 text-primary" />
-                      <span className="text-[10px] font-mono text-primary/70 tracking-wider">AGENT MODE ON — your message will search the web</span>
+                      <span className="text-[11px] font-mono text-primary tracking-wider">AGENT MODE ON — your message will search the web</span>
                     </div>
                   )}
 
@@ -2016,7 +2053,7 @@ export default function Home() {
         sessionCommands={sessionCommands} commandInput={commandInput} setCommandInput={setCommandInput}
         commandBusy={commandBusy} buildTitle={t('build.title')}
         studiosOpen={studiosOpen} onCloseStudios={() => setStudiosOpen(false)} onSelectStudio={handleStudioSelect}
-        designStudioOpen={designStudioOpen} onCloseDesign={() => setDesignStudioOpen(false)}
+        designStudioOpen={designStudioOpen} onCloseDesign={() => setDesignStudioOpen(false)} designInitialImage={designImage}
         musicStudioOpen={musicStudioOpen} onCloseMusic={() => setMusicStudioOpen(false)}
         showResearchPulse={!researchPanelOpen && researchJobs.some(j => j.status === 'queued' || j.status === 'running')}
       />

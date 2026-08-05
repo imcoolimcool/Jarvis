@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Upload, Download, RotateCw, FlipHorizontal2, Type, X, ImagePlus, Sparkles } from 'lucide-react';
+import { Upload, Download, RotateCw, FlipHorizontal2, Type, X, ImagePlus, Sparkles, Loader2, Wand2 } from 'lucide-react';
 
 interface DesignStudioProps {
   open: boolean;
@@ -28,6 +28,20 @@ const CROP_PRESETS = [
   { label: '9:16', ratio: 9 / 16 },
 ];
 
+const AI_SUGGESTIONS = [
+  'A photorealistic husky in the snow, golden hour',
+  'A 3D render of a glowing arc reactor, dark background',
+  'A minimalist logo for a company called Stark Industries',
+  'A dreamy anime landscape at sunset',
+  'A product shot of a sleek white smartwatch on marble',
+];
+
+const AI_ASPECTS = [
+  { label: 'Square', w: 1024, h: 1024 },
+  { label: 'Landscape', w: 1280, h: 720 },
+  { label: 'Portrait', w: 720, h: 1280 },
+];
+
 type FilterValues = Record<string, number>;
 
 export function DesignStudio({ open, onClose, initialImage }: DesignStudioProps) {
@@ -48,6 +62,12 @@ export function DesignStudio({ open, onClose, initialImage }: DesignStudioProps)
   const [showTextPicker, setShowTextPicker] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // ── AI generation state ───────────────────────────────────────
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiAspect, setAiAspect] = useState(AI_ASPECTS[0]);
+
   const loadImage = useCallback((src: string, name: string) => {
     const img = new Image();
     img.onload = () => {
@@ -58,6 +78,31 @@ export function DesignStudio({ open, onClose, initialImage }: DesignStudioProps)
     };
     img.src = src;
   }, []);
+
+  const handleGenerate = useCallback(async (prompt?: string) => {
+    const finalPrompt = (prompt ?? aiPrompt).trim();
+    if (!finalPrompt || generating) return;
+    setGenerating(true);
+    setAiError('');
+    try {
+      const res = await fetch('/api/jarvis/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: finalPrompt, width: aiAspect.w, height: aiAspect.h }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        setAiError(errBody?.error || `Generation failed (${res.status})`);
+        return;
+      }
+      const data = await res.json();
+      loadImage(data.image, 'ai-generated.png');
+    } catch {
+      setAiError('Generation failed — is the server running?');
+    } finally {
+      setGenerating(false);
+    }
+  }, [aiPrompt, aiAspect, generating, loadImage]);
 
   useEffect(() => {
     if (initialImage && initialImage.length > 100 && !imageLoaded) {
@@ -90,7 +135,6 @@ export function DesignStudio({ open, onClose, initialImage }: DesignStudioProps)
     ctx.translate(cw / 2, ch / 2);
     ctx.rotate((rotation * Math.PI) / 180);
     if (flipped) ctx.scale(-1, 1);
-    const drawScale = Math.min(cw / w, ch / h);
     ctx.drawImage(img, -w / 2, -h / 2, w, h);
     ctx.restore();
 
@@ -145,7 +189,7 @@ export function DesignStudio({ open, onClose, initialImage }: DesignStudioProps)
             <ImagePlus className="w-4 h-4 text-primary" />
             <span className="text-sm font-semibold">Design Studio</span>
             <span className="text-[10px] font-mono text-muted-foreground/50 hidden sm:inline">
-              photo editing · runs entirely in your browser
+              AI generation · photo editing · in your browser
             </span>
           </div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-muted/50 text-muted-foreground transition-colors" title="Close">
@@ -154,31 +198,80 @@ export function DesignStudio({ open, onClose, initialImage }: DesignStudioProps)
         </div>
 
         {!imageLoaded ? (
-          /* ── Empty state: upload or generate ── */
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 p-10 text-center">
+          /* ── Empty state: AI generate or upload ── */
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 sm:p-10 text-center overflow-y-auto">
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <ImagePlus className="w-7 h-7 text-primary" />
+              <Wand2 className="w-7 h-7 text-primary" />
             </div>
             <div>
-              <p className="text-base font-semibold mb-1">Edit any photo</p>
-              <p className="text-xs text-muted-foreground/70 max-w-sm">
-                Upload an image (or use one Jarvis generated), then apply filters, crop, rotate, add text — and download.
+              <p className="text-base font-semibold mb-1">Generate with AI</p>
+              <p className="text-xs text-muted-foreground/70 max-w-md">
+                Describe an image — Jarvis generates it instantly with AI, then you can edit, filter and download it.
               </p>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 active:scale-95 transition-all"
-              >
-                <Upload className="w-4 h-4" /> Upload image
-              </button>
-              <button
-                onClick={onClose}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-border/50 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
-              >
-                <Sparkles className="w-4 h-4" /> Ask Jarvis to generate one
-              </button>
+
+            {/* AI prompt box */}
+            <div className="w-full max-w-lg">
+              <div className="flex items-center gap-2 bg-muted/40 border border-border/40 rounded-2xl px-3 py-1 focus-within:border-primary/40 transition-colors">
+                <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
+                <input
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleGenerate(); }}
+                  placeholder="A photorealistic husky in the snow…"
+                  className="flex-1 min-w-0 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/50"
+                />
+                <button
+                  onClick={() => handleGenerate()}
+                  disabled={generating || !aiPrompt.trim()}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none flex-shrink-0"
+                >
+                  {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+                  {generating ? 'Generating…' : 'Generate'}
+                </button>
+              </div>
+
+              {/* Aspect ratio */}
+              <div className="flex items-center justify-center gap-1.5 mt-2">
+                {AI_ASPECTS.map((a) => (
+                  <button
+                    key={a.label}
+                    onClick={() => setAiAspect(a)}
+                    className={`px-2.5 py-1 rounded-full text-[10.5px] transition-colors ${aiAspect.label === a.label ? 'bg-primary/10 text-primary' : 'bg-muted/30 text-muted-foreground hover:text-foreground'}`}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Suggestion chips */}
+              <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
+                {AI_SUGGESTIONS.slice(0, 4).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setAiPrompt(s); }}
+                    className="px-2.5 py-1 rounded-full border border-border/40 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+                  >
+                    {s.length > 42 ? s.slice(0, 42) + '…' : s}
+                  </button>
+                ))}
+              </div>
+
+              {aiError && <p className="text-[11px] text-red-400 mt-2">{aiError}</p>}
             </div>
+
+            <div className="flex items-center gap-2 w-full max-w-lg">
+              <div className="flex-1 h-px bg-border/40" />
+              <span className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-widest">or</span>
+              <div className="flex-1 h-px bg-border/40" />
+            </div>
+
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-border/50 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+            >
+              <Upload className="w-4 h-4" /> Upload your own image
+            </button>
             <input
               ref={fileRef}
               type="file"
@@ -210,6 +303,27 @@ export function DesignStudio({ open, onClose, initialImage }: DesignStudioProps)
               {/* Controls */}
               <div className="w-full lg:w-72 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-border/40 p-4 overflow-y-auto max-h-[45vh] lg:max-h-none">
                 <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 uppercase mb-3">{fileName}</p>
+
+                {/* AI regenerate */}
+                <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 uppercase mb-1.5">AI</p>
+                <div className="flex items-center gap-1.5 mb-4">
+                  <input
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleGenerate(); }}
+                    placeholder="Describe a new image…"
+                    className="flex-1 min-w-0 bg-muted/40 border border-border/30 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary/40 transition-colors"
+                  />
+                  <button
+                    onClick={() => handleGenerate()}
+                    disabled={generating || !aiPrompt.trim()}
+                    className="p-2 rounded-lg bg-primary text-primary-foreground transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    title="Generate with AI"
+                  >
+                    {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                {aiError && <p className="text-[11px] text-red-400 -mt-2 mb-3">{aiError}</p>}
 
                 {/* Filters */}
                 <div className="space-y-2.5 mb-4">
