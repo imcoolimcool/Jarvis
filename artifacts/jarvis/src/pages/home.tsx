@@ -9,7 +9,7 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, Send, Settings, PanelLeft, X, Plus, Bug, Search, Minimize2, Maximize2, Waves, ArrowLeft, MessagesSquare, SquarePen, EllipsisVertical, Camera, Globe, Lightbulb, FileText } from 'lucide-react';
+import { Square, Mic, Send, Settings, PanelLeft, X, Plus, Bug, Search, Minimize2, Maximize2, ArrowLeft, MessagesSquare, SquarePen, EllipsisVertical, Camera, Globe, Lightbulb, FileText } from 'lucide-react';
 import type { Widget, TerminalResult } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, CommandCard } from '@/components/widgets';
 import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
@@ -1894,7 +1894,18 @@ export default function Home() {
                     <button onClick={handleOpenVoiceMode} disabled={isBusy}
                       title={t('input.voiceMode')}
                       className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:opacity-90 active:scale-95 transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed">
-                       <Waves className="w-5 h-5" strokeWidth={2} />
+                       <span
+                         aria-hidden="true"
+                         className="flex h-5 items-center justify-center gap-[2px]"
+                       >
+                         {[1, 2, 3, 4, 3, 2, 1].map((height, index) => (
+                           <span
+                             key={index}
+                             className="w-[2px] rounded-full bg-current"
+                             style={{ height: `${height * 4 + 2}px` }}
+                           />
+                         ))}
+                       </span>
                     </button>
                   </div>
 
