@@ -49,7 +49,7 @@ function ParticleRing({ status, amplitude = 0 }: { status: AppState; amplitude?:
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
       {particles.map((p, i) => {
         const radians = (p.angle * Math.PI) / 180;
-        const breathing = isVoiceState ? amplitude * (10 + Math.sin(i * 1.7) * 4) : 0;
+        const breathing = isVoiceState ? amplitude * (18 + Math.sin(i * 1.7) * 7) : 0;
         const x = Math.cos(radians) * (p.radius + breathing);
         const y = Math.sin(radians) * (p.radius + breathing);
         const opacity = isVoiceState ? 0.16 + amplitude * 0.55 : 0.12;
@@ -58,8 +58,8 @@ function ParticleRing({ status, amplitude = 0 }: { status: AppState; amplitude?:
             key={i}
             className="absolute rounded-full transition-[transform,opacity,box-shadow] duration-150 ease-out"
             style={{
-              width: `${p.size + (isVoiceState ? amplitude * 2 : 0)}px`,
-              height: `${p.size + (isVoiceState ? amplitude * 2 : 0)}px`,
+              width: `${p.size + (isVoiceState ? amplitude * 3 : 0)}px`,
+              height: `${p.size + (isVoiceState ? amplitude * 3 : 0)}px`,
               background: `rgba(${color}, ${opacity})`,
               boxShadow: isVoiceState && amplitude > 0.04
                 ? `0 0 ${4 + amplitude * 8}px rgba(${color}, ${0.25 + amplitude * 0.45})`
@@ -151,7 +151,7 @@ export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
         className="absolute inset-0 rounded-full pointer-events-none"
         style={{ background: `radial-gradient(circle, ${glowColor} 0%, transparent 70%)` }}
         animate={{
-          scale: 1 + voiceResponse * 0.18,
+            scale: 1 + voiceResponse * 0.28,
           opacity: status === 'idle' ? 0.12 : isActive ? 0.18 + voiceResponse * 0.28 : 0.2,
         }}
         transition={{
@@ -180,8 +180,8 @@ export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
             : `0 0 0 1px hsl(var(--border)), 0 4px 16px hsl(0 0% 0% / 0.04)`,
         }}
         animate={{
-          scale: status === 'recording' ? 0.985 + voiceResponse * 0.055
-            : 1 + voiceResponse * 0.045,
+          scale: status === 'recording' ? 0.975 + voiceResponse * 0.11
+            : 1 + voiceResponse * 0.09,
         }}
         transition={{
           type: 'spring',

@@ -1491,7 +1491,11 @@ export default function Home() {
                     )}
                   </div>
                 )}
-                <Orb status={status} onClick={handleToggleRecording} />
+                <Orb
+                  status={status}
+                  onClick={handleToggleRecording}
+                  amplitude={orbAmplitude}
+                />
 
                 {/* PiP toggles — agent + browser + camera */}
                 <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
