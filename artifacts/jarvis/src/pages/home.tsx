@@ -9,7 +9,7 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, AudioLines, Send, Settings, PanelLeft, X, Paperclip, Bug, Search, Minimize2, Maximize2, Radio, ArrowLeft, MessagesSquare, MessageSquarePlus, EllipsisVertical, Camera, Globe, BrainCircuit, FileText } from 'lucide-react';
+import { Square, MicVocal, Send, Settings, PanelLeft, X, Plus, Bug, Search, Minimize2, Maximize2, AudioWaveform, ArrowLeft, MessagesSquare, MessageSquarePlus, EllipsisVertical, Camera, Globe, Sparkles, FileText } from 'lucide-react';
 import type { Widget, TerminalResult } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, CommandCard } from '@/components/widgets';
 import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
@@ -1805,7 +1805,7 @@ export default function Home() {
                             : 'text-foreground/70 hover:text-foreground hover:bg-secondary/70'
                         }`}
                       >
-                        <Paperclip className="w-[18px] h-[18px]" strokeWidth={2} />
+                        <Plus className="w-[18px] h-[18px]" strokeWidth={2} />
                       </button>
                     </div>
 
@@ -1820,7 +1820,7 @@ export default function Home() {
                           : 'text-foreground/70 hover:text-foreground hover:bg-secondary/70'
                       }`}
                     >
-                      <BrainCircuit
+                      <Sparkles
                         className={`w-[18px] h-[18px] transition-transform ${thinkingEnabled ? 'scale-110' : ''}`}
                         strokeWidth={2}
                       />
@@ -1872,23 +1872,29 @@ export default function Home() {
                             : t('input.placeholder')
                         }
                         disabled={isBusy}
-                        className="w-full bg-transparent text-foreground placeholder:text-muted-foreground/50 placeholder:text-center font-sans text-[15px] px-2 py-2.5 outline-none resize-none min-h-[24px] max-h-[140px]"
+                         className="w-full bg-transparent text-foreground placeholder:text-muted-foreground/50 placeholder:text-center font-sans text-[15px] pl-2 pr-12 py-2.5 outline-none resize-none min-h-[24px] max-h-[140px]"
                       />
+                       <button
+                         onClick={handleChatMicToggle}
+                         disabled={isBusy}
+                         title={chatDictating ? t('input.stopDictate') : t('input.dictate')}
+                         aria-label={chatDictating ? t('input.stopDictate') : t('input.dictate')}
+                         className={`absolute right-1 top-1/2 -translate-y-1/2 p-2 rounded-full transition-all disabled:opacity-30 ${
+                           chatDictating
+                             ? 'text-red-500 bg-red-500/10 animate-pulse'
+                             : 'text-foreground/60 hover:text-foreground hover:bg-secondary/70'
+                         }`}
+                       >
+                         {chatDictating
+                           ? <Square className="w-[17px] h-[17px] fill-current" />
+                           : <MicVocal className="w-[18px] h-[18px]" strokeWidth={2} />}
+                       </button>
                     </div>
-                    <button onClick={handleChatMicToggle} disabled={isBusy}
-                      title={chatDictating ? t('input.stopDictate') : t('input.dictate')}
-                      className={`p-2 rounded-full transition-all flex-shrink-0 disabled:opacity-30 ${
-                        chatDictating
-                          ? 'text-red-500 bg-red-500/10 animate-pulse'
-                          : 'text-foreground/70 hover:text-foreground hover:bg-secondary/70'
-                      }`}>
-                      {chatDictating ? <Square className="w-[18px] h-[18px] fill-current" /> : <AudioLines className="w-[18px] h-[18px]" strokeWidth={2} />}
-                    </button>
                     {/* Blue circular button — opens full-screen voice mode */}
                     <button onClick={handleOpenVoiceMode} disabled={isBusy}
                       title={t('input.voiceMode')}
                       className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:opacity-90 active:scale-95 transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed">
-                      <Radio className="w-5 h-5" strokeWidth={2} />
+                       <AudioWaveform className="w-5 h-5" strokeWidth={2} />
                     </button>
                   </div>
 
