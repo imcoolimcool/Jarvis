@@ -97,7 +97,7 @@ Both base URLs are hardcoded in the respective route handlers (`transcribe.ts`, 
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Preserve the original luminous neural-network sphere direction for the Jarvis orb; do not replace it with a more minimal or heavily redesigned orb without explicit approval.
 
 ## Gotchas
 
