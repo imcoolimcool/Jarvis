@@ -67,3 +67,10 @@ uri = "file://attached_assets/generated_images/05-holographic-core-orb.png"
 type = "image"
 title = "Holographic core orb concept"
 description = "Orb redesign direction 5:  centered single object,  sculptural holographic core suspended inside a thin transparent glass shell,  layered iridescent cyan."
+
+[[outputs]]
+id = "GonsPyQ9rJZqcdutI_96s"
+uri = "file://attached_assets/generated_images/modern-neural-orb-reference.png"
+type = "image"
+title = "Modern neural orb concept"
+description = "A more contemporary take on the uploaded neural-sphere reference, with cleaner layered pathways, glass depth, and a warm central intelligence core."
