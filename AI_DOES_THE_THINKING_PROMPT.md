@@ -39,10 +39,11 @@ exactly:
   UNCOMMITTED file (for example ~/.git-credentials or a .env that is gitignored), or ask the
   user for it. Push after EVERY commit, without waiting to be asked.
 - CONFIRM THE CORRECT PART OF THE PROMPT. At the start of every phase (and of any large
-  task), LITERALLY copy and paste, verbatim, the exact part of this prompt you are about to
-  execute (the full phase paragraph, the gate line, or the exact section text). Quote it
-  exactly as written, no paraphrasing, so the user can see you are using the correct part.
-  Do this before writing any code.
+  task), you must LITERALLY SEND THE EXACT FULL TEXT of the prompt section you are about to
+  execute. Copy it verbatim — the full phase paragraph, the gate line, or the exact section
+  text — and send it to the user before writing any code. No paraphrasing, no summaries, no
+  "I'm working on Phase B." Send the actual words so the user can verify you are using the
+  correct part. Do this for every phase and every major task.
 
 ### The 7 phases
 
