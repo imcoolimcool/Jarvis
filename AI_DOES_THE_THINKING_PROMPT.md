@@ -28,6 +28,21 @@ exactly:
   verified; treat it as a gate to preserve, not a task to redo.
 - IF A PHASE IS IMPOSSIBLE OR A REQUIREMENT CONFLICTS WITH REALITY, STOP and report it with
   evidence. Do not quietly rewrite the spec.
+- COMMIT AND PUSH TO GITHUB AFTER EVERY COMMIT. The repo is https://github.com/imcoolimcool/Jarvis
+  and the branch is main. After every commit, push immediately so the work is always on
+  GitHub. Authenticate with a GitHub personal access token supplied via the environment
+  variable GITHUB_TOKEN (NEVER hardcode or commit a token; GitHub blocks commits that contain
+  secrets, so tokens must stay out of the repo). Concretely:
+  `git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/imcoolimcool/Jarvis.git"`
+  then `git push origin main`, then restore the remote URL to plain https so the token is
+  never stored in the repo config. If GITHUB_TOKEN is not set, read it from a local,
+  UNCOMMITTED file (for example ~/.git-credentials or a .env that is gitignored), or ask the
+  user for it. Push after EVERY commit, without waiting to be asked.
+- CONFIRM THE CORRECT PART OF THE PROMPT. At the start of every phase (and of any large
+  task), LITERALLY copy and paste, verbatim, the exact part of this prompt you are about to
+  execute (the full phase paragraph, the gate line, or the exact section text). Quote it
+  exactly as written, no paraphrasing, so the user can see you are using the correct part.
+  Do this before writing any code.
 
 ### The 7 phases
 
