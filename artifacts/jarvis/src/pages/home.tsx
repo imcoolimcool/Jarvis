@@ -263,12 +263,17 @@ export default function Home() {
   const [voiceEmotion, setVoiceEmotion] = useState<EmotionLabel>('neutral');
   const voiceEmotionRef = useRef<EmotionLabel>('neutral');
   voiceEmotionRef.current = voiceEmotion;
+  const [orbAmplitude, setOrbAmplitude] = useState(0);
   useEmotionDetection({
     enabled: !isChatMode && status === 'recording',
     onEmotion: setVoiceEmotion,
+    onAmplitude: setOrbAmplitude,
   });
   useEffect(() => {
-    if (status !== 'recording') setVoiceEmotion('neutral');
+    if (status !== 'recording') {
+      setVoiceEmotion('neutral');
+      if (status !== 'speaking') setOrbAmplitude(0);
+    }
   }, [status]);
 
   // Screen share — start/stop + track active state + latest frame for AI
@@ -278,6 +283,7 @@ export default function Home() {
     },
   });
   const activeAudioRef = useRef<{ stop: () => void } | null>(null);
+  const orbAmplitudeRafRef = useRef<number | null>(null);
   // Audio context shared across all TTS playback. Using Web Audio API with
   // decodeAudioData fully buffers the audio before playing — eliminates the
   // "l...lo... ho...w..." stutter on Android Chrome.
@@ -643,20 +649,53 @@ export default function Home() {
                 URL.revokeObjectURL(url);
                 const source = ctx.createBufferSource();
                 source.buffer = decoded;
-                source.connect(ctx.destination);
+                const analyser = ctx.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.78;
+                source.connect(analyser);
+                analyser.connect(ctx.destination);
+
+                const audioData = new Uint8Array(analyser.fftSize);
+                let smoothedAmplitude = 0;
+                let tracking = true;
+                const updateOrbAmplitude = () => {
+                  if (!tracking) return;
+                  analyser.getByteTimeDomainData(audioData);
+                  let sum = 0;
+                  for (const sample of audioData) {
+                    const normalized = (sample - 128) / 128;
+                    sum += normalized * normalized;
+                  }
+                  const rms = Math.sqrt(sum / audioData.length);
+                  const target = Math.min(1, Math.max(0, (rms - 0.008) / 0.12));
+                  smoothedAmplitude = smoothedAmplitude * 0.78 + target * 0.22;
+                  setOrbAmplitude(smoothedAmplitude);
+                  orbAmplitudeRafRef.current = requestAnimationFrame(updateOrbAmplitude);
+                };
 
                 source.onended = () => {
+                  tracking = false;
+                  if (orbAmplitudeRafRef.current) cancelAnimationFrame(orbAmplitudeRafRef.current);
+                  orbAmplitudeRafRef.current = null;
+                  setOrbAmplitude(0);
                   activeAudioRef.current = null;
                   onDone();
                 };
                 // MUST set onended BEFORE start(0) — on some browsers the
                 // callback won't fire if registered after playback begins.
                 activeAudioRef.current = {
-                  stop: () => { try { source.stop(); } catch {} },
-                } as any;
+                  stop: () => {
+                    tracking = false;
+                    if (orbAmplitudeRafRef.current) cancelAnimationFrame(orbAmplitudeRafRef.current);
+                    orbAmplitudeRafRef.current = null;
+                    setOrbAmplitude(0);
+                    try { source.stop(); } catch {}
+                  },
+                };
 
                 onStart();
                 source.start(0);
+                orbAmplitudeRafRef.current = requestAnimationFrame(updateOrbAmplitude);
               })
               .catch(() => { URL.revokeObjectURL(url); handleError("Audio playback failed"); });
           } catch { handleError("Failed to decode audio"); }

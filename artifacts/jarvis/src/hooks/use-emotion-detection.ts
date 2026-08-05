@@ -35,6 +35,8 @@ interface UseEmotionDetectionOptions {
   /** Set to true while actively recording the user's voice. */
   enabled: boolean;
   onEmotion?: (label: EmotionLabel) => void;
+  /** Smoothed voice energy, normalized 0..1, for lightweight visual reactions. */
+  onAmplitude?: (amplitude: number) => void;
   /** How often (ms) a fresh classification window is emitted. */
   windowMs?: number;
 }
@@ -42,6 +44,7 @@ interface UseEmotionDetectionOptions {
 export function useEmotionDetection({
   enabled,
   onEmotion,
+  onAmplitude,
   windowMs = 2400,
 }: UseEmotionDetectionOptions) {
   const [emotion, setEmotion] = useState<EmotionLabel>('neutral');
@@ -56,10 +59,12 @@ export function useEmotionDetection({
   const noiseFloorRef = useRef(0.02);
   const enabledRef = useRef(enabled);
   const onEmotionRef = useRef(onEmotion);
+  const onAmplitudeRef = useRef(onAmplitude);
   const failedRef = useRef(false);
 
   enabledRef.current = enabled;
   onEmotionRef.current = onEmotion;
+  onAmplitudeRef.current = onAmplitude;
 
   /* ── feature extraction ─────────────────────────────────────── */
 
@@ -212,6 +217,8 @@ export function useEmotionDetection({
         framesRef.current = [];
         windowStartRef.current = performance.now();
         let lastFrameTime = 0;
+        let lastAmplitudeTime = 0;
+        let smoothedAmplitude = 0;
 
         const loop = () => {
           if (cancelled || !analyserRef.current) return;
@@ -221,6 +228,17 @@ export function useEmotionDetection({
             const frame = extractFrame(analyser, timeData, freqData, analyser.frequencyBinCount, ctx.sampleRate);
             framesRef.current.push(frame);
             if (framesRef.current.length > 60) framesRef.current.shift();
+
+            // Reuse the existing analyser for a low-cost visual voice meter.
+            // The smoothing makes the orb feel physical instead of jittering
+            // on individual samples, and silence naturally settles to zero.
+            if (now - lastAmplitudeTime >= 80) {
+              lastAmplitudeTime = now;
+              const target = Math.min(1, Math.max(0, (frame.rms - noiseFloorRef.current * 1.15) / 0.12));
+              smoothedAmplitude = smoothedAmplitude * 0.78 + target * 0.22;
+              onAmplitudeRef.current?.(smoothedAmplitude);
+            }
+
             if (now - windowStartRef.current >= windowMs) {
               const label = classifyWindow(framesRef.current);
               framesRef.current = [];
@@ -255,6 +273,7 @@ export function useEmotionDetection({
       }
       analyserRef.current = null;
       framesRef.current = [];
+      onAmplitudeRef.current?.(0);
     };
   }, [enabled, windowMs, extractFrame, classifyWindow]);
 

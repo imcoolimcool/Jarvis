@@ -11,7 +11,7 @@ interface OrbProps {
   amplitude?: number;
 }
 
-// ── Particle system: 120 particles forming a circle ──
+// ── Lightweight particle system: a static network that responds to audio ──
 interface Particle {
   angle: number;
   radius: number;
@@ -21,7 +21,7 @@ interface Particle {
   drift: number;
 }
 
-function useParticles(count = 120) {
+function useParticles(count = 32) {
   return useMemo<Particle[]>(() =>
     Array.from({ length: count }).map((_, i) => ({
       angle: (i / count) * 360,
@@ -36,8 +36,8 @@ function useParticles(count = 120) {
 }
 
 function ParticleRing({ status, amplitude = 0 }: { status: AppState; amplitude?: number }) {
-  const particles = useParticles(48);
-  const isActive = status === 'speaking' || status === 'recording' || status === 'thinking';
+  const particles = useParticles(32);
+  const isVoiceState = status === 'speaking' || status === 'recording';
 
   const color =
     status === 'recording' ? '255, 80, 80' :
@@ -47,158 +47,52 @@ function ParticleRing({ status, amplitude = 0 }: { status: AppState; amplitude?:
 
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      <AnimatePresence>
-        <motion.div
-          key={`particles-${isActive}`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          {particles.map((p, i) => (
-            <motion.div
-              key={i}
-              className="absolute rounded-full"
-              style={{
-                width: p.size + (isActive ? amplitude * 3 : 0) + 'px',
-                height: p.size + (isActive ? amplitude * 3 : 0) + 'px',
-                background: `rgba(${color}, ${isActive ? 0.4 + amplitude * 0.4 : 0.15})`,
-                boxShadow: isActive ? `0 0 ${4 + amplitude * 8}px rgba(${color}, ${0.3 + amplitude * 0.5})` : 'none',
-              }}
-              animate={{
-                x: [
-                  `${Math.cos((p.angle * Math.PI) / 180) * p.radius * 0.85}px`,
-                  `${Math.cos(((p.angle + 90) * Math.PI) / 180) * (p.radius + amplitude * 15)}px`,
-                  `${Math.cos(((p.angle + 180) * Math.PI) / 180) * p.radius * 0.9}px`,
-                  `${Math.cos(((p.angle + 270) * Math.PI) / 180) * (p.radius - amplitude * 10)}px`,
-                  `${Math.cos((p.angle * Math.PI) / 180) * p.radius * 0.85}px`,
-                ],
-                y: [
-                  `${Math.sin((p.angle * Math.PI) / 180) * p.radius * 0.85}px`,
-                  `${Math.sin(((p.angle + 90) * Math.PI) / 180) * (p.radius + amplitude * 15)}px`,
-                  `${Math.sin(((p.angle + 180) * Math.PI) / 180) * p.radius * 0.9}px`,
-                  `${Math.sin(((p.angle + 270) * Math.PI) / 180) * (p.radius - amplitude * 10)}px`,
-                  `${Math.sin((p.angle * Math.PI) / 180) * p.radius * 0.85}px`,
-                ],
-                opacity: isActive
-                  ? [0.2 + amplitude * 0.3, 0.7 + amplitude * 0.3, 0.3 + amplitude * 0.2, 0.8 + amplitude * 0.2, 0.2 + amplitude * 0.3]
-                  : [0.08, 0.15, 0.08, 0.15, 0.08],
-                scale: isActive ? [0.8, 1.2 + amplitude, 0.9, 1.1, 0.8] : [0.6, 0.8, 0.6, 0.8, 0.6],
-              }}
-              transition={{
-                repeat: Infinity,
-                duration: isActive ? 4 - amplitude * 1.5 : 8 + p.orbitSpeed * 2,
-                delay: p.delay,
-                ease: 'easeInOut',
-              }}
-            />
-          ))}
-        </motion.div>
-      </AnimatePresence>
+      {particles.map((p, i) => {
+        const radians = (p.angle * Math.PI) / 180;
+        const breathing = isVoiceState ? amplitude * (10 + Math.sin(i * 1.7) * 4) : 0;
+        const x = Math.cos(radians) * (p.radius + breathing);
+        const y = Math.sin(radians) * (p.radius + breathing);
+        const opacity = isVoiceState ? 0.16 + amplitude * 0.55 : 0.12;
+        return (
+          <div
+            key={i}
+            className="absolute rounded-full transition-[transform,opacity,box-shadow] duration-150 ease-out"
+            style={{
+              width: `${p.size + (isVoiceState ? amplitude * 2 : 0)}px`,
+              height: `${p.size + (isVoiceState ? amplitude * 2 : 0)}px`,
+              background: `rgba(${color}, ${opacity})`,
+              boxShadow: isVoiceState && amplitude > 0.04
+                ? `0 0 ${4 + amplitude * 8}px rgba(${color}, ${0.25 + amplitude * 0.45})`
+                : 'none',
+              transform: `translate(${x}px, ${y}px)`,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
 
 // ── Animated rings for different states ──
-function StatusRings({ status }: { status: AppState }) {
+function StatusRings({ status, amplitude = 0 }: { status: AppState; amplitude?: number }) {
+  const isVoiceState = status === 'recording' || status === 'speaking';
+  const response = isVoiceState ? amplitude : 0;
+
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      <AnimatePresence>
-        {/* Wake/Recording: expanding rings */}
-        {(status === 'recording' || status === 'wake') && (
-          <>
-            {[1, 2, 3, 4].map((i) => (
-              <motion.div
-                key={`ring-${i}`}
-                className="absolute w-full h-full rounded-full border"
-                style={{
-                  borderColor: status === 'recording'
-                    ? 'rgba(255, 80, 80, 0.4)'
-                    : 'rgba(0, 122, 255, 0.25)',
-                }}
-                initial={{ scale: status === 'wake' ? 0.9 : 0.85, opacity: status === 'wake' ? 0.4 : 0.8 }}
-                animate={{ scale: status === 'wake' ? 1.6 : 2.2, opacity: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{
-                  repeat: Infinity,
-                  duration: status === 'wake' ? 3.5 : 2.0,
-                  delay: i * (status === 'wake' ? 0.9 : 0.5),
-                  ease: [0.23, 1, 0.32, 1],
-                }}
-              />
-            ))}
-          </>
-        )}
-
-        {/* Thinking: rotating dashed rings */}
-        {status === 'thinking' && (
-          <>
-            {[0, 1, 2, 3].map((i) => (
-              <motion.div
-                key={`think-${i}`}
-                className="absolute rounded-full border"
-                style={{
-                  width: `${55 + i * 12}%`,
-                  height: `${55 + i * 12}%`,
-                  borderColor: `rgba(255, 200, 80, ${0.3 - i * 0.05})`,
-                  borderStyle: i % 2 === 0 ? 'dashed' : 'solid',
-                  borderWidth: i % 2 === 0 ? '2px' : '1px',
-                }}
-                animate={{
-                  rotate: i % 2 === 0 ? 360 : -360,
-                  opacity: [0.12, 0.4, 0.12],
-                  scale: [0.95, 1.03, 0.95],
-                }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 2.5 + i * 0.4,
-                  ease: 'linear',
-                }}
-              />
-            ))}
-          </>
-        )}
-
-        {/* Speaking: gentle expanding concentric waves */}
-        {status === 'speaking' && (
-          <>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <motion.div
-                key={`wave-${i}`}
-                className="absolute rounded-full border border-green-400/20"
-                initial={{ scale: 0.6, opacity: 0.6 }}
-                animate={{
-                  scale: [0.6, 0.9 + i * 0.1, 1.2 + i * 0.05],
-                  opacity: [0.6, 0.25, 0],
-                }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 1.2,
-                  delay: i * 0.1,
-                  ease: 'easeOut',
-                }}
-                style={{ width: '100%', height: '100%' }}
-              />
-            ))}
-          </>
-        )}
-
-        {/* Transcribing: orbital dashes */}
-        {status === 'transcribing' && (
-          <>
-            <motion.div
-              className="absolute w-full h-full rounded-full border-t-2 border-r-2 border-yellow-400/50 border-dashed"
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-            />
-            <motion.div
-              className="absolute w-[75%] h-[75%] rounded-full border-b-2 border-l-2 border-yellow-300/35 border-dashed"
-              animate={{ rotate: -360 }}
-              transition={{ repeat: Infinity, duration: 5, ease: 'linear' }}
-            />
-          </>
-        )}
-      </AnimatePresence>
+      {isVoiceState && [1, 2, 3].map((i) => (
+        <div
+          key={`voice-ring-${i}`}
+          className="absolute w-full h-full rounded-full border transition-[transform,opacity] duration-150 ease-out"
+          style={{
+            borderColor: status === 'recording'
+              ? `rgba(255, 80, 80, ${response * 0.28})`
+              : `rgba(80, 255, 180, ${response * 0.22})`,
+            transform: `scale(${0.94 + response * (0.12 + i * 0.025)})`,
+            opacity: response > 0.02 ? 0.35 - i * 0.07 : 0,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -234,6 +128,7 @@ function Waveform({ amplitude = 0 }: { amplitude?: number }) {
 export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
   const isBusy = status === 'thinking' || status === 'transcribing';
   const isActive = status !== 'idle' && status !== 'wake';
+  const voiceResponse = status === 'recording' || status === 'speaking' ? amplitude : 0;
 
   // Apple-blue base with state tinting
   const glowColor =
@@ -256,13 +151,14 @@ export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
         className="absolute inset-0 rounded-full pointer-events-none"
         style={{ background: `radial-gradient(circle, ${glowColor} 0%, transparent 70%)` }}
         animate={{
-          scale: isActive ? [1, 1.2, 1] : [1, 1.05, 1],
-          opacity: status === 'idle' ? 0.12 : isActive ? 0.5 : 0.2,
+          scale: 1 + voiceResponse * 0.18,
+          opacity: status === 'idle' ? 0.12 : isActive ? 0.18 + voiceResponse * 0.28 : 0.2,
         }}
         transition={{
-          repeat: Infinity,
-          duration: isActive ? 2 : 4,
-          ease: 'easeInOut',
+          type: 'spring',
+          stiffness: 180,
+          damping: 24,
+          mass: 0.35,
         }}
       />
 
@@ -270,7 +166,7 @@ export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
       <ParticleRing status={status} amplitude={amplitude} />
 
       {/* Status rings */}
-      <StatusRings status={status} />
+      <StatusRings status={status} amplitude={amplitude} />
 
       {/* Core sphere — Apple-style glass with minimal border */}
       <motion.div
@@ -284,14 +180,14 @@ export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
             : `0 0 0 1px hsl(var(--border)), 0 4px 16px hsl(0 0% 0% / 0.04)`,
         }}
         animate={{
-          scale: status === 'recording' ? [0.95, 0.98, 0.95]
-            : status === 'speaking' ? [1, 1.015, 1]
-            : [1, 1.005, 1],
+          scale: status === 'recording' ? 0.985 + voiceResponse * 0.055
+            : 1 + voiceResponse * 0.045,
         }}
         transition={{
-          repeat: Infinity,
-          duration: status === 'recording' ? 0.9 : status === 'speaking' ? 1.5 : 3,
-          ease: 'easeInOut',
+          type: 'spring',
+          stiffness: 190,
+          damping: 22,
+          mass: 0.4,
         }}
       >
         {/* Subtle inner highlight */}
@@ -315,14 +211,12 @@ export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
           transition={{ duration: 0.5 }}
         />
 
-        {/* Liquid-gleam highlight */}
-        <motion.div
+        {/* Static liquid-gleam highlight — avoids an always-on animation while paused. */}
+        <div
           className="absolute inset-[-30%] opacity-20"
           style={{
             background: 'conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.25) 60deg, transparent 120deg, rgba(255,255,255,0.1) 180deg, transparent 240deg, rgba(255,255,255,0.2) 300deg, transparent 360deg)',
           }}
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 12, ease: 'linear' }}
         />
 
         {/* Icon */}
