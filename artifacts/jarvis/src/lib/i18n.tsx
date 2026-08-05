@@ -172,7 +172,7 @@ const en = {
   /* Chat input */
   "input.placeholder": "Ask Jarvis anything…",
   "input.placeholderFile": "Add a message…",
-  "input.listening": "🎙 Listening… speak now",
+  "input.listening": "Listening… speak now",
   "input.processing": "Processing…",
   "input.send": "SEND",
   "input.dictate": "Dictate a message",
@@ -234,8 +234,8 @@ const en = {
   "input.couldNotRead": "Could not read file",
   "input.dropHere": "DROP FILE HERE",
   "input.listeningStatus":
-    "● LISTENING — tap the square to stop",
-  "input.thinkingStatus": "◆ THINKING…",
+    "LISTENING — tap the square to stop",
+  "input.thinkingStatus": "THINKING…",
   "input.speakingStatus": "JARVIS IS SPEAKING — ",
   "input.stop": "STOP",
 
@@ -288,7 +288,7 @@ const en = {
   "research.status.failed": "Failed",
   "research.status.cancelled": "Cancelled",
   "research.cancelJob": "Cancel",
-  "research.openGem": "Open 💎",
+  "research.openGem": "Open gem",
   "research.notificationTitle": "Research complete",
   "research.notificationBody": "Your deep research finished — the expert gem is ready.",
   /* LLM keys */
@@ -304,7 +304,7 @@ const en = {
   "settings.llmKeysMissing": "Name, API key and base URL are required",
   "settings.keyAdded": "Key added — it is now in the rotation pool",
   "settings.couldNotAddKey": "Could not add key",
-  "settings.keyOk": "Key works ✓",
+  "settings.keyOk": "Key works",
   "settings.keyTestFailed": "Key test failed",
   "settings.llmTest": "Test key",
   "settings.llmToggle": "Toggle enabled",
@@ -503,7 +503,7 @@ const nl: Record<keyof typeof en, string> = {
   /* Chat input */
   "input.placeholder": "Vragen aan Jarvis…",
   "input.placeholderFile": "Voeg een bericht toe…",
-  "input.listening": "🎙 Luisteren… spreek nu",
+  "input.listening": "Luisteren… spreek nu",
   "input.processing": "Bezig…",
   "input.send": "VERSTUUR",
   "input.dictate": "Bericht dicteren",
@@ -565,8 +565,8 @@ const nl: Record<keyof typeof en, string> = {
   "input.couldNotRead": "Bestand kon niet worden gelezen",
   "input.dropHere": "ZET BESTAND HIER NEER",
   "input.listeningStatus":
-    "● LUISTEREN — tik op het vierkant om te stoppen",
-  "input.thinkingStatus": "◆ BEZIG MET DENKEN…",
+    "LUISTEREN — tik op het vierkant om te stoppen",
+  "input.thinkingStatus": "BEZIG MET DENKEN…",
   "input.speakingStatus": "JARVIS SPREEKT — ",
   "input.stop": "STOP",
 
@@ -619,7 +619,7 @@ const nl: Record<keyof typeof en, string> = {
   "research.status.failed": "Mislukt",
   "research.status.cancelled": "Geannuleerd",
   "research.cancelJob": "Annuleren",
-  "research.openGem": "Open 💎",
+  "research.openGem": "Open gem",
   "research.notificationTitle": "Onderzoek klaar",
   "research.notificationBody": "Je diepe onderzoek is klaar — de expert-gem staat klaar.",
   /* LLM-sleutels */
@@ -635,7 +635,7 @@ const nl: Record<keyof typeof en, string> = {
   "settings.llmKeysMissing": "Naam, API-sleutel en basis-URL zijn verplicht",
   "settings.keyAdded": "Sleutel toegevoegd — hij zit nu in de rotatiepool",
   "settings.couldNotAddKey": "Sleutel kon niet worden toegevoegd",
-  "settings.keyOk": "Sleutel werkt ✓",
+  "settings.keyOk": "Sleutel werkt",
   "settings.keyTestFailed": "Sleuteltest mislukt",
   "settings.llmTest": "Test sleutel",
   "settings.llmToggle": "In-/uitschakelen",

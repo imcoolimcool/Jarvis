@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Music2, RefreshCw, Heart } from 'lucide-react';
+import { X, Music2, RefreshCw, Heart, Sun, Moon, Swords, CloudRain } from 'lucide-react';
 import type { MusicComposition, MusicNote } from '@/types/widget';
 import { MusicWidget } from '@/components/widgets/MusicWidget';
 
@@ -65,11 +65,11 @@ function generateComposition(mood: MusicComposition['mood'], seed: number): Musi
   };
 }
 
-const MOOD_META: { id: MusicComposition['mood']; label: string; emoji: string }[] = [
-  { id: 'happy', label: 'Happy', emoji: '☀️' },
-  { id: 'chill', label: 'Chill', emoji: '🌙' },
-  { id: 'epic', label: 'Epic', emoji: '⚔️' },
-  { id: 'sad', label: 'Sad', emoji: '🌧️' },
+const MOOD_META: { id: MusicComposition['mood']; label: string; icon: typeof Sun }[] = [
+  { id: 'happy', label: 'Happy', icon: Sun },
+  { id: 'chill', label: 'Chill', icon: Moon },
+  { id: 'epic', label: 'Epic', icon: Swords },
+  { id: 'sad', label: 'Sad', icon: CloudRain },
 ];
 
 export function MusicStudio({ open, onClose }: MusicStudioProps) {
@@ -121,7 +121,7 @@ export function MusicStudio({ open, onClose }: MusicStudioProps) {
               <div>
                 <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 uppercase mb-2">Pick a mood</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {MOOD_META.map((m) => (
+                   {MOOD_META.map((m) => (
                     <button
                       key={m.id}
                       onClick={() => compose(m.id, seed)}
@@ -131,7 +131,7 @@ export function MusicStudio({ open, onClose }: MusicStudioProps) {
                           : 'border-border/40 bg-background text-muted-foreground hover:bg-muted/30'
                       }`}
                     >
-                      <span className="text-base">{m.emoji}</span>
+                       <m.icon className="w-4 h-4 text-emerald-500" />
                       {m.label}
                     </button>
                   ))}

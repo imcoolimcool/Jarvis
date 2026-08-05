@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Globe, ArrowLeft, ArrowRight, RotateCcw, Maximize2, Minimize2, Bot, Play, Square, Pause, Grid3X3, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronRight, Circle, Globe, ArrowLeft, ArrowRight, RotateCcw, Maximize2, Minimize2, Bot, Play, Square, Pause, Grid3X3, Loader2, MousePointer2 } from 'lucide-react';
 
 interface BrowserState {
   url: string;
@@ -255,10 +255,10 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
         break;
       }
       case 'action':
-        addLog('action', msg.success ? `✓ ${msg.action} done` : `✗ ${msg.action} failed: ${msg.error ?? 'unknown'}`, msg.success);
+        addLog('action', msg.success ? `${msg.action} done` : `${msg.action} failed: ${msg.error ?? 'unknown'}`, msg.success);
         break;
       case 'done':
-        addLog('done', `✔ ${msg.summary ?? 'Task complete.'}`);
+        addLog('done', msg.summary ?? 'Task complete.');
         setAgentRunning(false);
         break;
       case 'paused':
@@ -270,7 +270,7 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
         addLog('step', '[RESUMED]');
         break;
       case 'error':
-        addLog('error', `⚠ ${msg.message ?? 'Unknown error'}`);
+        addLog('error', msg.message ?? 'Unknown error');
         break;
     }
   }, [addLog]);
@@ -532,9 +532,13 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
                 : 'text-muted-foreground'
               }`}
             >
-              <span className="flex-shrink-0 select-none">
-                {entry.type === 'start' ? '▸' : entry.type === 'done' ? '★' : entry.type === 'error' ? '!' : entry.type === 'action' ? '·' : '›'}
-              </span>
+               <span className="flex-shrink-0 select-none" aria-hidden="true">
+                 {entry.type === 'start' && <Play className="w-2.5 h-2.5 fill-current" />}
+                 {entry.type === 'done' && <CheckCircle2 className="w-2.5 h-2.5" />}
+                 {entry.type === 'error' && <AlertTriangle className="w-2.5 h-2.5" />}
+                 {entry.type === 'action' && <Circle className="w-2 h-2 fill-current" />}
+                 {entry.type === 'step' && <ChevronRight className="w-2.5 h-2.5" />}
+               </span>
               <span className="break-words">{entry.message}</span>
             </div>
           ))}
@@ -586,9 +590,7 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
                   transform: 'translate(-50%, -50%)',
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00ff88" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
-                </svg>
+                <MousePointer2 className="w-4 h-4 text-emerald-400" strokeWidth={2} />
               </div>
             )}
             {/* Paused takeover banner */}

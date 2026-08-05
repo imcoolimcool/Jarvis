@@ -1,16 +1,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Coins, Dice5 } from 'lucide-react';
 
 interface RandomWidgetProps {
   kind: 'dice' | 'coin' | 'number';
   value: number;
   label: string;
 }
-
-const DIE_FACES: Record<number, string> = {
-  1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅',
-};
 
 export function RandomWidget({ kind, value, label }: RandomWidgetProps) {
   const [val, setVal] = useState(value);
@@ -43,7 +39,11 @@ export function RandomWidget({ kind, value, label }: RandomWidgetProps) {
           transition={{ duration: 0.35, type: 'spring', bounce: 0.4 }}
           className="text-7xl leading-none mb-3 select-none"
         >
-          {kind === 'coin' ? (val === 0 ? '🪙' : '🪙') : kind === 'dice' ? (DIE_FACES[val] ?? val) : val}
+           {kind === 'coin'
+             ? <Coins className="w-20 h-20 text-primary" strokeWidth={1.5} />
+             : kind === 'dice'
+               ? <Dice5 className="w-20 h-20 text-primary" strokeWidth={1.5} />
+               : val}
         </motion.div>
       </AnimatePresence>
       <motion.p

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { FileText, Copy, Check, RotateCcw, Pencil, X, Send, Globe, Timer, ChevronDown, Image, Eye, EyeOff, Sunrise, BrainCircuit, Volume2, ThumbsUp, ThumbsDown, Share, MoreHorizontal, ShieldCheck, Loader2, Wand2 } from 'lucide-react';
+import { FileText, Copy, Check, CheckCircle2, Circle, RotateCcw, Pencil, X, Send, Globe, Timer, ChevronDown, Image, Eye, EyeOff, Sunrise, BrainCircuit, Volume2, ThumbsUp, ThumbsDown, Share, MoreHorizontal, ShieldCheck, Loader2, Wand2 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { haptics } from '@/lib/haptics';
 import type { Widget, VerifyClaim, TerminalResult } from '@/types/widget';
@@ -185,8 +185,10 @@ function FactCheckCard({ result }: { result: VerifyClaim[] }) {
       {result.map((c, i) => (
         <div key={i} className="space-y-1">
           <p className="text-foreground/70 leading-snug">“{c.claim}”</p>
-          <p className={`text-[10px] font-medium ${c.verdict === 'supported' ? 'text-green-500' : 'text-yellow-500'}`}>
-            {c.verdict === 'supported' ? '✓ Supported' : '◦ Not clearly confirmed'}
+          <p className={`flex items-center gap-1 text-[10px] font-medium ${c.verdict === 'supported' ? 'text-green-500' : 'text-yellow-500'}`}>
+            {c.verdict === 'supported'
+              ? <><CheckCircle2 className="w-3 h-3" /> Supported</>
+              : <><Circle className="w-3 h-3" /> Not clearly confirmed</>}
           </p>
           {c.evidence.slice(0, 2).map((e, j) => (
             <a

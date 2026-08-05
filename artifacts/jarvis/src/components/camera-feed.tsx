@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
-import { RefreshCw, ImagePlus } from 'lucide-react';
+import { Camera, RefreshCw, ImagePlus } from 'lucide-react';
 import { useObjectDetection } from '@/hooks/use-object-detection';
 import type { DetectionResult } from '@/hooks/use-object-detection';
 
@@ -173,10 +173,7 @@ export function CameraFeed({
     return (
       <div className={`flex flex-col items-center justify-center gap-3 bg-muted/20 rounded-lg border border-border/50 p-6 text-center ${className}`}>
         <div className="w-10 h-10 rounded-full bg-secondary/60 flex items-center justify-center flex-shrink-0">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
-            <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
-            <circle cx="12" cy="13" r="3" />
-          </svg>
+          <Camera className="w-[18px] h-[18px] text-muted-foreground" />
         </div>
         <p className="text-sm text-foreground/80 font-medium">Camera unavailable</p>
         <p className="text-xs text-muted-foreground leading-relaxed max-w-[260px]">
@@ -260,10 +257,7 @@ export function CameraFeed({
               className="w-7 h-7 flex items-center justify-center rounded-full bg-background/60 backdrop-blur border border-border/30 hover:bg-background/80 transition-colors"
               title="Flip camera"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="1 4 1 10 7 10" />
-                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-              </svg>
+              <RefreshCw className="w-3.5 h-3.5" />
             </button>
             {onSnapshot && (
               <button
@@ -271,9 +265,7 @@ export function CameraFeed({
                 className="w-7 h-7 flex items-center justify-center rounded-full bg-background/60 backdrop-blur border border-border/30 hover:bg-background/80 transition-colors"
                 title="Capture snapshot"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                </svg>
+                <Camera className="w-3.5 h-3.5" />
               </button>
             )}
           </>

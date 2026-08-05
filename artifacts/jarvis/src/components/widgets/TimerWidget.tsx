@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, X, Timer } from 'lucide-react';
+import { CheckCircle2, Play, Pause, RotateCcw, X, Timer } from 'lucide-react';
 
 interface TimerWidgetProps {
   durationSeconds: number;
@@ -147,7 +147,7 @@ export function TimerWidget({ durationSeconds, label, compact, onClose }: TimerW
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             {done ? (
-              <span className="text-2xl">✅</span>
+              <CheckCircle2 className="w-8 h-8 text-green-400" />
             ) : (
               <span className={`text-2xl font-display font-bold tabular-nums ${running ? 'text-foreground' : 'text-muted-foreground'}`}>
                 {formatTime(remaining)}

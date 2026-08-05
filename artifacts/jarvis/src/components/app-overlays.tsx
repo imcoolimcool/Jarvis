@@ -11,7 +11,7 @@ import { MusicStudio } from '@/components/music-studio';
 import { StudiosHub, type StudioId } from '@/components/studios-hub';
 import { CommandCard } from '@/components/widgets/CommandCard';
 import type { TerminalResult } from '@/types/widget';
-import { Hammer, X, FolderTree } from 'lucide-react';
+import { Hammer, X, FolderTree, Folder, File } from 'lucide-react';
 
 interface AppOverlaysProps {
   // Settings
@@ -146,7 +146,10 @@ export function AppOverlays(props: AppOverlaysProps) {
                       <div className="rounded-xl border border-border/30 bg-muted/20 divide-y divide-border/20">
                         {props.buildFiles.map((f) => (
                           <div key={f.path} className="flex items-center justify-between px-3 py-1.5 text-xs">
-                            <span className={`font-mono truncate ${f.type === 'dir' ? 'text-foreground/80 font-medium' : 'text-muted-foreground'}`}>{f.type === 'dir' ? '📁 ' : '📄 '}{f.path}</span>
+                            <span className={`flex items-center gap-1.5 font-mono truncate ${f.type === 'dir' ? 'text-foreground/80 font-medium' : 'text-muted-foreground'}`}>
+                              {f.type === 'dir' ? <Folder className="w-3.5 h-3.5 flex-shrink-0" /> : <File className="w-3.5 h-3.5 flex-shrink-0" />}
+                              {f.path}
+                            </span>
                             <span className="text-[10px] text-muted-foreground/40 font-mono flex-shrink-0 ml-2">{f.type === 'file' ? `${f.size} B` : ''}</span>
                           </div>
                         ))}

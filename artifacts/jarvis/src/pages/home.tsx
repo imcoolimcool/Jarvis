@@ -505,7 +505,7 @@ export default function Home() {
             });
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
               try {
-                const n = new Notification(`${job.title} 💎`, {
+              const n = new Notification(job.title, {
                   body: t('research.notificationBody'),
                   tag: `research-${job.id}`,
                 });
@@ -1054,7 +1054,7 @@ export default function Home() {
     }
 
     // Keyboard submit: no TTS. Only mic-sourced messages speak in chat mode.
-    processUserText(text || `📎 ${file?.fileName ?? 'File'}`, file, false);
+    processUserText(text || file?.fileName || 'File', file, false);
   };
 
   const handleSuggestionClick = useCallback((text: string) => {

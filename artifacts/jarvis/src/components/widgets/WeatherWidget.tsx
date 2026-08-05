@@ -1,5 +1,19 @@
 import { useState } from 'react';
-import { Droplets, Wind, Thermometer, X } from 'lucide-react';
+import {
+  Cloud,
+  CloudFog,
+  CloudLightning,
+  CloudRain,
+  CloudSnow,
+  CloudSun,
+  Droplets,
+  Moon,
+  Sun,
+  Wind,
+  Thermometer,
+  X,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 interface ForecastDay { date: string; maxTemp_c: number; minTemp_c: number; condition: string; conditionCode: number }
 
@@ -15,22 +29,22 @@ interface WeatherWidgetProps extends WeatherData {
   onClose?: () => void;
 }
 
-function weatherEmoji(code: number, isDay = true): string {
-  if (code === 113) return isDay ? '☀️' : '🌙';
-  if (code === 116) return isDay ? '⛅' : '🌥️';
-  if (code === 119 || code === 122) return '☁️';
-  if ([143, 248, 260].includes(code)) return '🌫️';
-  if (code >= 176 && code <= 182) return '🌦️';
-  if ([185, 281, 284].includes(code)) return '🌧️';
-  if (code >= 200 && code <= 221) return '❄️';
-  if (code >= 227 && code <= 260) return '🌨️';
-  if (code >= 263 && code <= 284) return '🌦️';
-  if (code >= 293 && code <= 308) return '🌧️';
-  if (code >= 311 && code <= 335) return '🌨️';
-  if (code >= 338 && code <= 350) return '❄️';
-  if (code >= 353 && code <= 368) return '🌦️';
-  if (code >= 371 && code <= 395) return '🌩️';
-  return '🌡️';
+function weatherIcon(code: number, isDay = true): LucideIcon {
+  if (code === 113) return isDay ? Sun : Moon;
+  if (code === 116) return CloudSun;
+  if (code === 119 || code === 122) return Cloud;
+  if ([143, 248, 260].includes(code)) return CloudFog;
+  if (code >= 176 && code <= 182) return CloudRain;
+  if ([185, 281, 284].includes(code)) return CloudRain;
+  if (code >= 200 && code <= 221) return CloudSnow;
+  if (code >= 227 && code <= 260) return CloudSnow;
+  if (code >= 263 && code <= 284) return CloudRain;
+  if (code >= 293 && code <= 308) return CloudRain;
+  if (code >= 311 && code <= 335) return CloudSnow;
+  if (code >= 338 && code <= 350) return CloudSnow;
+  if (code >= 353 && code <= 368) return CloudRain;
+  if (code >= 371 && code <= 395) return CloudLightning;
+  return Thermometer;
 }
 
 function formatDate(dateStr: string): string {
@@ -51,7 +65,7 @@ export function WeatherWidget({ location, temp_c, temp_f, feelsLike_c, condition
 
       {/* Header */}
       <div className="flex items-start gap-3">
-        <span className="text-4xl">{weatherEmoji(conditionCode, isDay)}</span>
+         {(() => { const WeatherIcon = weatherIcon(conditionCode, isDay); return <WeatherIcon className="w-10 h-10 text-primary flex-shrink-0" strokeWidth={1.5} />; })()}
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 uppercase truncate">{location}</p>
           <div className="flex items-baseline gap-1.5">
@@ -96,7 +110,7 @@ export function WeatherWidget({ location, temp_c, temp_f, feelsLike_c, condition
           {forecast.slice(0, 5).map((f, i) => (
             <div key={i} className="flex-shrink-0 flex flex-col items-center p-2 rounded-xl bg-card/30 border border-border/20 min-w-[58px]">
               <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wider truncate">{i === 0 ? 'Today' : formatDate(f.date)}</span>
-              <span className="text-lg mt-0.5">{weatherEmoji(f.conditionCode, true)}</span>
+               {(() => { const WeatherIcon = weatherIcon(f.conditionCode, true); return <WeatherIcon className="w-5 h-5 mt-0.5 text-primary" strokeWidth={1.5} />; })()}
               <span className="text-[11px] font-mono text-foreground/80 tabular-nums">{Math.round(unit === 'C' ? f.maxTemp_c : f.maxTemp_c * 9/5 + 32)}°</span>
               <span className="text-[10px] font-mono text-muted-foreground/40 tabular-nums">{Math.round(unit === 'C' ? f.minTemp_c : f.minTemp_c * 9/5 + 32)}°</span>
             </div>
