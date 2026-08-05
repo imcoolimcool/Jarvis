@@ -274,12 +274,17 @@ changes. The files DB lives in the separate Neon database; everything else in th
 Each studio is labeled honestly about what it is. "Done" = a complete studio at the best
 free/local quality, producing a real artifact end to end. None is a stub; none overclaims.
 
-- **Music Studio** ("free AI music, lo-fi/ambient/electronic focus"). Pluggable provider:
-  - PRIMARY: local MusicGen worker. `scripts/music-gen-worker/` (Python FastAPI +
+- **Music Studio** ("free AI music, lo-fi/ambient/electronic focus"). CURRENT STATE (verified):
+  it is ONLY a 166-line procedural Web Audio synth that composes a seed+mood melody in the
+  browser and plays it live. No prompt, no model, no server, no API. The Suno-style
+  prompt-to-track pipeline is a FROM-SCRATCH build in Phase D, not an extension.
+  - Build: local MusicGen worker. `scripts/music-gen-worker/` (Python FastAPI +
     transformers, `facebook/musicgen-small` or `medium`). api-server calls it via
     `MUSIC_GEN_WORKER_URL`. Free and unlimited; runs on the user's machine.
   - FALLBACK: HuggingFace Inference API with a free HF token (`HF_API_TOKEN`), MusicGen
     model, pay-as-you-go, with graceful "out of free credits" handling.
+  - Keep the existing browser synth as an OFFLINE fallback when no worker/key is configured,
+    labeled "procedural preview".
   - UI: prompt, genre/mood/duration controls, playback, download, history/queue, provider
     selector in studio settings.
 - **Design Studio** ("AI image studio"). Generate images, edit existing images, style
