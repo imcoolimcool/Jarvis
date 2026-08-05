@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { FileText, Copy, Check, CheckCircle2, Circle, RotateCcw, Pencil, X, Send, Globe, Timer, ChevronDown, Image, Eye, EyeOff, Sunrise, BrainCircuit, Volume2, ThumbsUp, ThumbsDown, Share, MoreHorizontal, ShieldCheck, Loader2, Wand2 } from 'lucide-react';
+import { FileText, Copy, Check, CheckCircle2, Circle, RotateCcw, Pencil, X, Send, Compass, Timer, ChevronDown, Images, Eye, EyeOff, CalendarClock, BrainCircuit, Volume2, ThumbsUp, ThumbsDown, Share, MoreHorizontal, ShieldCheck, Loader2, Wand2, FilePenLine } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { haptics } from '@/lib/haptics';
 import type { Widget, VerifyClaim, TerminalResult } from '@/types/widget';
@@ -529,10 +529,10 @@ export function ConversationFeed({
           {/* Quick actions — ChatGPT-style suggestion rows */}
           <div className="space-y-1.5 w-full">
             {[
-              { icon: Sunrise, label: t('home.goodMorning'), primary: true },
-              { icon: Image, label: t('home.createImage') },
-              { icon: Pencil, label: t('home.write') },
-              { icon: Globe, label: t('home.searchWeb') },
+              { icon: CalendarClock, label: t('home.goodMorning'), primary: true },
+              { icon: Images, label: t('home.createImage') },
+              { icon: FilePenLine, label: t('home.write') },
+              { icon: Compass, label: t('home.searchWeb') },
             ].map(({ icon: Icon, label, primary }: { icon: any; label: string; primary?: boolean }, i) => (
               <motion.button
                 key={label}
