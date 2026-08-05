@@ -3,3 +3,4 @@
 - [SpeechRecognition types in Vite](speech-recognition-types.md) — install `@types/dom-speech-recognition` and add `"dom-speech-recognition"` to the `types` array in tsconfig because `types` disables auto-include of all @types packages.
 - [LLM pseudo-JSON titles](llm-pseudo-json.md) — LLM outputs may use single-quoted pseudo-JSON; use a lenient field-extraction regex before `JSON.parse` when deriving display strings.
 - [QA browser runtime](qa-browser-runtime.md) — imported Puppeteer runners may have machine-specific paths, ports, and missing browser libraries in Replit.
+- [Orb background treatment](orb-background-treatment.md) — preserve the page’s subtle dot texture; remove only orb-local particles and mask a small halo around the orb.

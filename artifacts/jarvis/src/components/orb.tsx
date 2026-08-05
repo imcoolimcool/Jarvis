@@ -76,12 +76,19 @@ export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
 
   return (
     <div
-      className="relative flex items-center justify-center w-[260px] h-[260px] sm:w-[280px] sm:h-[280px] cursor-pointer group select-none"
+      className="relative isolate z-[10000] flex items-center justify-center w-[260px] h-[260px] sm:w-[280px] sm:h-[280px] cursor-pointer group select-none"
       onPointerDown={onClick}
       style={{ touchAction: 'manipulation' }}
       aria-label={status}
       role="button"
     >
+      {/* Masks only the page texture around the orb; the rest of the
+          background keeps its original subtle dot texture. */}
+      <div
+        className="absolute -inset-4 rounded-full bg-background pointer-events-none"
+        aria-hidden="true"
+      />
+
       {/* Ambient glow backdrop — radial gradient instead of blur(80px): the
           filter was repainted every frame; a gradient fades on its own. */}
       <motion.div
