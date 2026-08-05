@@ -1533,11 +1533,11 @@ export default function Home() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.2 }}
-                      className={`text-lg font-light tracking-tight ${
+                      className={`text-lg tracking-tight ${
                         status === 'recording' ? 'text-red-500 dark:text-red-400' :
                         status === 'speaking' ? 'text-green-500 dark:text-green-400' :
                         status === 'thinking' || status === 'transcribing' ? 'text-amber-500 dark:text-amber-400' :
-                        'text-foreground'
+                        'text-foreground font-normal'
                       }`}
                     >
                       {statusLabels[status]}
