@@ -110,6 +110,14 @@ const CREATE_TABLES = [
     "last_used_at" timestamp,
     "created_at" timestamp NOT NULL DEFAULT now()
   )`,
+
+  // ── In-app API keys (Freebuff-Keys-tab-free secret store) ──
+  `CREATE TABLE IF NOT EXISTS "app_secrets" (
+    "key" text PRIMARY KEY,
+    "value" text NOT NULL,
+    "description" text,
+    "updated_at" timestamp NOT NULL DEFAULT now()
+  )`,
 ];
 
 /**

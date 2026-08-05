@@ -6,3 +6,4 @@ export * from "./spotify";
 export * from "./research";
 export * from "./push";
 export * from "./llm-keys";
+export * from "./secrets";

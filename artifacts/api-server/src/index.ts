@@ -19,6 +19,7 @@ loadEnv({ path: path.join(__dirname, "..", ".env") });
 import app from "./app";
 import { logger } from "./lib/logger";
 import { ensureTables } from "./lib/auto-migrate";
+import { injectDbSecretsIntoEnv } from "./routes/jarvis/secrets";
 
 const rawPort = process.env["PORT"];
 const port = rawPort ? Number(rawPort) : 8080;
@@ -33,6 +34,12 @@ if (Number.isNaN(port) || port <= 0) {
 // gets a real, actionable error instead of "server unreachable".
 ensureTables().catch((err) => {
   logger.error({ err }, "Database migration skipped — DB unreachable. Server will still start; add DATABASE_URL to bring it online.");
+}).then(() => {
+  // In-app API keys (Settings → API Keys) live in the DB — inject them into
+  // process.env so every existing read site picks them up. DB values win.
+  return injectDbSecretsIntoEnv();
+}).catch((err) => {
+  logger.error({ err }, "Secret injection failed (non-fatal)");
 }).finally(() => {
   app.listen(port, (err) => {
   if (err) {
