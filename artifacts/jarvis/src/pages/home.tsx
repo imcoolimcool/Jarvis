@@ -442,11 +442,11 @@ export default function Home() {
   }, []);
 
   const handleError = useCallback((msg: string, detail?: ErrorDetail, onRetry?: () => void) => {
-    // Every error gets a Details button — if the server didn't send a detail
+    // The panel stays CLOSED until the user clicks DETAILS — the toast shows
+    // the message with a DETAILS button. If the server didn't send a detail
     // object, build one client-side with every bit of browser/context info
     // we can capture so the user can copy a complete bug report.
     const resolvedDetail = detail ?? buildClientErrorDetail(msg);
-    setErrorDetail(resolvedDetail);
     toast({
       variant: 'destructive',
       title: 'Something went wrong',
@@ -472,7 +472,7 @@ export default function Home() {
           </span>
         </span>
       ),
-      duration: 8000,
+      duration: 15000, // long enough to actually click DETAILS / RETRY
     });
     vibrate([100, 50, 100]);
     setStatus('idle');
