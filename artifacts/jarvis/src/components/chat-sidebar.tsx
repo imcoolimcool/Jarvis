@@ -282,12 +282,13 @@ interface ChatSidebarProps {
   onNew: () => void;
   refreshTick: number;
   mobileOpen?: boolean;
+  desktopOpen?: boolean;
   onMobileClose?: () => void;
   onOpenSettings?: () => void;
   onNavigate?: (mode: 'chat' | 'agent' | 'camera') => void;
 }
 
-export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen, onMobileClose, onOpenSettings, onNavigate }: ChatSidebarProps) {
+export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen, desktopOpen = true, onMobileClose, onOpenSettings, onNavigate }: ChatSidebarProps) {
   const { t } = useI18n();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -385,9 +386,21 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen
   return (
     <>
       {/* Desktop */}
-      <div className="hidden lg:flex flex-col w-64 border-r border-border/30 bg-background/70 backdrop-blur-2xl flex-shrink-0">
-        <SidebarContent {...sharedProps} />
-      </div>
+      <AnimatePresence initial={false}>
+        {desktopOpen && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 256, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="hidden lg:flex flex-col border-r border-border/30 bg-background/70 backdrop-blur-2xl flex-shrink-0 overflow-hidden"
+          >
+            <div className="w-64 h-full flex flex-col">
+              <SidebarContent {...sharedProps} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile drawer */}
       <AnimatePresence>

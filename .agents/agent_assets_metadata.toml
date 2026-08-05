@@ -32,3 +32,38 @@ uri = "file://qa-report/JARVIS-COMPLETE-AUDIT.txt"
 type = "text"
 title = "Jarvis Complete Website Audit"
 description = "Full QA audit covering verified control clicks, screenshots, confirmed defects, unverified provider-dependent flows, recommendations, likes, dislikes, and final verdict."
+
+[[outputs]]
+id = "USlegkL9sHUbR8S47Zcfa"
+uri = "file://attached_assets/generated_images/01-glass-lens-orb.png"
+type = "image"
+title = "Glass lens orb concept"
+description = "Orb redesign direction 1:  centered single object,  glass lens / liquid crystal design,  translucent milky-white spherical shell with a crisp electric blue inner core."
+
+[[outputs]]
+id = "ZvfC8Y4UaROswW7LKnNe1"
+uri = "file://attached_assets/generated_images/02-orbital-rings-orb.png"
+type = "image"
+title = "Orbital ring orb concept"
+description = "Orb redesign direction 2:  centered single object,  dark navy near-black background,  a luminous pearl-like core surrounded by two thin elegant orbital rings that imply listening and intelligence."
+
+[[outputs]]
+id = "nxg5IhHK_hwBNFD0sqPgo"
+uri = "file://attached_assets/generated_images/03-neural-mesh-orb.png"
+type = "image"
+title = "Neural mesh orb concept"
+description = "Orb redesign direction 3:  centered single object,  neural mesh sphere made from a sparse network of fine glowing blue-white filaments with a warm white center,  elegant computational intelligence metaphor."
+
+[[outputs]]
+id = "Ms8trkw2o2UGg26QvgRoH"
+uri = "file://attached_assets/generated_images/04-minimal-pulse-orb.png"
+type = "image"
+title = "Minimal pulse orb concept"
+description = "Orb redesign direction 4:  centered single object,  extreme minimalism,  a matte white circular body with one precise cobalt-blue pulse line wrapping around its edge like a heartbeat waveform."
+
+[[outputs]]
+id = "gn89ZivYPmfFL0LIM58CS"
+uri = "file://attached_assets/generated_images/05-holographic-core-orb.png"
+type = "image"
+title = "Holographic core orb concept"
+description = "Orb redesign direction 5:  centered single object,  sculptural holographic core suspended inside a thin transparent glass shell,  layered iridescent cyan."

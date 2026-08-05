@@ -9,7 +9,7 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, MessageSquare, Send, Settings, Menu, X, Plus, Bug, Search, Minimize2, Maximize2, AudioWaveform, ArrowLeft, SquarePen, MoreHorizontal, Camera, Globe, AlarmClock, Sparkles, FileText } from 'lucide-react';
+import { Square, Mic, MessageSquare, Send, Settings, Menu, X, Plus, Bug, Search, Minimize2, Maximize2, AudioWaveform, ArrowLeft, SquarePen, MoreHorizontal, Camera, Globe, Sparkles, FileText } from 'lucide-react';
 import type { Widget, TerminalResult } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, CommandCard } from '@/components/widgets';
 import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
@@ -1327,9 +1327,10 @@ export default function Home() {
       <header className={`glass-toolbar px-4 py-2.5 flex items-center border-b border-border/50 relative z-50 flex-shrink-0 ${mode === 'voice' ? 'hidden' : ''}`}>
         {/* Left: hamburger (menu) — always visible, ChatGPT style */}
         <button
-          onClick={() => setMobileSidebarOpen(true)}
+          onClick={() => setMobileSidebarOpen(open => !open)}
           className="w-9 h-9 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 text-foreground flex items-center justify-center shadow-sm transition-all hover:bg-secondary/70 active:scale-95"
-          aria-label="Open history"
+          aria-label={mobileSidebarOpen ? 'Close history' : 'Open history'}
+          aria-expanded={mobileSidebarOpen}
         >
           <Menu className="w-[18px] h-[18px]" />
         </button>
@@ -1391,6 +1392,7 @@ export default function Home() {
             onNew={handleNewChat}
             refreshTick={sidebarRefreshTick}
             mobileOpen={mobileSidebarOpen}
+            desktopOpen={mobileSidebarOpen}
             onMobileClose={() => setMobileSidebarOpen(false)}
             onOpenSettings={() => setSettingsOpen(true)}
             onNavigate={(m) => { haptics.light(); setMode(m); }}
@@ -1438,24 +1440,6 @@ export default function Home() {
               >
                 <MessageSquare className="w-[18px] h-[18px]" />
               </button>
-              {/* Ambient liquid-gradient blobs — iOS 26 liquid feel.
-                  STATIC radial gradients (no blur filter, no animation) so the
-                  paint cost is zero — soft falloff comes from the gradient. */}
-              <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
-                <div
-                  className="absolute -top-24 -left-24 w-[28rem] h-[28rem] rounded-full opacity-25"
-                  style={{ background: 'radial-gradient(circle at 35% 35%, rgba(0,122,255,0.55), transparent 70%)' }}
-                />
-                <div
-                  className="absolute -bottom-32 -right-24 w-[30rem] h-[30rem] rounded-full opacity-20"
-                  style={{ background: 'radial-gradient(circle at 60% 40%, rgba(175,82,222,0.55), transparent 70%)' }}
-                />
-                <div
-                  className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[24rem] h-[24rem] rounded-full opacity-15"
-                  style={{ background: 'radial-gradient(circle at 50% 50%, rgba(52,199,89,0.4), transparent 70%)' }}
-                />
-              </div>
-
               {/* Orb + status */}
               <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 min-h-0">
                 {(activeWidget?.type === 'alarm' || activeWidget?.type === 'timer') && (
@@ -1594,60 +1578,7 @@ export default function Home() {
 
           {/* ── CHAT MODE ── */}
           {mode === 'chat' && (
-            <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-              {/* Orb panel */}
-              <div className="hidden lg:flex flex-shrink-0 lg:w-72 xl:w-80 flex-col items-center justify-center p-6 border-r border-border/30 relative overflow-y-auto">
-                {activeWidget?.type === 'alarm' && (
-                  <div className="mb-3 flex flex-col items-center gap-1">
-                    <AlarmClock className="w-5 h-5 text-primary/70" />
-                    <AlarmWidget {...activeWidget} compact onClose={() => setActiveWidget(null)} />
-                  </div>
-                )}
-                <Orb status={status} />
-                <div className="mt-6 text-center space-y-2">
-                  <h2 className="text-2xl font-light tracking-tight text-foreground">
-                    {statusLabels[status]}
-                  </h2>
-                </div>
-                {activeWidget && activeWidget.type !== 'alarm' && (
-                  <div className="mt-4 w-full space-y-3">
-                    {activeWidget.type === 'clock'    && <ClockWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
-                    {activeWidget.type === 'weather'  && <WeatherWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
-                    {activeWidget.type === 'timer'    && <TimerWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
-                    {activeWidget.type === 'calendar' && <CalendarWidget {...activeWidget} onClose={() => setActiveWidget(null)} />}
-                  </div>
-                )}
-
-                {/* PiP toggles — agent + browser + camera */}
-                <div className="flex items-center gap-2 mt-3">
-                  <button
-                    onClick={() => { setAgentModeActive(a => !a); if (!agentModeActive) setPipBrowserOpen(true); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-medium font-rounded transition-all ${
-                      agentModeActive ? 'bg-primary/15 text-primary' : 'text-muted-foreground/80 hover:text-foreground'
-                    }`}
-                  >
-                    <Search className="w-3 h-3 inline mr-1" />
-                    {agentModeActive ? t('voice.agentOn') : t('voice.agent')}
-                  </button>
-                  <button
-                    onClick={() => { setPipBrowserOpen(b => !b); setPipFullscreen(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-medium font-rounded transition-all ${
-                      pipBrowserOpen ? 'bg-primary/15 text-primary' : 'text-muted-foreground/80 hover:text-foreground'
-                    }`}
-                  >
-                    <Globe className="w-3 h-3 inline mr-1" />
-                    {pipBrowserOpen ? t('voice.browserOn') : t('voice.browser')}
-                  </button>
-                  <button
-                    onClick={() => { haptics.light(); setMode('camera'); }}
-                    className="px-3 py-1.5 rounded-lg text-[11px] font-medium font-rounded transition-all text-muted-foreground/80 hover:text-foreground"
-                  >
-                    <Camera className="w-3 h-3 inline mr-1" />
-                    {t('voice.cameraMode')}
-                  </button>
-                </div>
-              </div>
-
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               {/* Chat area */}
               <div className="flex-1 flex flex-col h-full min-h-0 bg-card/5">
 
