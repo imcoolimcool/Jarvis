@@ -733,7 +733,12 @@ export default function Home() {
           const errBody = await res.json();
           handleError(errBody?.error || `Server error (${res.status})`, errBody?.detail, () => processUserTextRef.current?.(userText, file, speak));
         } catch {
-          handleError(`Server error (${res.status})`, undefined, () => processUserTextRef.current?.(userText, file, speak));
+          // Body isn't JSON — the API server is likely down or restarting
+          // (a gateway/proxy-level 502/500). Explain it instead of a bare number.
+          const hint = res.status >= 500
+            ? 'The Jarvis server is unreachable right now (likely restarting or down). Wait a few seconds and retry.'
+            : `Server returned HTTP ${res.status} with an unexpected response.`;
+          handleError(hint, undefined, () => processUserTextRef.current?.(userText, file, speak));
         }
         return;
       }

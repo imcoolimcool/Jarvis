@@ -1243,14 +1243,21 @@ router.post("/chat", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "LLM chat request failed");
     let msg = "Chat request failed. Please try again.";
+    const httpStatus = (err as { status?: number })?.status;
     if (err instanceof LLMAllKeysCoolingError) {
+      // Already includes the failing key name(s) + status — surface it as-is
+      // so the user sees "Env: OpenRouter (HTTP 401): User not found" instead
+      // of a mystery number.
       msg = err.message;
     } else if (err instanceof Error) {
-      if (err.message.includes("OPENAI_LLM_API_KEY")) msg = "LLM API key not configured on the server.";
-      else if (err.message.includes("401") || err.message.includes("Unauthorized")) msg = "LLM authentication failed — check OPENAI_LLM_API_KEY.";
-      else if (err.message.includes("403") || err.message.includes("PermissionDenied") || err.message.includes("Permission")) msg = "LLM API key denied — verify OPENAI_LLM_API_KEY has access to this model.";
-      else if (err.message.includes("429") || err.message.includes("Rate limit")) msg = "LLM rate limit exceeded — try again shortly.";
-      else if (err.message.includes("timeout") || err.message.includes("abort")) msg = "LLM request timed out — check your connection.";
+      const em = err.message;
+      if (em.includes("OPENAI_LLM_API_KEY") || em.includes("OPENROUTER_API_KEY")) msg = "LLM API key not configured on the server.";
+      else if (httpStatus === 401 || /401|unauthorized|invalid api key|user not found|invalid credentials/.test(em)) msg = `LLM authentication failed — the API key is invalid or expired. (${em.slice(0, 120)})`;
+      else if (httpStatus === 403 || /403|permissiondenied|forbidden/.test(em)) msg = "LLM API key denied — verify it has access to this model.";
+      else if (httpStatus === 429 || /429|rate limit|quota/.test(em)) msg = "LLM rate limit exceeded — try again shortly.";
+      else if (httpStatus === 502 || /502|bad gateway|upstream/.test(em)) msg = `The model provider returned an upstream error (502) — try again, the free router may pick a different model. (${em.slice(0, 120)})`;
+      else if (httpStatus === 400 || /400/.test(em)) msg = `The model rejected the request (400) — try rephrasing. (${em.slice(0, 120)})`;
+      else if (/timeout|abort/.test(em)) msg = "LLM request timed out — check your connection.";
     }
     // If SSE headers were already flushed we can't send a JSON response —
     // send an SSE error event instead so the frontend can surface it.
