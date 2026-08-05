@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Square, Mic, MessageSquare, Send, Settings, Menu, X, Plus, Bug, Search, Minimize2, Maximize2, AudioWaveform, ArrowLeft, SquarePen, MoreHorizontal, Camera, Globe, AlarmClock, Sparkles, FileText } from 'lucide-react';
 import type { Widget, TerminalResult, FileEdit } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, CommandCard } from '@/components/widgets';
-import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
+import { ErrorDetailPanel, buildClientErrorDetail, type ErrorDetail } from '@/components/error-detail-panel';
 import { useScreenShare } from '@/hooks/use-screen-share';
 import { JarvisBrowser } from '@/components/jarvis-browser';
 import { CameraFeed } from '@/components/camera-feed';
@@ -442,7 +442,11 @@ export default function Home() {
   }, []);
 
   const handleError = useCallback((msg: string, detail?: ErrorDetail, onRetry?: () => void) => {
-    setErrorDetail(detail ?? null);
+    // Every error gets a Details button — if the server didn't send a detail
+    // object, build one client-side with every bit of browser/context info
+    // we can capture so the user can copy a complete bug report.
+    const resolvedDetail = detail ?? buildClientErrorDetail(msg);
+    setErrorDetail(resolvedDetail);
     toast({
       variant: 'destructive',
       title: 'Something went wrong',
@@ -450,15 +454,13 @@ export default function Home() {
         <span className="flex items-center gap-2">
           <span className="flex-1">{msg}</span>
           <span className="flex items-center gap-1 flex-shrink-0">
-            {detail && (
-              <button
-                onClick={() => setErrorDetail(detail)}
-                className="flex items-center gap-1 px-2 py-0.5 rounded border border-red-400/30 bg-red-400/10 text-red-400 text-[10px] font-mono tracking-wider hover:bg-red-400/20 transition-colors"
-              >
-                <Bug className="w-2.5 h-2.5" />
-                DETAILS
-              </button>
-            )}
+            <button
+              onClick={() => setErrorDetail(resolvedDetail)}
+              className="flex items-center gap-1 px-2 py-0.5 rounded border border-red-400/30 bg-red-400/10 text-red-400 text-[10px] font-mono tracking-wider hover:bg-red-400/20 transition-colors"
+            >
+              <Bug className="w-2.5 h-2.5" />
+              DETAILS
+            </button>
             {onRetry && (
               <button
                 onClick={onRetry}
@@ -943,7 +945,7 @@ export default function Home() {
                 }
                 break;
               case 'error':
-                handleError(parsed.message ?? 'Stream error');
+                handleError(parsed.message ?? 'Stream error', parsed.detail as ErrorDetail | undefined);
                 return;
             }
           } catch { /* skip malformed lines */ }

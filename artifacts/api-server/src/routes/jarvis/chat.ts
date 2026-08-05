@@ -1003,9 +1003,11 @@ router.post("/chat", async (req, res) => {
           if (chunk.usage) tokens = chunk.usage.total_tokens ?? 0;
         }
       } catch (streamErr) {
-        // If streaming fails mid-way, send an error event and bail
+        // If streaming fails mid-way, send an error event (with full detail)
+        // and bail
         req.log.error({ err: streamErr }, "LLM streaming failed mid-response");
-        res.write(`data: ${JSON.stringify({ type: "error", message: "Stream interrupted" })}\n\n`);
+        const errDetail = buildErrorDetail(streamErr instanceof Error ? streamErr : new Error(String(streamErr)), req, 500, startMs);
+        res.write(`data: ${JSON.stringify({ type: "error", message: "Stream interrupted", detail: errDetail })}\n\n`);
         res.write("data: [DONE]\n\n");
         res.end();
         return { text, totalTokens: tokens, interrupted: true };
@@ -1263,7 +1265,10 @@ router.post("/chat", async (req, res) => {
     // send an SSE error event instead so the frontend can surface it.
     if (res.headersSent) {
       try {
-        res.write(`data: ${JSON.stringify({ type: "error", message: msg })}\n\n`);
+        // Include the full diagnostic detail object so mid-stream errors
+        // show the insanely-detailed panel too.
+        const detail = buildErrorDetail(err instanceof Error ? err : new Error(String(err)), req, 500, startMs);
+        res.write(`data: ${JSON.stringify({ type: "error", message: msg, detail })}\n\n`);
         res.write("data: [DONE]\n\n");
         res.end();
       } catch {
