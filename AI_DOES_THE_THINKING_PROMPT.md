@@ -21,7 +21,9 @@ The studios are NOT stubs. Each must reach real feature parity for its niche:
 - **Research Studio**: match Gemini/Deep Research quality: multi-phase, sources, an estimate,
   deep and standard depths, honest limits.
 - **Music Studio**: match Suno: prompt to a real generated track with playback, download, and
-  parameter controls (genre, mood, duration).
+  parameter controls (genre, mood, duration). Generation runs through a pluggable provider;
+  primary is a free self-hosted MusicGen worker, fallback is the HuggingFace Inference API
+  (see section 14).
 - **Design Studio**: match Canva AI: generate images, edit existing images, style presets,
   export. (This already receives edits from the chat; make the studio itself complete.)
 - **Build Studio / Build Mode**: match Replit: a real Linux terminal + workspace in the
@@ -94,11 +96,17 @@ The input area currently has ~10 buttons around the text box plus toggles. Reduc
 Find the current chat-header menu (the one that contains a Settings entry; if it is not a
 3-dot menu today, make it one). Remove the Settings entry from it. Replace the menu contents
 with these, and make every one actually work:
-1. **Share chat** — copies a shareable link to this conversation.
+1. **Share chat** — the user taps Share and a confirmation states clearly: "Anyone with this
+   link can view this ENTIRE conversation, including any personal context in it." On confirm,
+   copy a public read-only link to the whole conversation. Full content, nothing stripped.
+   The user chose to share, so no memory/privacy filtering on the shared view.
 2. **Export as .txt** — downloads the chat as a readable text file. ALSO remove the Export
    button from the sidebar menu (it lives here now).
-3. **Groupchat** — creates a group chat from this chat (new conversation shared with the
-   participants/context of this one).
+3. **Groupchat** — works like a normal WhatsApp group chat: a real multi-participant
+   conversation where several people can send messages. Jarvis is a participant. When a
+   group chat is created, a GROUP SETTINGS button appears NEXT TO the 3-dot menu. Group
+   settings includes the AI-participation toggle: "Jarvis always responds" vs "Jarvis
+   responds only when @Jarvis". Participants, their names, and the toggle are editable.
 4. **Pin** — pins the chat to the top of the conversation history; pinned chats sort above
    all others, with a pin indicator; toggle unpins.
 5. **Files** — shows every file uploaded or received in THIS chat, with preview and open.
@@ -128,11 +136,14 @@ Implement a Projects concept modeled on ChatGPT Projects:
 
 Add a Gallery entry to the sidebar. It shows EVERY image and file that has been uploaded or
 created by either side, across ALL conversations, newest first. Include: generated images,
-uploaded attachments, received files, edited/annotated images, screenshots, artifacts.
-- Filter by type (images / documents / code / audio) and search by name.
+uploaded attachments, received files, edited/annotated images, screenshots, artifacts, AND
+apps/projects made in Build Mode (each build is saved and appears here with its name and a
+preview/launch action).
+- Filter by type (images / documents / code / audio / apps) and search by name.
 - Click an item to open/preview it; images open in the viewer and can be re-annotated
-  (section 8).
-- It reads from the existing message/file data; a gallery route/aggregation endpoint if needed.
+  (section 8); build apps open in the Build Studio or a run view.
+- It reads from the file storage layer (section 12.1) plus the build-store; a gallery
+  route/aggregation endpoint if needed.
 
 ## 8. IMAGE SCRIBBLE / ANNOTATE (new)
 
@@ -192,6 +203,23 @@ language; be honest about capabilities; never pretend to have done something.
 
 ## 12. BACKEND CHANGES SUMMARY
 
+### 12.1 FILE STORAGE (Gallery / Files / scribble / build apps)
+Files must persist. Use TWO free providers, configurable via env, with a clean abstraction so
+the executor can swap them:
+- **Metadata**: a SEPARATE Neon database (the user's explicit choice), Drizzle schema
+  `files` table: id, conversation_id, kind (image / document / audio / build-app / code),
+  name, mime, size, storage_key, bucket, created_at, owner (user or jarvis). A snippet for
+  this database is part of the deliverable (schema + DATABASE_URL_FILES env).
+- **Blobs**: Cloudflare R2 (10GB free, zero egress, S3-compatible). Store the actual bytes;
+  serve via a `/api/files/:key` route that streams from R2. Env: R2_ACCOUNT_ID, R2_ACCESS_KEY,
+  R2_SECRET_KEY, R2_BUCKET.
+- Fallbacks allowed: if R2 is unconfigured, fall back to local disk under `data/files/` with
+  the same `/api/files/:key` route, so the app works before cloud keys are added.
+- Uploads, generated images, annotated/scribbled images, and build-mode apps all write here,
+  and the Gallery (section 7) reads from here.
+
+### 12.2 Backend items
+
 - `chat.ts`: intent router before the main call; auto web search; auto research depth; chat
   titles from the starting message (2-4 words, already implemented: deterministic
   `titleFromMessage` + LLM polish); strip em dashes; no-em-dash instruction.
@@ -221,7 +249,15 @@ language; be honest about capabilities; never pretend to have done something.
 ## 14. STUDIO COMPETITOR PARITY (what "done" means)
 
 - Music Studio (Suno): prompt to track, real playback, download, genre/mood/duration controls,
-  a queue/history of past generations. Not a stub.
+  a queue/history of past generations. Not a stub. Generation is a pluggable provider:
+  - PRIMARY: a local MusicGen worker. Add `scripts/music-gen-worker/` (small Python FastAPI
+    service using `transformers` + `facebook/musicgen-small` or `medium`). The api-server
+    calls it via `MUSIC_GEN_WORKER_URL`. Truly free and unlimited, no key. Runs on the
+    user's machine.
+  - FALLBACK: HuggingFace Inference API with a free HF token (`HF_API_TOKEN`), MusicGen
+    model, pay-as-you-go, with graceful "out of free credits" handling and a provider
+    selector in Music Studio settings. A free keyed route exists, but free monthly credits
+    are small; the self-hosted worker is the reliable 30+ songs/month path.
 - Design Studio (Canva AI): image generation, edit existing images, style presets, export,
   receive edits from chat (already wired via onEditImage). Make the studio complete.
 - Build Studio (Replit): real terminal + workspace, clone GitHub repos, run commands, stream
@@ -246,6 +282,11 @@ language; be honest about capabilities; never pretend to have done something.
 10. Chat box shows only +, mic, voice; "@" opens the plugin menu with the rest.
 11. Chat-header menu has: Share, Export .txt, Groupchat, Pin, Files, Search, Add to project.
     No Settings entry. Sidebar Export button is gone.
+11a. Share shows a clear "anyone with this link can view the ENTIRE conversation" confirmation;
+    the copied link opens the whole chat, read-only, full content.
+11b. Groupchat works like a WhatsApp group: multiple participants message in it; a GROUP
+    SETTINGS button appears next to the 3-dot menu with the "always respond" vs "only @Jarvis"
+    toggle; toggling changes whether Jarvis auto-replies.
 12. Project: create, add chat, switch project, new chat lands in project, context flows.
 13. Gallery lists every uploaded/created file across all chats, filterable.
 14. Tapping an attached image opens the scribble overlay; thickness and colour work; Save
@@ -255,6 +296,11 @@ language; be honest about capabilities; never pretend to have done something.
 17. Chat titles: from the starting message, 2-4 words, never "New Conversation".
 18. Zero em dashes in any UI string, any AI answer, any notification (grep gate + live chat).
 19. Music/Design/Build studios all complete end-to-end, none a stub.
+19a. Music Studio actually generates playable audio via the local MusicGen worker (or HF
+    fallback), plays it, and offers download. More than 30 tracks a month cost nothing.
+19b. Gallery includes build-mode apps and opens them; uploaded/created files persist across
+    reload (separate Neon files DB + R2, or the local-disk fallback) and appear in Gallery,
+    Files-in-chat, and after scribbling.
 
 ## 16. OUT OF SCOPE (never)
 
