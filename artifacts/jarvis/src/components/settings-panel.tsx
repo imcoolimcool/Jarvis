@@ -90,7 +90,7 @@ interface LlmKeyItem {
   maskedKey: string;
 }
 
-type View = 'home' | 'personalization' | 'memory' | 'language' | 'gmail' | 'spotify' | 'app' | 'llm' | 'secrets' | 'about' | 'accent';
+type View = 'home' | 'personalization' | 'memory' | 'language' | 'gmail' | 'spotify' | 'app' | 'llm' | 'about' | 'accent';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -202,6 +202,10 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
   const [secretItems, setSecretItems] = useState<{ env: string; label: string; description: string; prefix: string | null; configured: boolean; masked: string | null; source: string }[]>([]);
   const [secretDrafts, setSecretDrafts] = useState<Record<string, string>>({});
   const [secretSaving, setSecretSaving] = useState<string | null>(null);
+  const [secretLoading, setSecretLoading] = useState(false);
+  const [secretError, setSecretError] = useState<string | null>(null);
+  const [llmLoading, setLlmLoading] = useState(false);
+  const [llmError, setLlmError] = useState<string | null>(null);
   const [llmBusy, setLlmBusy] = useState(false);
   const [llmTesting, setLlmTesting] = useState<string | null>(null);
   const profile = getProfile();
@@ -220,15 +224,21 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
 
   // ── In-app API Keys ────────────────────────────────────────────
   const loadSecrets = useCallback(async () => {
+    setSecretLoading(true);
+    setSecretError(null);
     try {
       const res = await fetch('/api/jarvis/secrets');
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
       setSecretItems(data.items ?? []);
       if (data.databaseConfigured === false) {
         setSecretDrafts(d => ({ ...d, __dbHint: 'true' }));
       }
-    } catch { /* server down */ }
+    } catch (err) {
+      setSecretError(err instanceof Error ? err.message : 'Could not load API keys');
+    } finally {
+      setSecretLoading(false);
+    }
   }, []);
 
   const saveSecret = useCallback(async (env: string) => {
@@ -339,12 +349,18 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
   };
 
   const fetchLlmKeys = useCallback(async () => {
+    setLlmLoading(true);
+    setLlmError(null);
     try {
       const res = await fetch('/api/jarvis/llm-keys');
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
       setLlmKeys(Array.isArray(data) ? data : []);
-    } catch { /* server may not have the route yet */ }
+    } catch (err) {
+      setLlmError(err instanceof Error ? err.message : 'Could not load LLM keys');
+    } finally {
+      setLlmLoading(false);
+    }
   }, []);
 
   const addLlmKey = async () => {
@@ -763,17 +779,10 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                       />
                       <SettingsRow
                         icon={<KeyRound className="w-4 h-4" />}
-                        title={t('settings.llmKeys')}
-                        subtitle={t('settings.llmKeysDesc')}
-                        right={<ChevronRight className="w-4 h-4 text-muted-foreground/40" />}
-                        onClick={() => setView('llm')}
-                      />
-                      <SettingsRow
-                        icon={<KeyRound className="w-4 h-4" />}
                         title="API Keys"
-                        subtitle="OpenRouter, ElevenLabs, Tavily, Figma — stored in Jarvis, not Freebuff"
+                        subtitle="API credentials and LLM rotation keys"
                         right={<ChevronRight className="w-4 h-4 text-muted-foreground/40" />}
-                        onClick={() => { setView('secrets'); loadSecrets(); }}
+                        onClick={() => { setView('llm'); loadSecrets(); fetchLlmKeys(); }}
                       />
                     </div>
 
@@ -1196,10 +1205,10 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                   </motion.div>
                 )}
 
-                {/* ── LLM KEYS VIEW (multi-provider rotation) ── */}
+                {/* ── API KEYS VIEW (service secrets + multi-provider LLM rotation) ── */}
                 {view === 'llm' && (
                   <motion.div
-                    key="llm"
+                    key="api-keys"
                     initial={{ opacity: 0, x: 24 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 24 }}
@@ -1217,9 +1226,18 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                       <span className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
                         <KeyRound className="w-6 h-6 text-primary" />
                       </span>
-                      <h3 className="mt-3 text-lg font-bold tracking-tight text-foreground">{t('settings.llmKeys')}</h3>
-                      <p className="mt-1 text-[13px] text-muted-foreground/70 text-center px-6">{t('settings.llmKeysDesc')}</p>
+                      <h3 className="mt-3 text-lg font-bold tracking-tight text-foreground">API Keys</h3>
+                      <p className="mt-1 text-[13px] text-muted-foreground/70 text-center px-6">
+                        Service credentials and LLM keys, stored in Jarvis and applied instantly.
+                      </p>
                     </div>
+
+                    {llmError && (
+                      <div className="mb-3 flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-red-400/30 bg-red-400/10 text-red-400 text-[11px]">
+                        <span>Could not load LLM keys: {llmError}</span>
+                        <button type="button" onClick={fetchLlmKeys} className="font-semibold underline flex-shrink-0">Retry</button>
+                      </div>
+                    )}
 
                     {/* Add a key */}
                     <div className="p-4 border border-border/40 rounded-xl bg-card space-y-2.5">
@@ -1268,9 +1286,14 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
 
                     {/* Key list */}
                     <div className="mt-3 space-y-2">
-                      {llmKeys.length === 0 && (
+                      {llmLoading ? (
+                        <div className="flex items-center justify-center gap-2 py-6 text-[12px] text-muted-foreground/60">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Loading LLM keys…
+                        </div>
+                      ) : !llmError && llmKeys.length === 0 ? (
                         <p className="text-center text-[12px] text-muted-foreground/60 py-6">{t('settings.llmKeysNone')}</p>
-                      )}
+                      ) : null}
                       {llmKeys.map(item => {
                         let host = item.baseUrl;
                         try { host = new URL(item.baseUrl).host; } catch { /* keep raw */ }
@@ -1341,97 +1364,97 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                         );
                       })}
                     </div>
-                  </motion.div>
-                )}
-
-                {/* ── API KEYS VIEW (in-app secret store — no Freebuff Keys tab) ── */}
-                {view === 'secrets' && (
-                  <motion.div
-                    key="secrets"
-                    initial={{ opacity: 0, x: 24 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 24 }}
-                    transition={{ duration: 0.18 }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setView('home')}
-                      className="flex items-center gap-1.5 text-[13px] text-primary hover:opacity-80 transition-opacity mt-2"
-                    >
-                      <ChevronRight className="w-4 h-4 rotate-180" />
-                      {t('settings.title')}
-                    </button>
-                    <div className="flex flex-col items-center pt-6 pb-4">
-                      <span className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-                        <KeyRound className="w-6 h-6 text-primary" />
-                      </span>
-                      <h3 className="mt-3 text-lg font-bold tracking-tight text-foreground">API Keys</h3>
-                      <p className="mt-1 text-[13px] text-muted-foreground/70 text-center px-6">
-                        Keys are stored in Jarvis's own database and applied instantly — no Freebuff Keys tab involved.
-                      </p>
-                    </div>
 
                     {secretDrafts.__dbHint && (
-                      <div className="mb-3 px-3 py-2 rounded-lg border border-amber-400/30 bg-amber-400/10 text-amber-300 text-[11px]">
+                      <div className="mt-6 mb-3 px-3 py-2 rounded-lg border border-amber-400/30 bg-amber-400/10 text-amber-300 text-[11px]">
                         No database connection yet — add <span className="font-mono">DATABASE_URL</span> below to enable chat history and make saved keys persist.
                       </div>
                     )}
 
-                    <div className="space-y-2">
-                      {secretItems.length === 0 && (
-                        <p className="text-center text-[12px] text-muted-foreground/60 py-6">Loading…</p>
-                      )}
-                      {secretItems.map(item => (
-                        <div key={item.env} className="p-3 border border-border/40 rounded-xl bg-card space-y-2">
-                          <div className="flex items-start gap-2.5">
-                            <span className="w-7 h-7 rounded-full bg-secondary/70 flex items-center justify-center flex-shrink-0 text-foreground/60">
-                              <KeyRound className="w-3.5 h-3.5" />
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-[13px] font-semibold text-foreground tracking-tight">{item.label}</p>
-                                <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
-                                  item.configured
-                                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                                    : 'bg-red-500/10 text-red-500 border-red-500/30'
-                                }`}>
-                                  {item.configured ? 'SET' : 'MISSING'}
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-muted-foreground/60">{item.description}</p>
-                              <p className="mt-0.5 text-[10px] font-mono text-muted-foreground/50 break-all">
-                                {item.env}{item.configured ? ` — ${item.masked}` : ''}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <input
-                              type="password"
-                              value={secretDrafts[item.env] ?? ''}
-                              onChange={e => setSecretDrafts(d => ({ ...d, [item.env]: e.target.value }))}
-                              placeholder={item.configured ? 'Paste new key to replace…' : 'Paste key…'}
-                              className="flex-1 min-w-0 bg-background border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-[11px] px-3 py-2 rounded-md outline-none focus:border-primary/60 transition-all"
-                            />
-                            <button
-                              type="button"
-                              disabled={secretSaving === item.env || !(secretDrafts[item.env] ?? '').trim()}
-                              onClick={() => saveSecret(item.env)}
-                              className="px-3 py-2 rounded-lg bg-primary text-white text-[11px] font-semibold hover:opacity-90 active:scale-[0.99] transition-all disabled:opacity-40"
-                            >
-                              {secretSaving === item.env ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save'}
-                            </button>
-                            {item.configured && (
-                              <button
-                                type="button"
-                                onClick={() => clearSecret(item.env)}
-                                className="px-3 py-2 rounded-lg border border-red-400/30 bg-red-400/10 text-red-400 text-[11px] font-semibold hover:bg-red-400/20 transition-all"
-                              >
-                                Clear
-                              </button>
-                            )}
-                          </div>
+                    <div className="mt-6 pt-5 border-t border-border/30">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="text-[14px] font-semibold text-foreground">Service API keys</h4>
+                          <p className="text-[11px] text-muted-foreground/60 mt-0.5">OpenRouter, voice, search, integrations, and database</p>
                         </div>
-                      ))}
+                        <button
+                          type="button"
+                          onClick={loadSecrets}
+                          disabled={secretLoading}
+                          className="p-1.5 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+                          title="Refresh API keys"
+                        >
+                          <Loader2 className={`w-3.5 h-3.5 ${secretLoading ? 'animate-spin' : ''}`} />
+                        </button>
+                      </div>
+                      {secretError && (
+                        <div className="mb-3 flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-red-400/30 bg-red-400/10 text-red-400 text-[11px]">
+                          <span>Could not load service keys: {secretError}</span>
+                          <button type="button" onClick={loadSecrets} className="font-semibold underline flex-shrink-0">Retry</button>
+                        </div>
+                      )}
+                      {secretLoading ? (
+                        <div className="flex items-center justify-center gap-2 py-6 text-[12px] text-muted-foreground/60">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Loading service keys…
+                        </div>
+                      ) : !secretError && secretItems.length === 0 ? (
+                        <p className="text-center text-[12px] text-muted-foreground/60 py-6">No service keys are configured.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {secretItems.map(item => (
+                            <div key={item.env} className="p-3 border border-border/40 rounded-xl bg-card space-y-2">
+                              <div className="flex items-start gap-2.5">
+                                <span className="w-7 h-7 rounded-full bg-secondary/70 flex items-center justify-center flex-shrink-0 text-foreground/60">
+                                  <KeyRound className="w-3.5 h-3.5" />
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-[13px] font-semibold text-foreground tracking-tight">{item.label}</p>
+                                    <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
+                                      item.configured
+                                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                        : 'bg-red-500/10 text-red-500 border-red-500/30'
+                                    }`}>
+                                      {item.configured ? 'SET' : 'MISSING'}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-muted-foreground/60">{item.description}</p>
+                                  <p className="mt-0.5 text-[10px] font-mono text-muted-foreground/50 break-all">
+                                    {item.env}{item.configured ? ` — ${item.masked}` : ''}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <input
+                                  type="password"
+                                  value={secretDrafts[item.env] ?? ''}
+                                  onChange={e => setSecretDrafts(d => ({ ...d, [item.env]: e.target.value }))}
+                                  placeholder={item.configured ? 'Paste new key to replace…' : 'Paste key…'}
+                                  className="flex-1 min-w-0 bg-background border border-border text-foreground placeholder:text-muted-foreground/40 font-mono text-[11px] px-3 py-2 rounded-md outline-none focus:border-primary/60 transition-all"
+                                />
+                                <button
+                                  type="button"
+                                  disabled={secretSaving === item.env || !(secretDrafts[item.env] ?? '').trim()}
+                                  onClick={() => saveSecret(item.env)}
+                                  className="px-3 py-2 rounded-lg bg-primary text-white text-[11px] font-semibold hover:opacity-90 active:scale-[0.99] transition-all disabled:opacity-40"
+                                >
+                                  {secretSaving === item.env ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save'}
+                                </button>
+                                {item.configured && (
+                                  <button
+                                    type="button"
+                                    onClick={() => clearSecret(item.env)}
+                                    className="px-3 py-2 rounded-lg border border-red-400/30 bg-red-400/10 text-red-400 text-[11px] font-semibold hover:bg-red-400/20 transition-all"
+                                  >
+                                    Clear
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}

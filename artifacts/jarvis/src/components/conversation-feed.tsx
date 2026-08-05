@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { FileText, Copy, Check, CheckCircle2, Circle, RotateCcw, Pencil, X, Send, Search, Timer, ChevronDown, Image, Eye, EyeOff, Sun, Lightbulb, Volume2, ThumbsUp, ThumbsDown, Share, MoreHorizontal, ShieldCheck, Loader2, Wand2 } from 'lucide-react';
+import { FileText, Copy, Check, CheckCircle2, Circle, RotateCcw, Pencil, X, Send, Search, Timer, ChevronDown, Image, Eye, EyeOff, Sun, Lightbulb, Loader2, Wand2 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { haptics } from '@/lib/haptics';
 import type { Widget, VerifyClaim, TerminalResult } from '@/types/widget';
@@ -178,180 +178,6 @@ function extractHtmlBlock(content: string): string | null {
     return null;
   }
   return html;
-}
-
-/** Fact-check result card shown under a message after the user taps "Check". */
-function FactCheckCard({ result }: { result: VerifyClaim[] }) {
-  const supported = result.filter((c) => c.verdict === 'supported').length;
-  return (
-    <div className="mt-2 rounded-xl border border-border/40 bg-muted/25 p-3 text-xs space-y-2">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium">
-        <ShieldCheck className={`w-3.5 h-3.5 ${supported === result.length ? 'text-green-500' : 'text-yellow-500'}`} />
-        <span className="text-foreground/80">Fact-check · {supported}/{result.length} claims match web sources</span>
-      </div>
-      {result.map((c, i) => (
-        <div key={i} className="space-y-1">
-          <p className="text-foreground/70 leading-snug">“{c.claim}”</p>
-          <p className={`flex items-center gap-1 text-[10px] font-medium ${c.verdict === 'supported' ? 'text-green-500' : 'text-yellow-500'}`}>
-            {c.verdict === 'supported'
-              ? <><CheckCircle2 className="w-3 h-3" /> Supported</>
-              : <><Circle className="w-3 h-3" /> Not clearly confirmed</>}
-          </p>
-          {c.evidence.slice(0, 2).map((e, j) => (
-            <a
-              key={j}
-              href={e.url}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="block text-[10px] text-primary/70 hover:text-primary transition-colors truncate"
-            >
-              {e.title || e.url}
-            </a>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** ChatGPT-style always-visible action row under a message. */
-function ChatActionRow({ content, isUser, onSpeak, onRegenerate, onEdit }: {
-  content: string;
-  isUser: boolean;
-  onSpeak?: (text: string) => void;
-  onRegenerate?: () => void;
-  onEdit?: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [verifyState, setVerifyState] = useState<'idle' | 'checking' | 'done'>('idle');
-  const [verifyResult, setVerifyResult] = useState<VerifyClaim[] | null>(null);
-
-  const handleVerify = useCallback(async () => {
-    if (!content.trim() || verifyState === 'checking') return;
-    haptics.light();
-    setVerifyState('checking');
-    try {
-      const res = await fetch('/api/jarvis/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: content }),
-      });
-      const data = await res.json();
-      setVerifyResult(Array.isArray(data.claims) ? data.claims : []);
-    } catch {
-      setVerifyResult([]);
-    }
-    setVerifyState('done');
-  }, [content, verifyState]);
-
-  const handleCopy = useCallback(() => {
-    haptics.light();
-    navigator.clipboard.writeText(content).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }, [content]);
-
-  const handleShare = useCallback(() => {
-    haptics.light();
-    if (typeof navigator.share === 'function') {
-      navigator.share({ text: content }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(content).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      });
-    }
-  }, [content]);
-
-  const iconBtn = "p-1.5 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors active:scale-90";
-
-  return (
-    <div className="flex items-center gap-0.5 mt-1.5">
-      <button onClick={handleCopy} title="Copy" className={iconBtn}>
-        {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-      </button>
-      {!isUser && onSpeak && (
-        <button onClick={() => onSpeak(content)} title="Read aloud" className={iconBtn}>
-          <Volume2 className="w-4 h-4" />
-        </button>
-      )}
-      <button
-        onClick={() => { haptics.light(); setFeedback(f => f === 'up' ? null : 'up'); }}
-        title="Good response"
-        className={`${iconBtn} ${feedback === 'up' ? 'text-primary' : ''}`}
-      >
-        <ThumbsUp className={`w-4 h-4 ${feedback === 'up' ? 'fill-current' : ''}`} />
-      </button>
-      <button
-        onClick={() => { haptics.light(); setFeedback(f => f === 'down' ? null : 'down'); }}
-        title="Bad response"
-        className={`${iconBtn} ${feedback === 'down' ? 'text-primary' : ''}`}
-      >
-        <ThumbsDown className={`w-4 h-4 ${feedback === 'down' ? 'fill-current' : ''}`} />
-      </button>
-      <button onClick={handleShare} title="Share" className={iconBtn}>
-        <Share className="w-4 h-4" />
-      </button>
-      {!isUser && (
-        <button
-          onClick={handleVerify}
-          disabled={verifyState === 'checking'}
-          title="Fact-check with live web search"
-          className={`${iconBtn} ${verifyState === 'done' ? 'text-green-500' : ''} disabled:opacity-50`}
-        >
-          {verifyState === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-        </button>
-      )}
-      <div className="relative">
-        <button onClick={() => { haptics.light(); setMenuOpen(o => !o); }} title="More" className={iconBtn}>
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
-        <AnimatePresence>
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-              <motion.div
-                initial={{ opacity: 0, y: 6, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 4, scale: 0.96 }}
-                transition={{ duration: 0.12 }}
-                className="absolute left-0 bottom-full mb-1 z-40 w-40 p-1 rounded-xl border border-border/50 bg-background shadow-apple-lg overflow-hidden"
-              >
-                {isUser && onEdit && (
-                  <button
-                    onClick={() => { setMenuOpen(false); onEdit(); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-muted/60 transition-colors"
-                  >
-                    <Pencil className="w-3.5 h-3.5 text-muted-foreground" /> Edit message
-                  </button>
-                )}
-                {!isUser && onRegenerate && (
-                  <button
-                    onClick={() => { setMenuOpen(false); onRegenerate(); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-muted/60 transition-colors"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" /> Regenerate
-                  </button>
-                )}
-                <button
-                  onClick={() => { setMenuOpen(false); handleCopy(); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-muted/60 transition-colors"
-                >
-                  <Copy className="w-3.5 h-3.5 text-muted-foreground" /> Copy
-                </button>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </div>
-      {verifyState === 'done' && verifyResult && verifyResult.length > 0 && (
-        <FactCheckCard result={verifyResult} />
-      )}
-    </div>
-  );
 }
 
 /** Artifact preview — renders an HTML code block in a sandboxed iframe. */
@@ -699,14 +525,6 @@ export function ConversationFeed({
                   </div>
                   )}
 
-                  {/* ChatGPT-style action row */}
-                  <ChatActionRow
-                    content={msg.content}
-                    isUser={isUser}
-                    onSpeak={!isUser ? onSpeak : undefined}
-                    onRegenerate={!isUser ? () => onRegenerate?.(idx) : undefined}
-                    onEdit={isUser ? () => setEditingIdx(idx) : undefined}
-                  />
                 </div>
               )}
 

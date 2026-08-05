@@ -9,7 +9,7 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, Send, Settings, PanelLeft, X, Plus, Bug, Search, Minimize2, Maximize2, ArrowLeft, MessagesSquare, SquarePen, EllipsisVertical, Camera, Globe, Lightbulb, FileText } from 'lucide-react';
+import { Square, Mic, Send, PanelLeft, X, Plus, Bug, Search, Minimize2, Maximize2, ArrowLeft, MessagesSquare, SquarePen, Camera, Globe, Lightbulb, FileText } from 'lucide-react';
 import type { Widget, TerminalResult, FileEdit } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, CommandCard } from '@/components/widgets';
 import { ErrorDetailPanel, buildClientErrorDetail, type ErrorDetail } from '@/components/error-detail-panel';
@@ -148,9 +148,6 @@ export default function Home() {
   const [commandBusy, setCommandBusy] = useState(false);
   // Command palette (Cmd+K) — search memory + run anything
   const [paletteOpen, setPaletteOpen] = useState(false);
-  // Header dots menu (ChatGPT-style)
-  const [dotsMenuOpen, setDotsMenuOpen] = useState(false);
-
   const { theme, resolved, toggle: toggleTheme } = useTheme();
   const { toast } = useToast();
 
@@ -1454,7 +1451,7 @@ export default function Home() {
           <PanelLeft className="w-[18px] h-[18px]" />
         </button>
 
-        {/* Right: new chat + more — ChatGPT-style pill with divider */}
+        {/* Right: new chat */}
         <div className="relative flex items-center ml-auto">
           <div className="flex items-center rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 shadow-sm overflow-hidden">
             <button
@@ -1465,39 +1462,7 @@ export default function Home() {
             >
               <SquarePen className="w-[18px] h-[18px]" strokeWidth={2} />
             </button>
-            <div className="w-px h-5 bg-black/10 dark:bg-white/15" />
-            <button
-              onClick={() => { haptics.light(); setDotsMenuOpen(o => !o); }}
-              className="w-9 h-9 flex items-center justify-center text-foreground transition-colors hover:bg-secondary/70 active:scale-95"
-              aria-label="Menu"
-            >
-              <EllipsisVertical className="w-[18px] h-[18px]" strokeWidth={2} />
-            </button>
           </div>
-
-          {/* Dots dropdown — Settings */}
-          <AnimatePresence>
-            {dotsMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setDotsMenuOpen(false)} />
-                <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 4, scale: 0.97 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 z-50 w-48 p-1 rounded-xl border border-border/50 bg-background shadow-apple-lg overflow-hidden"
-                >
-                  <button
-                    onClick={() => { setDotsMenuOpen(false); setSettingsOpen(true); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted/60 transition-colors"
-                  >
-                    <Settings className="w-4 h-4 text-muted-foreground" />
-                    {t('settings.title')}
-                  </button>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
         </div>
       </header>
 

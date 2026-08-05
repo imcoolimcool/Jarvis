@@ -27,6 +27,12 @@ Responsive empty states should be checked at both width and height extremes; a f
 
 **How to apply:** Validate at least one 320×480 viewport, one modern phone viewport, and one extra-tall phone viewport before finalizing mobile positioning.
 
+When backend routes change after a GitHub merge, restart the API workflow before diagnosing a frontend request as missing; an old running process can serve a stale route table even when the source already contains the route.
+
+**Why:** The API Keys request returned 404 from the still-running pre-merge server while the merged source had the secrets route mounted.
+
+**How to apply:** After pulls or backend changes, restart the API workflow and verify the exact endpoint directly before changing client loading logic.
+
 For end-to-end claims, DOM activation counts are not completion evidence. Each
 major surface and mutually exclusive action needs an isolated fresh state,
 post-action assertion, and a status of PASS, FAIL, BLOCKED, NOT TESTED, or
