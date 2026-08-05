@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, researchJobs } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { startResearchJob, recoverStuckJobs } from "../../lib/research-engine";
+import { startResearchJob, recoverStuckJobs, estimateJob, type JobDepth } from "../../lib/research-engine";
 
 const router = Router();
 
@@ -59,6 +59,21 @@ router.get("/research", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to list research jobs");
     res.status(500).json({ error: "Failed to list research jobs" });
+  }
+});
+
+/** Cost/duration estimate for a depth — shown before launching a job. */
+router.get("/research/estimate", async (req, res) => {
+  try {
+    const depth = String(req.query.depth ?? "");
+    if (depth !== "standard" && depth !== "deep" && depth !== "quantum" && depth !== "omni") {
+      res.status(400).json({ error: "depth must be one of standard|deep|quantum|omni" });
+      return;
+    }
+    res.json(estimateJob(depth as JobDepth));
+  } catch (err) {
+    req.log.error({ err }, "Failed to estimate research job");
+    res.status(500).json({ error: "Failed to estimate research job" });
   }
 });
 

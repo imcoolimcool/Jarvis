@@ -16,6 +16,7 @@ import llmKeysRouter from "./llm-keys";
 import terminalRouter from "./terminal";
 import verifyRouter from "./verify";
 import secretsRouter from "./secrets";
+import timersRouter from "./timers";
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use(llmKeysRouter);
 router.use(secretsRouter);
 router.use(terminalRouter);
 router.use(verifyRouter);
+router.use(timersRouter);
 
 export default router;

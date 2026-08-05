@@ -4,6 +4,8 @@
  * to attach to the chat response.
  */
 
+import { pooledClient } from "./llm-client";
+
 // ─── Shared widget types ─────────────────────────────────────────────────────
 
 export interface ClockTimezone { label: string; tz: string }
@@ -128,6 +130,62 @@ function detectIntent(msg: string): Intent {
     || /\b(play something|some music|make music|music please)\b/.test(t)) return 'music';
 
   return null;
+}
+
+/**
+ * LLM fallback for widget intent — catches natural phrasings the regex misses
+ * ("is it hot in Berlin?", "what's the exchange rate today?", …).
+ *
+ * Only reached when `detectIntent` returns null, so regex hits keep their
+ * zero-cost fast path. Time-boxed: if the LLM is slow or every key is cooling,
+ * it resolves `null` and the message proceeds normally — the widget layer must
+ * never block or break a chat turn.
+ */
+function detectWidgetIntentWithLLM(userMessage: string): Promise<Intent> {
+  const intents = [
+    'clock', 'weather', 'timer', 'timer_edit', 'timer_cancel', 'alarm',
+    'calendar', 'images', 'date', 'calculator', 'define', 'unit',
+    'currency', 'map', 'random', 'music',
+  ];
+  const prompt =
+    'Classify this user message into EXACTLY ONE label. Reply with the label only — nothing else, no punctuation.\n\n' +
+    'Labels:\n' +
+    '- clock — asking the time, or the time in a city ("what time is it", "time in Tokyo")\n' +
+    '- weather — weather, temperature, forecast, "is it hot/cold" ("is it hot in Berlin?")\n' +
+    '- timer — setting a timer or countdown ("set a 20 minute timer")\n' +
+    '- timer_edit — changing/extending an existing timer ("add 5 minutes to the timer")\n' +
+    '- timer_cancel — cancelling/stopping a timer ("cancel the timer")\n' +
+    '- alarm — setting an alarm or wake-up ("wake me at 7am")\n' +
+    '- calendar — schedule, events, agenda ("what do I have on today")\n' +
+    '- images — wanting to SEE real photos/pictures of something ("show me pictures of golden retrievers")\n' +
+    '- date — today\'s date or day ("what day is it")\n' +
+    '- calculator — doing math ("what is 15% of 200")\n' +
+    '- define — definition of a word ("define serendipity")\n' +
+    '- unit — converting units ("5 miles to km", "2 liters to cups")\n' +
+    '- currency — converting money between currencies ("100 usd to eur")\n' +
+    '- map — where a place is / its location ("where is Paris")\n' +
+    '- random — dice, coin flip, random number ("roll a dice")\n' +
+    '- music — composing/playing a song ("make a happy song")\n' +
+    '- NONE — anything that does not clearly fit the above (general chat, questions, requests, commands)\n\n' +
+    `Message: ${userMessage.slice(0, 500)}\n\nLabel:`;
+
+  const classify = pooledClient()
+    .chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 6,
+      temperature: 0,
+    } as never)
+    .then((res) => {
+      const label = (res.choices?.[0]?.message?.content ?? "").trim().toLowerCase();
+      if (!label || label === "none") return null as Intent;
+      return (intents.find((i) => label === i || label.startsWith(i)) as Intent) ?? null;
+    })
+    .catch(() => null as Intent);
+
+  return Promise.race([
+    classify,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+  ]);
 }
 
 // ─── Clock ───────────────────────────────────────────────────────────────────
@@ -951,7 +1009,12 @@ export async function detectAndBuildWidget(
   userMessage: string,
   settings: Record<string, string>,
 ): Promise<Widget | null> {
-  const intent = detectIntent(userMessage);
+  let intent = detectIntent(userMessage);
+  if (!intent) {
+    // Regex missed — let the LLM take one cheap shot before giving up. This is
+    // time-boxed and failure-safe: `null` on any error/cooldown/timeout.
+    intent = await detectWidgetIntentWithLLM(userMessage);
+  }
   if (!intent) return null;
 
   switch (intent) {

@@ -247,8 +247,9 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
         break; // already logged
       case 'step': {
         let detail = `${msg.action}`;
+        if (msg.action === 'click_element' && msg.index !== undefined) detail += ` element #${msg.index}`;
         if (msg.action === 'click' && msg.x && msg.y) detail += ` cell (${msg.x}, ${msg.y})`;
-        if (msg.action === 'type') detail += ` "${msg.text ?? ''}"${msg.enter ? ' + Enter' : ''}`;
+        if (msg.action === 'type') detail += ` into #${msg.index !== undefined ? msg.index : 'focused'} "${msg.text ?? ''}"${msg.enter ? ' + Enter' : ''}`;
         if (msg.action === 'navigate') detail += ` ${msg.url}`;
         if (msg.action === 'scroll') detail += ` ${msg.dy ?? ''}px`;
         addLog('step', `Step ${msg.step}: ${detail}${msg.reason ? ` — ${msg.reason}` : ''}`);

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BrainCircuit,
@@ -56,6 +56,15 @@ const DEPTH_INFO: Record<ResearchJob['depth'], { label: string; hint: string }> 
   omni: { label: 'Omni', hint: '~weeks, never truly ends' },
 };
 
+/** Shape returned by GET /api/jarvis/research/estimate. */
+interface ResearchEstimate {
+  depth: ResearchJob['depth'];
+  phases: { min: number; max: number };
+  sleepSec: { min: number; max: number };
+  searches: { min: number; max: number };
+  totalHours: { min: number; max: number };
+}
+
 const STATUS_STYLE: Record<ResearchJob['status'], { color: string; icon: 'spin' | 'ok' | 'err' | 'idle' }> = {
   queued: { color: 'text-amber-500/80', icon: 'idle' },
   running: { color: 'text-primary', icon: 'spin' },
@@ -71,6 +80,18 @@ export function ResearchPanel({ jobs, onClose, onOpenGem, onStarted, onCancel }:
   const [mode, setMode] = useState<'agent' | 'normal' | 'both'>('agent');
   const [confirming, setConfirming] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [estimate, setEstimate] = useState<ResearchEstimate | null>(null);
+
+  // Fetch the cost/duration estimate whenever the depth tier changes, so the
+  // confirmation card can tell the user how long the job will really run.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/jarvis/research/estimate?depth=${depth}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((e: ResearchEstimate | null) => { if (!cancelled) setEstimate(e); })
+      .catch(() => { if (!cancelled) setEstimate(null); });
+    return () => { cancelled = true; };
+  }, [depth]);
 
   const requestNotifications = useCallback(() => {
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
@@ -154,6 +175,16 @@ export function ResearchPanel({ jobs, onClose, onOpenGem, onStarted, onCancel }:
               <div className="rounded-lg bg-background/60 border border-border/40 px-3 py-2 text-[12px] leading-relaxed max-h-20 overflow-y-auto">
                 {goal}
               </div>
+              {estimate && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] leading-relaxed space-y-0.5">
+                  <p className="font-mono text-[10px] tracking-widest text-primary/80 font-semibold mb-1">ESTIMATE</p>
+                  <p className="text-muted-foreground/90">~{estimate.phases.min}–{estimate.phases.max} phases · {estimate.searches.min}–{estimate.searches.max} web searches</p>
+                  <p className="text-muted-foreground/90">Roughly {estimate.totalHours.min}–{estimate.totalHours.max} hours of wall time (runs in the background)</p>
+                  {(depth === 'quantum' || depth === 'omni') && (
+                    <p className="text-amber-500/90 mt-1">⚠️ This tier is designed to run for days and will consume significant API quota. Consider a lower depth.</p>
+                  )}
+                </div>
+              )}
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => { haptics.light(); setConfirming(false); }}

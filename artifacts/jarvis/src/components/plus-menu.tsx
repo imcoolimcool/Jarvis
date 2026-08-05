@@ -6,6 +6,29 @@ export type PlusAction =
   | 'attach-file' | 'camera' | 'new-gem' | 'generate-image'
   | 'studios' | 'design-studio' | 'music-studio';
 
+/**
+ * Viewport-relative {top,left} for the plus menu, anchored to the "+" button.
+ * The menu opens upward (right edge aligned to the button) when there's room,
+ * otherwise flips below. Portal + fixed positioning means these coordinates
+ * are always viewport-relative regardless of transformed ancestors.
+ */
+export function getPlusMenuCoords(anchor: HTMLElement): { top: number; left: number } {
+  const rect = anchor.getBoundingClientRect();
+  const MENU_W = 224; // w-56
+  const isCompactHeight = window.innerHeight <= 700;
+  const MENU_H = isCompactHeight ? 220 : 380;
+  const left = Math.max(8, Math.min(rect.right - MENU_W, window.innerWidth - MENU_W - 8));
+  const composerRect = anchor.closest('[data-chat-composer]')?.getBoundingClientRect();
+  const anchorBottom = composerRect?.top ?? rect.top;
+  const roomAbove = anchorBottom - 8;
+  const top = isCompactHeight
+    ? Math.max(8, anchorBottom - MENU_H - 8)
+    : roomAbove >= MENU_H
+      ? rect.top - MENU_H + 8
+      : Math.min(rect.bottom + 8, Math.max(8, window.innerHeight - MENU_H - 8));
+  return { top, left };
+}
+
 interface PlusMenuProps {
   open: boolean;
   onClose: () => void;

@@ -59,7 +59,33 @@ const FOLLOWUP_MAX: Record<JobDepth, number> = { standard: 2, deep: 3, quantum: 
 const MAX_TOTAL_PHASES: Record<JobDepth, number> = { standard: 40, deep: 120, quantum: 400, omni: 2000 };
 
 type JobStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
-type JobDepth = "standard" | "deep" | "quantum" | "omni";
+export type JobDepth = "standard" | "deep" | "quantum" | "omni";
+
+/**
+ * Rough cost/duration estimate for a research job at a given depth, derived
+ * from the real tuning constants above. Shown to the user BEFORE launch so a
+ * casual prompt doesn't silently spawn a multi-day, quota-burning job.
+ * `workSecPerPhase` is a rough wall-clock guess for search + read + synthesize
+ * + critique (the sleep between phases is already in SLEEP_SECONDS).
+ */
+export function estimateJob(depth: JobDepth) {
+  const [phasesMin, phasesMax] = BASE_PHASES[depth];
+  const [sleepMin, sleepMax] = SLEEP_SECONDS[depth];
+  const searchesPerPhase = DEPTH_RESULTS[depth];
+  const workSecPerPhase = 45;
+  const totalSecMin = phasesMin * (sleepMin + workSecPerPhase);
+  const totalSecMax = phasesMax * (sleepMax + workSecPerPhase);
+  return {
+    depth,
+    phases: { min: phasesMin, max: phasesMax },
+    sleepSec: { min: sleepMin, max: sleepMax },
+    searches: { min: phasesMin * searchesPerPhase, max: phasesMax * searchesPerPhase },
+    totalHours: {
+      min: Math.round((totalSecMin / 3600) * 10) / 10,
+      max: Math.round((totalSecMax / 3600) * 10) / 10,
+    },
+  };
+}
 
 /** Patch shape accepted by the research_jobs row updater. */
 interface JobPatch {

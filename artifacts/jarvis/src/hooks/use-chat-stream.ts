@@ -1,0 +1,476 @@
+/**
+ * useChatStream — the chat round-trip + SSE consumption logic extracted from
+ * home.tsx (the old `processUserText`). The hook owns the streaming/timer refs
+ * and takes everything else through a `ChatStreamDeps` config object, so Home
+ * shrinks by ~370 lines and the core chat path is isolated and reusable.
+ */
+import { useCallback, useEffect, useRef, type MutableRefObject, type Dispatch, type SetStateAction } from 'react';
+import { looksLikeCodeRequest } from '@/lib/code-intent';
+import type { Widget, FileEdit, TerminalResult } from '@/types/widget';
+import type { ErrorDetail } from '@/components/error-detail-panel';
+import type { ChatMessage } from '@/components/conversation-feed';
+import type { EmotionLabel } from '@/hooks/use-emotion-detection';
+import type { AppState } from '@/components/orb';
+import type { ServerTimer } from '@/hooks/use-timer-orchestration';
+
+/** Attached-file shape passed with a message (mirrors home.tsx). */
+interface AttachedFile {
+  base64: string;
+  mimeType: string;
+  fileName: string;
+  preview?: string;
+}
+
+/** Everything `processUserText` reads or writes from the Home component. */
+export interface ChatStreamDeps {
+  isChatMode: boolean;
+  webSearchEnabled: boolean;
+  thinkingEnabled: boolean;
+  screenShareActive: boolean;
+  screenFrame: string | null;
+  mode: 'voice' | 'chat' | 'agent' | 'camera';
+  activeConvIdRef: MutableRefObject<string | null>;
+  inputRef: MutableRefObject<HTMLTextAreaElement | null>;
+  isChatModeRef: MutableRefObject<boolean>;
+  voiceEmotionRef: MutableRefObject<EmotionLabel>;
+  serverIdRef: MutableRefObject<string | null>;
+  setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
+  setSuggestions: Dispatch<SetStateAction<string[]>>;
+  setStatus: Dispatch<SetStateAction<AppState>>;
+  setMode: Dispatch<SetStateAction<'voice' | 'chat' | 'agent' | 'camera'>>;
+  setActiveConversationId: Dispatch<SetStateAction<string | null>>;
+  setActiveWidget: Dispatch<SetStateAction<Widget | null>>;
+  setAgentGoal: Dispatch<SetStateAction<string | null>>;
+  setPipBrowserOpen: Dispatch<SetStateAction<boolean>>;
+  setPipFullscreen: Dispatch<SetStateAction<'browser' | 'camera' | null>>;
+  setSessionCommands: Dispatch<SetStateAction<TerminalResult[]>>;
+  handleError: (msg: string, detail?: ErrorDetail, onRetry?: () => void, code?: string) => void;
+  refreshSidebar: () => void;
+  playTTS: (text: string, onStart: () => void, onDone: () => void) => void;
+  activateCommand: (silent?: boolean) => void;
+  vibrate: (pattern: number | number[]) => void;
+  createTimer: (opts: { durationSeconds: number; label?: string; conversationId?: string }) => Promise<ServerTimer | null>;
+  extendTimer: (id: string, addSeconds: number) => Promise<ServerTimer | null>;
+  cancelTimer: (id: string) => Promise<ServerTimer | null>;
+}
+
+export interface ChatStreamResult {
+  processUserText: (
+    userText: string,
+    file?: AttachedFile | null,
+    speak?: boolean,
+    codeAllowance?: boolean,
+    researchMode?: boolean,
+    buildAllowance?: boolean,
+  ) => Promise<void>;
+  processUserTextRef: MutableRefObject<ChatStreamResult['processUserText'] | null>;
+  nextMsgId: () => string;
+  pendingCodeRef: MutableRefObject<{ userText: string; file: AttachedFile | null; speak: boolean } | null>;
+  chatTimerMsgIdxRef: MutableRefObject<number | null>;
+  timerStartedAtRef: MutableRefObject<number | null>;
+  timerOriginalDurationRef: MutableRefObject<number | null>;
+}
+
+export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
+  const {
+    isChatMode, webSearchEnabled, thinkingEnabled, screenShareActive, screenFrame, mode,
+    activeConvIdRef, inputRef, isChatModeRef, voiceEmotionRef, serverIdRef,
+    setMessages, setSuggestions, setStatus, setMode, setActiveConversationId,
+    setActiveWidget, setAgentGoal, setPipBrowserOpen, setPipFullscreen,
+    setSessionCommands, handleError, refreshSidebar, playTTS, activateCommand,
+    vibrate, createTimer, extendTimer, cancelTimer,
+  } = deps;
+
+  // Streaming refs owned by the hook — shared with Home so it can keep using
+  // them (history load, conversation-switch resets, code-confirmation UI).
+  const nextMsgIdRef = useRef(0);
+  const nextMsgId = useCallback(() => `m${++nextMsgIdRef.current}`, []);
+  const pendingCodeRef = useRef<{ userText: string; file: AttachedFile | null; speak: boolean } | null>(null);
+  const chatTimerMsgIdxRef = useRef<number | null>(null);
+  const timerStartedAtRef = useRef<number | null>(null);
+  const timerOriginalDurationRef = useRef<number | null>(null);
+
+  const processUserText = useCallback(async (userText: string, file?: AttachedFile | null, speak = true, codeAllowance?: boolean, researchMode = false, buildAllowance?: boolean) => {
+    // ── "Use code for this answer?" confirmation gate ─────────────
+    // If the message looks like a question about Jarvis's own code and the
+    // user hasn't decided yet, show the confirmation card first. Confirm
+    // re-sends with code access (codeAllowance=true); Cancel re-sends without
+    // it (false) — the message is never dropped, Jarvis still answers.
+    if (codeAllowance === undefined && isChatMode && looksLikeCodeRequest(userText)) {
+      pendingCodeRef.current = { userText, file: file ?? null, speak };
+      setSuggestions([]);
+      setMessages(prev => [...prev, {
+        role: 'assistant' as const,
+        content: '',
+        timestamp: Date.now(),
+        id: nextMsgId(),
+        pendingSourceCode: { userText },
+      }]);
+      return;
+    }
+
+    // Optimistically add message (with file preview if any)
+    setMessages(prev => [...prev, { role: 'user', content: userText, file: file ?? undefined, timestamp: Date.now(), id: nextMsgId() }]);
+    setSuggestions([]);
+    setStatus('thinking');
+    vibrate(20);
+    try {
+      const body: Record<string, string> = { userMessage: userText };
+      if (activeConvIdRef.current) body.conversationId = activeConvIdRef.current;
+      if (file) { body.fileBase64 = file.base64; body.fileMimeType = file.mimeType; }
+      // Include screen share frame as image for AI to see (don't overwrite manual file)
+      if (screenShareActive && screenFrame && !file) {
+        const base64 = screenFrame.split(',')[1] || screenFrame;
+        if (base64.length > 100) {
+          body.fileBase64 = base64;
+          body.fileMimeType = 'image/jpeg';
+        }
+      }
+      if (webSearchEnabled || researchMode) body.webSearchEnabled = 'true';
+      if (thinkingEnabled) body.thinkingEnabled = 'true';
+      if (researchMode) body.agentMode = 'true';
+      body.responseStyle = isChatMode ? 'chat' : 'voice';
+      const detectedEmotion = voiceEmotionRef.current;
+      if (detectedEmotion !== 'neutral') body.emotion = detectedEmotion;
+      if (codeAllowance === true) body.allowSourceCode = 'true';
+      else if (codeAllowance === false) body.allowSourceCode = 'false';
+      if (buildAllowance === true) body.allowBuildMode = 'true';
+
+      const res = await fetch('/api/jarvis/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        try {
+          const errBody = await res.json();
+          handleError(errBody?.error || `Server error (${res.status})`, errBody?.detail, () => processUserTextRef.current?.(userText, file, speak));
+        } catch {
+          // Body isn't JSON — the API server is likely down or restarting
+          // (a gateway/proxy-level 502/500). Explain it instead of a bare number.
+          const hint = res.status >= 500
+            ? 'The Jarvis server is unreachable right now (likely restarting or down). Wait a few seconds and retry.'
+            : `Server returned HTTP ${res.status} with an unexpected response.`;
+          handleError(hint, undefined, () => processUserTextRef.current?.(userText, file, speak));
+        }
+        return;
+      }
+
+      // ── SSE stream consumption ──────────────────────────────────
+      const reader = res.body?.getReader();
+      if (!reader) { handleError('No response stream'); return; }
+
+      const decoder = new TextDecoder();
+      let streamBuffer = '';
+      let jarvisText = '';
+      let jarvisReasoning = '';
+      let convId = activeConvIdRef.current ?? '';
+      let newSuggestions: string[] = [];
+      let widget: Widget | null = null;
+
+      // Add an empty assistant message that we'll update as tokens arrive
+      setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: Date.now(), id: nextMsgId() }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        streamBuffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE lines
+        const lines = streamBuffer.split('\n');
+        streamBuffer = lines.pop() ?? ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+
+          try {
+            const parsed = JSON.parse(data);
+            switch (parsed.type) {
+              case 'token':
+                jarvisText += parsed.content;
+                // Update the last message (assistant) with accumulated text
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { ...updated[updated.length - 1], content: jarvisText };
+                  return updated;
+                });
+                break;
+              case 'reasoning':
+                // Thinking mode — accumulate the private reasoning chain onto
+                // the same assistant message (shown in a collapsible block).
+                jarvisReasoning += parsed.content;
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { ...updated[updated.length - 1], reasoning: jarvisReasoning };
+                  return updated;
+                });
+                break;
+              case 'done':
+                convId = parsed.conversationId ?? convId;
+                // Auto-follow-up: when Jarvis signals the next step (Build Mode
+                // multi-step workflows), auto-submit it after a short delay.
+                if (parsed.followUp && typeof parsed.followUp === 'string') {
+                  const task = parsed.followUp.trim().slice(0, 200);
+                  setTimeout(() => {
+                    setMessages(prev => [...prev, {
+                      role: 'user', content: task,
+                      timestamp: Date.now(), id: `fu${Date.now()}`,
+                    }]);
+                    processUserTextRef.current?.(task, null, false);
+                  }, 1800);
+                }
+                break;
+              case 'suggestions':
+                newSuggestions = parsed.suggestions ?? [];
+                break;
+              case 'widget':
+                widget = parsed.widget ?? null;
+                break;
+              case 'figma_design':
+                // The AI fetched a Figma design — show the live frame embed
+                // plus the real extracted fonts & colors on the assistant message.
+                {
+                  const fd = {
+                    fileKey: parsed.fileKey ?? '',
+                    name: parsed.name ?? 'design',
+                    frameName: parsed.frameName ?? 'Design',
+                    width: parsed.width ?? 0,
+                    height: parsed.height ?? 0,
+                    fonts: parsed.fonts ?? [],
+                    colors: parsed.colors ?? [],
+                  };
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    if (last && last.role === 'assistant') {
+                      updated[updated.length - 1] = { ...last, figma: fd };
+                    }
+                    return updated;
+                  });
+                }
+                break;
+              case 'file_edit':
+                // The AI wrote a file — show it as an expandable diff card
+                // on the current assistant message.
+                {
+                  const fe: FileEdit = { path: parsed.path, bytesWritten: parsed.bytesWritten ?? 0, oldContent: parsed.oldContent ?? '', newContent: parsed.newContent ?? '' };
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    if (last && last.role === 'assistant') {
+                      updated[updated.length - 1] = {
+                        ...last,
+                        fileEdits: [...(last.fileEdits ?? []), fe],
+                      };
+                    }
+                    return updated;
+                  });
+                }
+                break;
+              case 'terminal_result':
+                // The AI ran a shell command — show it as a clean minimal card
+                // on the current assistant message and log it for Build Mode.
+                {
+                  const tr: TerminalResult = { command: parsed.command, exitCode: parsed.exitCode ?? 0, output: parsed.output ?? '' };
+                  setSessionCommands(prev => [...prev, tr]);
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    if (last && last.role === 'assistant') {
+                      updated[updated.length - 1] = {
+                        ...last,
+                        terminalResults: [...(last.terminalResults ?? []), tr],
+                      };
+                    }
+                    return updated;
+                  });
+                }
+                break;
+              case 'agent_browser_detected':
+                // Auto-open PiP browser and kick off the autonomous agent loop
+                setPipBrowserOpen(true);
+                setPipFullscreen(null);
+                setMessages(prev => prev.slice(0, -1)); // remove empty assistant msg
+                // Start the vision-driven agent loop (it navigates + clicks itself)
+                setAgentGoal(parsed.searchQuery ? `search for ${parsed.searchQuery}` : 'search the web');
+                break;
+              case 'screen_share_detected':
+                // Show screen share confirmation card
+                setMessages(prev => {
+                  const withoutEmpty = prev.slice(0, -1);
+                  return [...withoutEmpty, {
+                    role: 'assistant' as const,
+                    content: '',
+                    timestamp: Date.now(),
+                    id: nextMsgId(),
+                    pendingScreenShare: true,
+                  }];
+                });
+                // If in voice mode, switch to chat so card is visible
+                if (mode === 'voice') setMode('chat');
+                break;
+              case 'build_mode_detected':
+                if (mode === 'voice') setMode('chat');
+                setMessages(prev => {
+                  const withoutEmpty = prev.slice(0, -1);
+                  return [...withoutEmpty, {
+                    role: 'assistant' as const,
+                    content: '',
+                    timestamp: Date.now(),
+                    id: nextMsgId(),
+                    pendingBuildMode: { userText: parsed.confirmationMessage ?? '' },
+                  }];
+                });
+                break;
+              case 'image_request_detected':
+                // If in voice mode, switch to chat mode so the confirmation card is visible
+                if (mode === 'voice') setMode('chat');
+                // Show image generation confirmation card — embed it in the message list
+                setMessages(prev => {
+                  const withoutEmpty = prev.slice(0, -1); // remove the empty assistant message
+                  return [...withoutEmpty, {
+                    role: 'assistant' as const,
+                    content: '',
+                    timestamp: Date.now(),
+                    id: nextMsgId(),
+                    pendingImage: {
+                      imagePrompt: parsed.imagePrompt,
+                      confirmationMessage: parsed.confirmationMessage,
+                    },
+                  }];
+                });
+                break;
+              case 'follow_up':
+                // Standalone follow-up event — auto-submit the next task
+                if (parsed.task && typeof parsed.task === 'string') {
+                  const task = parsed.task.trim().slice(0, 200);
+                  setTimeout(() => {
+                    setMessages(prev => [...prev, {
+                      role: 'user', content: task,
+                      timestamp: Date.now(), id: `fu${Date.now()}`,
+                    }]);
+                    processUserTextRef.current?.(task, null, false);
+                  }, 1500);
+                }
+                break;
+              case 'error':
+                handleError(parsed.message ?? 'Stream error', parsed.detail as ErrorDetail | undefined, undefined, parsed.code as string | undefined);
+                return;
+            }
+          } catch { /* skip malformed lines */ }
+        }
+      }
+
+      if (!activeConvIdRef.current && convId) setActiveConversationId(convId);
+      refreshSidebar();
+
+      // Apply widget and suggestions after stream completes
+      if (widget) {
+        // Server-backed timers: sync every timer widget to the API server so it
+        // survives reloads and fires via web-push even with the tab closed.
+        if (widget.type === 'timer') {
+          if (widget.timerAction === 'cancel') {
+            if (serverIdRef.current) void cancelTimer(serverIdRef.current);
+          } else if (widget.timerAction === 'add' && widget.deltaSeconds) {
+            if (serverIdRef.current) void extendTimer(serverIdRef.current, widget.deltaSeconds);
+          } else {
+            void createTimer({
+              durationSeconds: widget.durationSeconds,
+              label: widget.label,
+              conversationId: activeConvIdRef.current ?? undefined,
+            });
+          }
+        }
+        if (widget.type === 'timer' && isChatMode) {
+          setMessages(prev => {
+            const existingIdx = chatTimerMsgIdxRef.current;
+            if (widget.timerAction === 'cancel') {
+              chatTimerMsgIdxRef.current = null;
+              timerStartedAtRef.current = null;
+              timerOriginalDurationRef.current = null;
+              if (existingIdx !== null && existingIdx < prev.length) {
+                const copy = [...prev];
+                copy[existingIdx] = { ...copy[existingIdx], widget: undefined };
+                return copy;
+              }
+              return prev;
+            } else if (existingIdx !== null && existingIdx < prev.length) {
+              let newDuration = widget.durationSeconds;
+              if (widget.timerAction === 'add' && widget.deltaSeconds) {
+                const elapsed = timerStartedAtRef.current
+                  ? Math.floor((Date.now() - timerStartedAtRef.current) / 1000) : 0;
+                const currentRemaining = Math.max(0, (timerOriginalDurationRef.current ?? 0) - elapsed);
+                newDuration = currentRemaining + widget.deltaSeconds;
+              }
+              timerStartedAtRef.current = Date.now();
+              timerOriginalDurationRef.current = newDuration;
+              const copy = [...prev];
+              copy[existingIdx] = { ...copy[existingIdx], widget: { ...widget, durationSeconds: newDuration, timerAction: 'set' } };
+              return copy;
+            } else {
+              chatTimerMsgIdxRef.current = prev.length - 1;
+              timerStartedAtRef.current = Date.now();
+              timerOriginalDurationRef.current = widget.durationSeconds;
+              const copy = [...prev];
+              copy[copy.length - 1] = { ...copy[copy.length - 1], widget };
+              return copy;
+            }
+          });
+        } else if (widget.type !== 'timer') {
+          setMessages(prev => {
+            const copy = [...prev];
+            copy[copy.length - 1] = { ...copy[copy.length - 1], widget: widget! };
+            return copy;
+          });
+          setActiveWidget(widget);
+        } else {
+          // Non-chat timer: attach to the message for the live session, but the
+          // durable strip above the orb renders it (server-backed).
+          setMessages(prev => {
+            const copy = [...prev];
+            copy[copy.length - 1] = { ...copy[copy.length - 1], widget: widget! };
+            return copy;
+          });
+        }
+      }
+      setSuggestions(newSuggestions);
+
+      // In chat mode, only speak if the request came from the mic (speak=true).
+      if (speak) {
+        playTTS(jarvisText, () => { vibrate([20, 30, 20]); setStatus('speaking'); }, () => {
+          if (isChatModeRef.current) {
+            setStatus('idle');
+            setTimeout(() => inputRef.current?.focus(), 50);
+          } else {
+            // Conversational voice loop — immediately keep listening so the
+            // user can just keep talking without tapping the orb again.
+            setStatus('recording');
+            activateCommand(true);
+          }
+        });
+      } else {
+        setStatus('idle');
+        setTimeout(() => inputRef.current?.focus(), 50);
+      }
+    } catch (err) {
+      const msg = err instanceof TypeError ? 'Network error — is the server running?' : 'Request failed';
+      handleError(msg, undefined, () => processUserTextRef.current?.(userText, file, speak));
+    }
+  }, [handleError, refreshSidebar, playTTS, isChatMode, webSearchEnabled, thinkingEnabled, activateCommand, vibrate, createTimer, extendTimer, cancelTimer, serverIdRef, mode, screenShareActive, screenFrame]);
+
+  const processUserTextRef = useRef<typeof processUserText | null>(null);
+  useEffect(() => { processUserTextRef.current = processUserText; }, [processUserText]);
+
+  return {
+    processUserText,
+    processUserTextRef,
+    nextMsgId,
+    pendingCodeRef,
+    chatTimerMsgIdxRef,
+    timerStartedAtRef,
+    timerOriginalDurationRef,
+  };
+}
