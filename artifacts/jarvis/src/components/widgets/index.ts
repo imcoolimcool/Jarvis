@@ -16,3 +16,4 @@ export { MapWidget } from './MapWidget';
 export { RandomWidget } from './RandomWidget';
 export { CommandCard } from './CommandCard';
 export { FileEditCard } from './FileEditCard';
+export { FigmaWidget, type FigmaTokenCard } from './FigmaWidget';

@@ -8,6 +8,7 @@ import { haptics } from '@/lib/haptics';
 import type { Widget, VerifyClaim, TerminalResult } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, ImageResultsWidget, DateWidget, CalculatorWidget, DefineWidget, UnitConverterWidget, CurrencyWidget, MapWidget, RandomWidget, MusicWidget } from '@/components/widgets';
 import type { FileEdit } from '@/types/widget';
+import { FigmaWidget, type FigmaTokenCard } from '@/components/widgets';
 import { CommandCard } from '@/components/widgets/CommandCard';
 import { FileEditCard } from '@/components/widgets/FileEditCard';
 import { ImageConfirmationCard, ImageGeneratingCard, ScreenShareConfirmationCard, AgentBrowserConfirmationCard, SourceCodeConfirmationCard, BuildModeConfirmationCard } from '@/components/image-confirmation-card';
@@ -41,6 +42,8 @@ export interface ChatMessage {
   terminalResults?: TerminalResult[];
   /** File edits the AI made while answering (from write_source_file). */
   fileEdits?: FileEdit[];
+  /** Figma design data the AI fetched (from figma_design tool). */
+  figma?: FigmaTokenCard;
 }
 
 interface ConversationFeedProps {
@@ -724,6 +727,7 @@ export function ConversationFeed({
                   {msg.fileEdits?.map((ed, i) => (
                     <FileEditCard key={`fe-${ed.path}-${i}`} edit={ed} />
                   ))}
+                  {msg.figma && <FigmaWidget data={msg.figma} />}
                 </div>
               )}
             </motion.div>

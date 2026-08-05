@@ -810,6 +810,29 @@ export default function Home() {
               case 'widget':
                 widget = parsed.widget ?? null;
                 break;
+              case 'figma_design':
+                // The AI fetched a Figma design — show the live frame embed
+                // plus the real extracted fonts & colors on the assistant message.
+                {
+                  const fd = {
+                    fileKey: parsed.fileKey ?? '',
+                    name: parsed.name ?? 'design',
+                    frameName: parsed.frameName ?? 'Design',
+                    width: parsed.width ?? 0,
+                    height: parsed.height ?? 0,
+                    fonts: parsed.fonts ?? [],
+                    colors: parsed.colors ?? [],
+                  };
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    if (last && last.role === 'assistant') {
+                      updated[updated.length - 1] = { ...last, figma: fd };
+                    }
+                    return updated;
+                  });
+                }
+                break;
               case 'file_edit':
                 // The AI wrote a file — show it as an expandable diff card
                 // on the current assistant message.
