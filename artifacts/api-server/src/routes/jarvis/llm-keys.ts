@@ -12,7 +12,7 @@ function maskKey(apiKey: string): string {
   return `${apiKey.slice(0, 6)}••••••••${apiKey.slice(-4)}`;
 }
 
-/** Public shape — never includes the raw apiKey. */
+/** Public shape, never includes the raw apiKey. */
 function publicEntry(k: LlmKeyEntry) {
   return {
     id: k.id,

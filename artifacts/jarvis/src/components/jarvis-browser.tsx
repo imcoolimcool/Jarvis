@@ -100,7 +100,7 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
       .then((r) => r.json())
       .then((data) => {
         // If the server returned an internal/local URL (e.g. behind a proxy
-        // that rewrites the Host header), prefer this page's own origin — the
+        // that rewrites the Host header), prefer this page's own origin, the
         // browser WebSocket is always served on the same origin via /browser-ws.
         const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const own = `${proto}//${window.location.host}/browser-ws`;
@@ -149,7 +149,7 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
         wsRef.current = null;
         reconnectAttemptsRef.current += 1;
         // After 2 failed attempts, show the browser-service unavailable state
-        // with a retry button — don't keep silently reconnecting.
+        // with a retry button, don't keep silently reconnecting.
         if (reconnectAttemptsRef.current >= 2) {
           setConnectionFailed(true);
           return;
@@ -164,7 +164,7 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
 
       wsRef.current = ws;
     } catch {
-      // Connection failed — retry later
+      // Connection failed, retry later
       reconnectTimerRef.current = setTimeout(connectWs, 5000);
     }
   }, [wsUrl, onAction]);
@@ -252,7 +252,7 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
         if (msg.action === 'type') detail += ` into #${msg.index !== undefined ? msg.index : 'focused'} "${msg.text ?? ''}"${msg.enter ? ' + Enter' : ''}`;
         if (msg.action === 'navigate') detail += ` ${msg.url}`;
         if (msg.action === 'scroll') detail += ` ${msg.dy ?? ''}px`;
-        addLog('step', `Step ${msg.step}: ${detail}${msg.reason ? ` — ${msg.reason}` : ''}`);
+        addLog('step', `Step ${msg.step}: ${detail}${msg.reason ? `, ${msg.reason}` : ''}`);
         break;
       }
       case 'action':
@@ -431,7 +431,7 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
         {/* Connection indicator */}
         <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'} flex-shrink-0`} title={connected ? 'Connected' : 'Disconnected'} />
 
-        {/* Grid overlay toggle — the tiny cubes the agent clicks */}
+        {/* Grid overlay toggle, the tiny cubes the agent clicks */}
         <button
           onClick={() => setShowGrid(g => !g)}
           className={`p-1 rounded hover:bg-muted/50 transition-colors ${showGrid ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
@@ -466,7 +466,7 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
           value={agentGoal}
           onChange={(e) => setAgentGoal(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') startAgentRun(); }}
-          placeholder="Give Jarvis a goal — it will browse and click for you…"
+          placeholder="Give Jarvis a goal, it will browse and click for you…"
           disabled={agentRunning}
           className="flex-1 bg-transparent text-[11px] font-mono py-1 outline-none text-foreground placeholder:text-muted-foreground/50 disabled:opacity-50"
         />
@@ -475,7 +475,7 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
           onChange={(e) => setCellSize(Number(e.target.value))}
           disabled={agentRunning}
           className="bg-background border border-border/30 rounded text-[10px] font-mono text-muted-foreground px-1 py-0.5 outline-none disabled:opacity-50"
-          title="Grid cell size (px) — smaller = more precise for tiny buttons"
+          title="Grid cell size (px), smaller = more precise for tiny buttons"
         >
           <option value={16}>16px</option>
           <option value={24}>24px</option>

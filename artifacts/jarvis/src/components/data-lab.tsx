@@ -16,7 +16,7 @@ import { haptics } from '@/lib/haptics';
 interface GemDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Ask Jarvis to analyze the loaded data — payload is a text summary. */
+  /** Ask Jarvis to analyze the loaded data, payload is a text summary. */
   onAskJarvis: (summaryText: string) => void;
 }
 
@@ -153,10 +153,10 @@ export function DataLab({ open, onClose, onAskJarvis }: GemDialogProps) {
       .join(' | ');
     const sample = data.rows.slice(0, 15).map((r) => JSON.stringify(r)).join('\n');
     const summary = [
-      `DATA LAB analysis request — file: ${fileName ?? 'uploaded.csv'}`,
+      `DATA LAB analysis request, file: ${fileName ?? 'uploaded.csv'}`,
       `Columns: ${data.columns.join(', ')}`,
       `Rows: ${data.rows.length}`,
-      numeric ? `Numeric stats — ${numeric}` : 'No numeric columns detected.',
+      numeric ? `Numeric stats, ${numeric}` : 'No numeric columns detected.',
       '',
       'Sample rows:',
       sample,

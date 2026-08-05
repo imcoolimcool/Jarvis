@@ -124,7 +124,7 @@ export function ScreenShare({ className = '', onFrame, voiceCommand }: ScreenSha
             className="bg-muted/20 aspect-video flex items-center justify-center text-muted-foreground font-mono text-xs"
             style={{ minHeight: 200 }}
           >
-            Screen sharing active — use browser UI to stop
+            Screen sharing active, use browser UI to stop
           </div>
 
           {/* Annotation canvas overlay */}

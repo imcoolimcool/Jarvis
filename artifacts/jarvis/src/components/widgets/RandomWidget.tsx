@@ -18,7 +18,7 @@ export function RandomWidget({ kind, value, label }: RandomWidgetProps) {
     if (kind === 'dice') next = Math.floor(Math.random() * 6) + 1;
     else if (kind === 'coin') next = Math.random() < 0.5 ? 0 : 1;
     else {
-      const m = label.match(/(\d+)–(\d+)/);
+      const m = label.match(/(\d+)-(\d+)/);
       if (m) { const lo = Math.min(+m[1], +m[2]); const hi = Math.max(+m[1], +m[2]); next = lo + Math.floor(Math.random() * (hi - lo + 1)); }
       else next = Math.floor(Math.random() * 100) + 1;
     }

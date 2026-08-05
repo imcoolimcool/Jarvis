@@ -18,19 +18,19 @@ export const KNOWN_SECRETS: {
   /** LLM pool keys need the pool invalidated when they change. */
   llmPool?: boolean;
 }[] = [
-  { env: "OPENROUTER_API_KEY", label: "OpenRouter", description: "Free auto-router LLM — primary model (openrouter/free). Supports image vision.", prefix: "sk-or-", llmPool: true },
+  { env: "OPENROUTER_API_KEY", label: "OpenRouter", description: "Free auto-router LLM, primary model (openrouter/free). Supports image vision.", prefix: "sk-or-", llmPool: true },
   { env: "OPENROUTER_MODEL", label: "OpenRouter model", description: "Override model, e.g. openrouter/auto. Defaults to openrouter/free.", llmPool: true },
   { env: "OPENAI_LLM_API_KEY", label: "OpenAI / NVIDIA key", description: "Fallback LLM key (openai/gpt-oss-120b via NVIDIA NIM).", llmPool: true },
-  { env: "ELEVENLABS_API_KEY", label: "ElevenLabs", description: "Voice — text-to-speech (British male voice).", prefix: "sk_" },
+  { env: "ELEVENLABS_API_KEY", label: "ElevenLabs", description: "Voice, text-to-speech (British male voice).", prefix: "sk_" },
   { env: "TAVILY_API_KEY", label: "Tavily", description: "Web search + fact-checking against the internet.", prefix: "tvly-" },
-  { env: "FIGMA_ACCESS_TOKEN", label: "Figma", description: "Design-to-code — fetch real fonts/colors from Figma links." },
+  { env: "FIGMA_ACCESS_TOKEN", label: "Figma", description: "Design-to-code, fetch real fonts/colors from Figma links." },
   { env: "OPENWEATHER_API_KEY", label: "Weather", description: "Live weather for the weather widget." },
-  { env: "GMAIL_CLIENT_ID", label: "Gmail client ID", description: "Google OAuth — calendar + email integration." },
+  { env: "GMAIL_CLIENT_ID", label: "Gmail client ID", description: "Google OAuth, calendar + email integration." },
   { env: "GMAIL_CLIENT_SECRET", label: "Gmail client secret", description: "Google OAuth secret for Gmail." },
   { env: "SPOTIFY_CLIENT_ID", label: "Spotify client ID", description: "Spotify OAuth integration." },
   { env: "SPOTIFY_CLIENT_SECRET", label: "Spotify client secret", description: "Spotify OAuth secret." },
   { env: "WEB_SEARCH_API_KEY", label: "Web search (alt)", description: "Alternative to Tavily for web search." },
-  { env: "DATABASE_URL", label: "Database", description: "Postgres connection string — required for chat/history/memory.", prefix: "postgres" },
+  { env: "DATABASE_URL", label: "Database", description: "Postgres connection string, required for chat/history/memory.", prefix: "postgres" },
 ];
 
 /** Mask a secret for display: "sk-or-••••••••WXYZ". */
@@ -42,7 +42,7 @@ export function maskSecret(value: string): string {
 /**
  * Inject all DB-stored secrets into process.env. Called at boot (and on every
  * write) so existing `process.env.X` read sites pick up in-app keys. DB values
- * win over file/env values — the user explicitly chose them in-app.
+ * win over file/env values, the user explicitly chose them in-app.
  */
 export async function injectDbSecretsIntoEnv(): Promise<void> {
   try {
@@ -52,7 +52,7 @@ export async function injectDbSecretsIntoEnv(): Promise<void> {
     }
     if (rows.length > 0) invalidateKeyPool();
   } catch (err) {
-    // DB unreachable — keep whatever env already provides.
+    // DB unreachable, keep whatever env already provides.
     console.error("[secrets] inject skipped:", err instanceof Error ? err.message : err);
   }
 }
@@ -61,10 +61,10 @@ export async function injectDbSecretsIntoEnv(): Promise<void> {
 export function secretStatus(env: string): { configured: boolean; masked: string | null; source: "env" | "db" | "none" } {
   const raw = process.env[env];
   if (!raw) return { configured: false, masked: null, source: "none" };
-  return { configured: true, masked: maskSecret(raw), source: "db" }; // loaded from DB at boot, or env — both live in process.env now
+  return { configured: true, masked: maskSecret(raw), source: "db" }; // loaded from DB at boot, or env, both live in process.env now
 }
 
-/** GET — known keys + their live status. Secrets never leave the server. */
+/** GET, known keys + their live status. Secrets never leave the server. */
 router.get("/secrets", async (req, res) => {
   try {
     const rows = await db.select().from(appSecrets);
@@ -88,7 +88,7 @@ router.get("/secrets", async (req, res) => {
   }
 });
 
-/** PUT — upsert a secret (sets it in the DB AND process.env immediately). */
+/** PUT, upsert a secret (sets it in the DB AND process.env immediately). */
 router.put("/secrets/:key", async (req, res) => {
   try {
     const key = (req.params.key ?? "").trim().toUpperCase();
@@ -105,14 +105,14 @@ router.put("/secrets/:key", async (req, res) => {
     const clean = value.trim();
     // Validate format hints so a typo'd key is caught immediately.
     if (known.prefix && !clean.startsWith(known.prefix)) {
-      res.status(400).json({ error: `${key} usually starts with "${known.prefix}" — double-check you pasted the full key.` });
+      res.status(400).json({ error: `${key} usually starts with "${known.prefix}", double-check you pasted the full key.` });
       return;
     }
     await db
       .insert(appSecrets)
       .values({ key, value: clean, description: description ?? known.description })
       .onConflictDoUpdate({ target: appSecrets.key, set: { value: clean, description: description ?? known.description, updatedAt: new Date() } });
-    // Make it live immediately — no restart needed.
+    // Make it live immediately, no restart needed.
     process.env[key] = clean;
     if (known.llmPool) invalidateKeyPool();
     req.log.info({ key }, "Secret saved");
@@ -123,7 +123,7 @@ router.put("/secrets/:key", async (req, res) => {
   }
 });
 
-/** DELETE — remove a stored secret (process.env keeps its value until restart). */
+/** DELETE, remove a stored secret (process.env keeps its value until restart). */
 router.delete("/secrets/:key", async (req, res) => {
   try {
     const key = (req.params.key ?? "").trim().toUpperCase();

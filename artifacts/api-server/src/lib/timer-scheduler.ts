@@ -6,7 +6,7 @@
  * web-push notification is sent, so the user is alerted even with the tab
  * closed. An open tab rehydrates the remaining time from `GET /timers` on load.
  *
- * The scheduler is an in-process Map — the assumption is a single long-running
+ * The scheduler is an in-process Map, the assumption is a single long-running
  * localhost server. On boot, `startTimerScheduler()` re-schedules every active
  * timer (mirroring `recoverStuckJobs` in the research engine).
  */
@@ -38,7 +38,7 @@ export function scheduleTimer(t: Timer): void {
   cancelScheduledTimer(t.id);
   const delay = new Date(t.fireAt).getTime() - Date.now();
   if (delay <= 0) {
-    // Already due — fire immediately.
+    // Already due, fire immediately.
     void fireTimer(t.id);
     return;
   }
@@ -68,7 +68,7 @@ async function fireTimer(id: string): Promise<void> {
       .set({ status: "done", completedAt: new Date(), remainingSeconds: 0 })
       .where(eq(timers.id, id));
     logger.info({ timerId: id, label: row.label ?? undefined }, "[timers] fired");
-    const body = row.label ? `Timer done — ${row.label}` : "Timer done";
+    const body = row.label ? `Timer done, ${row.label}` : "Timer done";
     await notifyAll("⏰ Timer done", body);
   } catch (err) {
     logger.error({ err, timerId: id }, "[timers] fire failed");

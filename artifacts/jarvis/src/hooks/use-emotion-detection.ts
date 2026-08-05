@@ -3,12 +3,12 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 /**
  * Free, fully client-side emotion detection from microphone audio.
  *
- * Instead of a heavyweight ML model (wav2vec/emotion2vec — ~100MB+ downloads),
+ * Instead of a heavyweight ML model (wav2vec/emotion2vec, ~100MB+ downloads),
  * this analyses PROSODY from the live mic with the Web Audio API:
  *   - RMS energy (loudness)
  *   - spectral centroid (brightness/tension)
  *   - zero-crossing rate (vocal tension / harshness)
- *   - pitch via autocorrelation (and its variance — excitement raises pitch)
+ *   - pitch via autocorrelation (and its variance, excitement raises pitch)
  *   - speaking rate from the energy-envelope syllable peaks
  *
  * Windows of ~2.4s are classified into calm / excited / frustrated /
@@ -100,7 +100,7 @@ export function useEmotionDetection({
     }
     const centroid = den > 0 ? num / den : 0;
 
-    // Pitch via autocorrelation (time domain) — only when voiced
+    // Pitch via autocorrelation (time domain), only when voiced
     let pitch = 0;
     if (rms > noiseFloorRef.current * 1.6) {
       const minLag = Math.floor(sampleRate / 400); // 400 Hz max
@@ -253,7 +253,7 @@ export function useEmotionDetection({
         };
         rafRef.current = requestAnimationFrame(loop);
       } catch {
-        // Mic busy (e.g. SpeechRecognition owns it on iOS) — disable quietly.
+        // Mic busy (e.g. SpeechRecognition owns it on iOS), disable quietly.
         failedRef.current = true;
         setSupported(false);
       }

@@ -44,7 +44,7 @@ interface UseWakeWordOptions {
   /** Wake word detected; the recognizer is still running to capture the command. */
   onWake: () => void;
   /**
-   * Full command captured after the wake word — delivered within the same
+   * Full command captured after the wake word, delivered within the same
    * recognizer session so iOS never needs to spawn a second instance.
    */
   onCommand: (text: string) => void;
@@ -78,7 +78,7 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang
   // After unsuppressing, we ignore results for this long so residual TTS audio
   // doesn't trigger a false command.
   const unsuppressCooldownRef = useRef(0);
-  // Debounce timer for command submission — fires onCommand only after the user
+  // Debounce timer for command submission, fires onCommand only after the user
   // stops speaking for 900ms, so a brief pause mid-sentence doesn't cut them off.
   const commandDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingCommandRef = useRef<string>('');
@@ -129,7 +129,7 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang
         if (!cmd) return;
         commandModeRef.current = false;
         wakeResultIndexRef.current = -1;
-        // Auto-adapt language before handing the command over — the next
+        // Auto-adapt language before handing the command over, the next
         // utterance should be recognized in the language the user just used.
         if (autoDetectLang) {
           const next = toSpeechLangTag(detectSpeechLanguage(cmd), langRef.current);
@@ -173,7 +173,7 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang
                 scheduleCommand(cmd);
                 return;
               }
-              // No inline command — wait for the next utterance in command mode.
+              // No inline command, wait for the next utterance in command mode.
             }
           }
         } else {
@@ -185,7 +185,7 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang
               if (cmd.length > 1) scheduleCommand(cmd);
             }
           } else if (i > wakeResultIndexRef.current && isFinal) {
-            // A subsequent final result — accumulate and debounce.
+            // A subsequent final result, accumulate and debounce.
             scheduleCommand(transcript);
           }
         }
@@ -209,13 +209,13 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang
 
       if (commandModeRef.current) {
         // Session ended while waiting for a command (e.g. long silence).
-        // Reset and restart in wake mode — user will need to say "hey jarvis" again.
+        // Reset and restart in wake mode, user will need to say "hey jarvis" again.
         commandModeRef.current = false;
         wakeResultIndexRef.current = -1;
         onCommandTimeoutRef.current?.();
       }
 
-      // Restart in wake mode by reusing the same instance — iOS allows .start()
+      // Restart in wake mode by reusing the same instance, iOS allows .start()
       // on the same instance from onend. We intentionally do NOT fall back to
       // creating a new instance via setTimeout: that path is blocked on iOS
       // (WKWebView) and throws "not allowed". If the same instance can't restart
@@ -253,7 +253,7 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'visible') return;
-      // Tab became visible — if we should be active but the recognizer is gone, restart it.
+      // Tab became visible, if we should be active but the recognizer is gone, restart it.
       if (activeRef.current && !recognitionRef.current) {
         activeRef.current = false; // allow start() to proceed
         startRef.current();
@@ -261,7 +261,7 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []); // empty deps — only uses refs that are always current
+  }, []); // empty deps, only uses refs that are always current
 
   const stop = useCallback(() => {
     activeRef.current = false;
@@ -307,7 +307,7 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang
   }, []);
 
   /**
-   * Skip wake-word detection for one utterance — the next thing the user says
+   * Skip wake-word detection for one utterance, the next thing the user says
    * goes straight to onCommand.
    *
    * @param fromGesture  Pass true when called directly from a user tap (orb press).
@@ -322,7 +322,7 @@ export function useWakeWord({ onWake, onCommand, onError, onCommandTimeout, lang
     wakeResultIndexRef.current = -1;
     if (!activeRef.current) {
       if (fromGesture) {
-        // User tap — safe to start a brand-new recognizer instance on iOS.
+        // User tap, safe to start a brand-new recognizer instance on iOS.
         start();
         commandModeRef.current = true;
         wakeResultIndexRef.current = -1;

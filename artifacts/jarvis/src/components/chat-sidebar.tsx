@@ -118,7 +118,7 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header — ChatGPT style title + circular search */}
+      {/* Header, ChatGPT style title + circular search */}
       <div className="px-4 pt-4 pb-3 flex items-center justify-between">
         <h2 className="text-lg font-bold tracking-tight text-foreground">{t('header.title')}</h2>
         <button
@@ -130,7 +130,7 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
         </button>
       </div>
 
-      {/* Nav links — actually switch modes now (Chat / Browser / Camera) */}
+      {/* Nav links, actually switch modes now (Chat / Browser / Camera) */}
       <nav className="px-2 space-y-0.5">
         {navItems.map(({ icon: Icon, label, mode }) => (
           <button
@@ -241,7 +241,7 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
         ))}
       </div>
 
-      {/* Footer — blue Chat pill + settings gear (ChatGPT style) */}
+      {/* Footer, blue Chat pill + settings gear (ChatGPT style) */}
       <div className="p-3 border-t border-border/20 flex-shrink-0">
         <div className="flex items-center gap-2">
           <button

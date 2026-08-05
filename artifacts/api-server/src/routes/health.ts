@@ -5,11 +5,11 @@ import { db } from "@workspace/db";
 
 const router: IRouter = Router();
 
-/** Deep health check — verifies DB connectivity and reports uptime */
+/** Deep health check, verifies DB connectivity and reports uptime */
 router.get("/healthz", async (_req, res) => {
   const start = Date.now();
   try {
-    // Quick DB ping — SELECT 1
+    // Quick DB ping, SELECT 1
     await db.execute(sql`SELECT 1`);
     const dbMs = Date.now() - start;
     const data = HealthCheckResponse.parse({ status: "ok" });

@@ -137,7 +137,7 @@ export function AppOverlays(props: AppOverlaysProps) {
                     <Download className="w-8 h-8 text-muted-foreground/40" />
                     <div>
                       <p className="text-sm font-semibold mb-1">Clone a repository</p>
-                      <p className="text-[10px] font-mono text-muted-foreground/50 max-w-[260px]">Paste a GitHub URL below — Jarvis will clone it and you can ask him to build on top of it.</p>
+                      <p className="text-[10px] font-mono text-muted-foreground/50 max-w-[260px]">Paste a GitHub URL below, Jarvis will clone it and you can ask him to build on top of it.</p>
                     </div>
                     <CloneForm onClone={(url) => {
                       props.setBuildTab('terminal');
@@ -148,7 +148,7 @@ export function AppOverlays(props: AppOverlaysProps) {
                   <div className="p-3">
                     <p className="text-[10px] font-mono tracking-widest text-muted-foreground/50 uppercase mb-2">Commands the AI ran</p>
                     {props.sessionCommands.length === 0 ? (
-                      <p className="text-xs text-muted-foreground/60 mb-3">No commands yet — ask Jarvis to build something and every command shows up here as a clean card.</p>
+                      <p className="text-xs text-muted-foreground/60 mb-3">No commands yet, ask Jarvis to build something and every command shows up here as a clean card.</p>
                     ) : (
                       <div className="space-y-1 mb-3">{props.sessionCommands.map((tr, i) => <CommandCard key={i} result={tr} />)}</div>
                     )}
@@ -165,7 +165,7 @@ export function AppOverlays(props: AppOverlaysProps) {
                       <button onClick={props.onRefreshBuildFiles} className="flex items-center gap-1 text-[10px] text-primary/70 hover:text-primary transition-colors"><FolderTree className="w-3.5 h-3.5" /> refresh</button>
                     </div>
                     {props.buildFiles.length === 0 ? (
-                      <p className="text-xs text-muted-foreground/60">Empty workspace — ask Jarvis to build something, then run files here.</p>
+                      <p className="text-xs text-muted-foreground/60">Empty workspace, ask Jarvis to build something, then run files here.</p>
                     ) : (
                       <div className="rounded-xl border border-border/30 bg-muted/20 divide-y divide-border/20">
                         {props.buildFiles.map((f) => (

@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react';
 
 interface UseClapDetectionOptions {
-  /** Clap detected — fire the same callback as wake word */
+  /** Clap detected, fire the same callback as wake word */
   onClap: () => void;
   /** Enable/disable clap detection */
   enabled?: boolean;
@@ -118,7 +118,7 @@ export function useClapDetection({
               }, cooldown);
               return; // exit the current monitoring cycle
             } else {
-              // Too slow — reset and start over
+              // Too slow, reset and start over
               clapCountRef.current = 1;
               firstClapTimeRef.current = now;
             }

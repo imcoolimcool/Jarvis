@@ -1,5 +1,5 @@
 /**
- * useChatStream — the chat round-trip + SSE consumption logic extracted from
+ * useChatStream, the chat round-trip + SSE consumption logic extracted from
  * home.tsx (the old `processUserText`). The hook owns the streaming/timer refs
  * and takes everything else through a `ChatStreamDeps` config object, so Home
  * shrinks by ~370 lines and the core chat path is isolated and reusable.
@@ -81,7 +81,7 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
     vibrate, createTimer, extendTimer, cancelTimer,
   } = deps;
 
-  // Streaming refs owned by the hook — shared with Home so it can keep using
+  // Streaming refs owned by the hook, shared with Home so it can keep using
   // them (history load, conversation-switch resets, code-confirmation UI).
   const nextMsgIdRef = useRef(0);
   const nextMsgId = useCallback(() => `m${++nextMsgIdRef.current}`, []);
@@ -95,7 +95,7 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
     // If the message looks like a question about Jarvis's own code and the
     // user hasn't decided yet, show the confirmation card first. Confirm
     // re-sends with code access (codeAllowance=true); Cancel re-sends without
-    // it (false) — the message is never dropped, Jarvis still answers.
+    // it (false), the message is never dropped, Jarvis still answers.
     if (codeAllowance === undefined && isChatMode && looksLikeCodeRequest(userText)) {
       pendingCodeRef.current = { userText, file: file ?? null, speak };
       setSuggestions([]);
@@ -147,7 +147,7 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
           const errBody = await res.json();
           handleError(errBody?.error || `Server error (${res.status})`, errBody?.detail, () => processUserTextRef.current?.(userText, file, speak));
         } catch {
-          // Body isn't JSON — the API server is likely down or restarting
+          // Body isn't JSON, the API server is likely down or restarting
           // (a gateway/proxy-level 502/500). Explain it instead of a bare number.
           const hint = res.status >= 500
             ? 'The Jarvis server is unreachable right now (likely restarting or down). Wait a few seconds and retry.'
@@ -199,7 +199,7 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
                 });
                 break;
               case 'reasoning':
-                // Thinking mode — accumulate the private reasoning chain onto
+                // Thinking mode, accumulate the private reasoning chain onto
                 // the same assistant message (shown in a collapsible block).
                 jarvisReasoning += parsed.content;
                 setMessages(prev => {
@@ -230,7 +230,7 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
                 widget = parsed.widget ?? null;
                 break;
               case 'figma_design':
-                // The AI fetched a Figma design — show the live frame embed
+                // The AI fetched a Figma design, show the live frame embed
                 // plus the real extracted fonts & colors on the assistant message.
                 {
                   const fd = {
@@ -253,7 +253,7 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
                 }
                 break;
               case 'file_edit':
-                // The AI wrote a file — show it as an expandable diff card
+                // The AI wrote a file, show it as an expandable diff card
                 // on the current assistant message.
                 {
                   const fe: FileEdit = { path: parsed.path, bytesWritten: parsed.bytesWritten ?? 0, oldContent: parsed.oldContent ?? '', newContent: parsed.newContent ?? '' };
@@ -271,7 +271,7 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
                 }
                 break;
               case 'terminal_result':
-                // The AI ran a shell command — show it as a clean minimal card
+                // The AI ran a shell command, show it as a clean minimal card
                 // on the current assistant message and log it for Build Mode.
                 {
                   const tr: TerminalResult = { command: parsed.command, exitCode: parsed.exitCode ?? 0, output: parsed.output ?? '' };
@@ -328,7 +328,7 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
               case 'image_request_detected':
                 // If in voice mode, switch to chat mode so the confirmation card is visible
                 if (mode === 'voice') setMode('chat');
-                // Show image generation confirmation card — embed it in the message list
+                // Show image generation confirmation card, embed it in the message list
                 setMessages(prev => {
                   const withoutEmpty = prev.slice(0, -1); // remove the empty assistant message
                   return [...withoutEmpty, {
@@ -344,7 +344,7 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
                 });
                 break;
               case 'follow_up':
-                // Standalone follow-up event — auto-submit the next task
+                // Standalone follow-up event, auto-submit the next task
                 if (parsed.task && typeof parsed.task === 'string') {
                   const task = parsed.task.trim().slice(0, 200);
                   setTimeout(() => {
@@ -445,7 +445,7 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
             setStatus('idle');
             setTimeout(() => inputRef.current?.focus(), 50);
           } else {
-            // Conversational voice loop — immediately keep listening so the
+            // Conversational voice loop, immediately keep listening so the
             // user can just keep talking without tapping the orb again.
             setStatus('recording');
             activateCommand(true);
@@ -456,7 +456,7 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
         setTimeout(() => inputRef.current?.focus(), 50);
       }
     } catch (err) {
-      const msg = err instanceof TypeError ? 'Network error — is the server running?' : 'Request failed';
+      const msg = err instanceof TypeError ? 'Network error, is the server running?' : 'Request failed';
       handleError(msg, undefined, () => processUserTextRef.current?.(userText, file, speak));
     }
   }, [handleError, refreshSidebar, playTTS, isChatMode, webSearchEnabled, thinkingEnabled, activateCommand, vibrate, createTimer, extendTimer, cancelTimer, serverIdRef, mode, screenShareActive, screenFrame]);

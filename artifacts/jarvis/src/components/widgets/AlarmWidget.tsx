@@ -8,7 +8,7 @@ interface AlarmWidgetProps {
   onClose?: () => void;
 }
 
-// #28: Shared module-level AudioContext — avoids creating a new context on every alarm tick
+// #28: Shared module-level AudioContext, avoids creating a new context on every alarm tick
 let _alarmCtx: AudioContext | null = null;
 function getAlarmCtx(): AudioContext {
   const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;

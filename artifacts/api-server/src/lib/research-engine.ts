@@ -4,16 +4,16 @@
  * Runs LONG-RUNNING background research jobs (hours → days, by design).
  *
  * A job is a self-driven loop:
- *   1. PLAN    — the LLM decomposes the goal into many research phases
- *   2. SEARCH  — web search (Tavily if a key exists, else free DuckDuckGo HTML)
- *   3. READ    — fetch the top sources and extract readable text (cheerio)
- *   4. SYNTHESIZE — distill each batch into sourced notes appended to the job
- *   5. CRITIQUE — the LLM finds gaps, contradictions and follow-up phases and
- *                 replans — the phase list grows, so there is NO hard limit.
+ *   1. PLAN   , the LLM decomposes the goal into many research phases
+ *   2. SEARCH , web search (Tavily if a key exists, else free DuckDuckGo HTML)
+ *   3. READ   , fetch the top sources and extract readable text (cheerio)
+ *   4. SYNTHESIZE, distill each batch into sourced notes appended to the job
+ *   5. CRITIQUE, the LLM finds gaps, contradictions and follow-up phases and
+ *                 replans, the phase list grows, so there is NO hard limit.
  *   6. Repeat… sleep between phases scales with the chosen depth.
  *
  * When the loop finally converges, the engine writes a deep report and
- * spawns a "gem" conversation — a special chat whose system prompt makes
+ * spawns a "gem" conversation, a special chat whose system prompt makes
  * Jarvis behave like a 30-year veteran of the researched field.
  *
  * Everything is persisted to Postgres on every step, so the frontend can
@@ -43,18 +43,18 @@ const BASE_PHASES: Record<JobDepth, [number, number]> = {
   omni: [70, 120],
 };
 
-/** Per-depth deepening — how many sources per query, pages read, chars per
+/** Per-depth deepening, how many sources per query, pages read, chars per
  *  page, and sources gathered before a phase stops digging. */
 const DEPTH_RESULTS: Record<JobDepth, number> = { standard: 5, deep: 6, quantum: 7, omni: 8 };
 const DEPTH_READS: Record<JobDepth, number> = { standard: 4, deep: 5, quantum: 6, omni: 8 };
 const DEPTH_CHARS: Record<JobDepth, number> = { standard: 8000, deep: 12000, quantum: 16000, omni: 20000 };
 const DEPTH_GATHER: Record<JobDepth, number> = { standard: 10, deep: 12, quantum: 14, omni: 16 };
 
-/** Follow-up phases proposed per replan round — the deeper the tier, the more
+/** Follow-up phases proposed per replan round, the deeper the tier, the more
  *  the research keeps branching out instead of saturating. */
 const FOLLOWUP_MAX: Record<JobDepth, number> = { standard: 2, deep: 3, quantum: 4, omni: 5 };
 
-/** Hard ceiling on total phases so a runaway job can't explode — far above
+/** Hard ceiling on total phases so a runaway job can't explode, far above
  *  what the tiers normally reach, but bounded. */
 const MAX_TOTAL_PHASES: Record<JobDepth, number> = { standard: 40, deep: 120, quantum: 400, omni: 2000 };
 
@@ -111,7 +111,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** JSON block extractor — the NIM models love markdown fences. */
+/** JSON block extractor, the NIM models love markdown fences. */
 function extractJson(text: string): string | null {
   if (!text) return null;
   let cleaned = text.trim();
@@ -141,7 +141,7 @@ async function llm(
 }
 
 /* ────────────────────────────────────────────────────────────────
- * Web search — Tavily is the primary source; per-query agent-style
+ * Web search, Tavily is the primary source; per-query agent-style
  * fallback kicks in when Tavily comes up empty, then the next query
  * resumes on Tavily (hybrid "both" behaviour).
  * ──────────────────────────────────────────────────────────────── */
@@ -149,7 +149,7 @@ async function llm(
 type SearchResult = { title: string; url: string; snippet: string };
 type SearchMode = "agent" | "normal" | "both";
 
-/** Tavily search — primary source. Returns [] when no key, unavailable, or empty. */
+/** Tavily search, primary source. Returns [] when no key, unavailable, or empty. */
 async function searchTavily(query: string, maxResults: number): Promise<SearchResult[]> {
   const tavilyKey = process.env["TAVILY_API_KEY"] ?? process.env["WEB_SEARCH_API_KEY"];
   if (!tavilyKey) return [];
@@ -181,7 +181,7 @@ async function searchTavily(query: string, maxResults: number): Promise<SearchRe
   }
 }
 
-/** Free DuckDuckGo HTML endpoint (no key needed) — best effort. */
+/** Free DuckDuckGo HTML endpoint (no key needed), best effort. */
 async function searchDuckDuckGo(query: string, maxResults: number): Promise<SearchResult[]> {
   try {
     const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
@@ -197,7 +197,7 @@ async function searchDuckDuckGo(query: string, maxResults: number): Promise<Sear
       const link = $(el).find("a.result__a").first();
       const url = link.attr("href") ?? "";
       if (!url) return;
-      // DDG wraps links in a redirect — decode the uddg parameter if present
+      // DDG wraps links in a redirect, decode the uddg parameter if present
       let finalUrl = url;
       const uddg = url.match(/uddg=([^&]+)/);
       if (uddg) {
@@ -215,7 +215,7 @@ async function searchDuckDuckGo(query: string, maxResults: number): Promise<Sear
 
 /**
  * Hybrid web search, evaluated per query:
- *  1. Tavily first (cheap + high quality) — the "continues on Tavily" part.
+ *  1. Tavily first (cheap + high quality), the "continues on Tavily" part.
  *  2. If Tavily returns NOTHING for this specific query, switch to agent mode
  *     for that query only: try DuckDuckGo, then a couple of reformulations.
  *  3. The next query starts over on Tavily, so one dead end never derails the
@@ -317,18 +317,18 @@ async function planPhases(job: JobMeta, resumeNotes: string): Promise<Phase[]> {
     "You are the research planner for a very deep autonomous research system. " +
     "You decompose a research goal into a comprehensive list of phases. Each phase must have a title, a one-line description, and 2-4 specific search queries. " +
     "Think like a world-class researcher: cover fundamentals, state of the art, controversies, experts, primary sources, history, future directions, and practical implications. " +
-    "Return ONLY valid JSON — an array of objects: [{\"title\": string, \"description\": string, \"queries\": string[]}].";
+    "Return ONLY valid JSON, an array of objects: [{\"title\": string, \"description\": string, \"queries\": string[]}].";
   const user =
     `Research goal: ${job.prompt}\n` +
     `Mode: ${
       job.mode === "agent"
         ? "agent (full autonomy, explore tangents, verify claims)"
         : job.mode === "both"
-          ? "both (hybrid — Tavily-first, with automatic agent-mode fallback whenever a specific query comes up empty)"
+          ? "both (hybrid, Tavily-first, with automatic agent-mode fallback whenever a specific query comes up empty)"
           : "normal (focused)"
     }\n` +
     `Target number of phases: between ${minPhases} and ${maxPhases}. More phases = deeper research.\n` +
-    (resumeNotes ? `\nResearch already completed so far — plan the REMAINING phases to go even deeper, not repeats:\n${resumeNotes.slice(-40_000)}` : "");
+    (resumeNotes ? `\nResearch already completed so far, plan the REMAINING phases to go even deeper, not repeats:\n${resumeNotes.slice(-40_000)}` : "");
   try {
     const raw = await llm(system, user, { maxTokens: 6000, temperature: 0.5 });
     const json = extractJson(raw);
@@ -348,7 +348,7 @@ async function planPhases(job: JobMeta, resumeNotes: string): Promise<Phase[]> {
   }
 }
 
-/** Generate follow-up phases based on the critique — this is how a job never truly ends. */
+/** Generate follow-up phases based on the critique, this is how a job never truly ends. */
 async function proposeFollowups(job: JobMeta, notes: string, gaps: string): Promise<Phase[]> {
   const system =
     "You are an obsessive researcher. Given the gaps found in a research phase, propose 0-3 follow-up phases that would genuinely deepen understanding. " +
@@ -378,7 +378,7 @@ async function runPhase(
   index: number,
   total: number,
 ): Promise<{ gapSummary: string; saturated: boolean }> {
-  const label = `Phase ${index}/${total} — ${phase.title}`;
+  const label = `Phase ${index}/${total}, ${phase.title}`;
 
   // 1. Gather sources across all queries
   const gathered: { title: string; url: string; snippet: string; text: string }[] = [];
@@ -413,14 +413,14 @@ async function runPhase(
   const synthSystem =
     "You are a senior research analyst. Distill the provided sources into rigorous, well-organized notes for a deep research dossier. " +
     "Use markdown bullets. Cite sources inline as [source: domain]. Note uncertainty, conflicting claims, and missing evidence explicitly. " +
-    "Be precise and dense — every bullet should carry real information, not filler.";
+    "Be precise and dense, every bullet should carry real information, not filler.";
   const synthUser =
     `Research goal: ${job.prompt}\nPhase: ${phase.title}\n\nSOURCES:\n${sourcesText.slice(0, 95_000)}`;
   const notesChunk = await llm(synthSystem, synthUser, { maxTokens: 4000, temperature: 0.3 });
   await appendNotes(jobId, `## ${phase.title}\n${notesChunk}`);
   await appendLog(jobId, `Synthesized "${phase.title}" (${gathered.filter((g) => g.text).length} pages read)`);
 
-  // 4. Critique — find gaps for the replanning step
+  // 4. Critique, find gaps for the replanning step
   const critiqueSystem =
     "You are a ruthless research critic. Identify the biggest remaining gaps, contradictions, and untested claims in this research so far. " +
     "Return ONLY valid JSON: {\"gaps\": string, \"saturated\": boolean}.";
@@ -452,7 +452,7 @@ async function createGem(
     "You are the final synthesis stage of a deep research system. Write the definitive report on the research goal. " +
     "Structure it like a world-class expert monograph: executive summary, fundamentals, state of the art, evidence and sources, " +
     "controversies and open questions, expert perspectives, practical implications, future outlook, and a conclusion. " +
-    "Be exhaustively thorough — this is the capstone deliverable of a multi-hour investigation. Use markdown with headings and citations [source: domain]. " +
+    "Be exhaustively thorough, this is the capstone deliverable of a multi-hour investigation. Use markdown with headings and citations [source: domain]. " +
     "Then, on a separate line, output a JSON block with the identity for the resulting expert 'gem': " +
     '{"persona": string (a powerful system-prompt persona of a 30-year veteran expert who can reason like a world authority), "expertise": string (their specialty summary)}. ' +
     "The persona must instruct the expert to: reason rigorously like a senior researcher; use the attached knowledge base as ground truth; stay humble about uncertainty; answer with deep, structured reasoning.";
@@ -469,7 +469,7 @@ async function createGem(
       const parsed = JSON.parse(m[0]) as { persona?: string; expertise?: string };
       if (typeof parsed.persona === "string") persona = parsed.persona;
       if (typeof parsed.expertise === "string" && persona) {
-        persona = `You are a world-class expert — ${parsed.expertise} — with the depth and judgement of someone who has studied and worked in this field for 30 years.\n\n${persona}`;
+        persona = `You are a world-class expert, ${parsed.expertise}, with the depth and judgement of someone who has studied and worked in this field for 30 years.\n\n${persona}`;
       }
       report = finalRaw.replace(m[0], "").trim();
     } catch {
@@ -528,12 +528,12 @@ async function runJob(jobId: string): Promise<void> {
 
   const job: JobMeta = { prompt: row.prompt, title: row.title, mode: row.mode, depth: row.depth };
 
-  await appendLog(jobId, `Research launched: "${row.title}" — ${row.mode} mode, ${row.depth} depth. This will run for a very long time.`);
+  await appendLog(jobId, `Research launched: "${row.title}", ${row.mode} mode, ${row.depth} depth. This will run for a very long time.`);
 
   // 1. Initial plan (or continuation plan when resuming with notes)
   let phases = await planPhases(job, row.notes);
   if (phases.length === 0) {
-    // Fallback when the planner failed — build a generic phase list
+    // Fallback when the planner failed, build a generic phase list
     phases = [
       { title: "Foundations", description: "Core concepts", queries: [`${job.prompt} fundamentals`] },
       { title: "State of the art", description: "Current developments", queries: [`${job.prompt} state of the art 2025`] },
@@ -559,7 +559,7 @@ async function runJob(jobId: string): Promise<void> {
     const total = phases.length;
     await updateJob(jobId, {
       progress: Math.min(99, Math.round((completed / total) * 100)),
-      phase: `Phase ${index}/${total} — ${phase.title}`,
+      phase: `Phase ${index}/${total}, ${phase.title}`,
       heartbeatAt: new Date(),
     });
 
@@ -581,25 +581,25 @@ async function runJob(jobId: string): Promise<void> {
           phases.splice(index, 0, ...followups);
           await appendLog(jobId, `Replanning: +${followups.length} follow-up phase(s) from critique. Total now ${phases.length}.`);
         } else if (followups.length > 0) {
-          await appendLog(jobId, `Replanning skipped — phase ceiling reached (${cap}).`);
+          await appendLog(jobId, `Replanning skipped, phase ceiling reached (${cap}).`);
         }
       }
     } catch (phaseErr) {
       if (phaseErr instanceof LLMAllKeysCoolingError) {
-        // Every LLM key is cooling down — pause + notify + auto-resume on the SAME phase.
-        await appendLog(jobId, "All LLM keys are cooling down (quota/rate limits). Pausing research for ~10 minutes — will auto-resume on this same phase. Nothing is lost.");
-        void notifyAll(`Research paused: ${job.title}`, "Every LLM key is cooling down. Jarvis will auto-resume in ~10 minutes — nothing is lost.", "/");
+        // Every LLM key is cooling down, pause + notify + auto-resume on the SAME phase.
+        await appendLog(jobId, "All LLM keys are cooling down (quota/rate limits). Pausing research for ~10 minutes, will auto-resume on this same phase. Nothing is lost.");
+        void notifyAll(`Research paused: ${job.title}`, "Every LLM key is cooling down. Jarvis will auto-resume in ~10 minutes, nothing is lost.", "/");
         await sleep(10 * 60 * 1000);
         index -= 1; // retry this phase
         continue;
       }
-      // Transient errors (search down, LLM hiccup) — log and continue, never kill the job
+      // Transient errors (search down, LLM hiccup), log and continue, never kill the job
       logger.warn({ err: phaseErr, jobId }, "Research phase failed transiently");
-      await appendLog(jobId, `Phase "${phase.title}" hit an error — continuing: ${phaseErr instanceof Error ? phaseErr.message.slice(0, 300) : "unknown"}`);
+      await appendLog(jobId, `Phase "${phase.title}" hit an error, continuing: ${phaseErr instanceof Error ? phaseErr.message.slice(0, 300) : "unknown"}`);
       completed += 1;
     }
 
-    // Pacing — scaled by depth so a deep/quantum job genuinely spans hours/days
+    // Pacing, scaled by depth so a deep/quantum job genuinely spans hours/days
     const [lo, hi] = SLEEP_SECONDS[job.depth] ?? SLEEP_SECONDS.deep;
     await sleep((lo + Math.random() * (hi - lo)) * 1000);
   }
@@ -607,10 +607,10 @@ async function runJob(jobId: string): Promise<void> {
   // 2. Final synthesis + gem
   const [finalRow] = await db.select().from(researchJobs).where(eq(researchJobs.id, jobId));
   if (!finalRow) return;
-  await updateJob(jobId, { progress: 99, phase: "Final synthesis — writing the gem…" });
+  await updateJob(jobId, { progress: 99, phase: "Final synthesis, writing the gem…" });
   await appendLog(jobId, "Phases complete. Writing final report and spawning the gem chat…");
 
-  // Final synthesis uses the key pool too — if every key is cooling, pause
+  // Final synthesis uses the key pool too, if every key is cooling, pause
   // and retry rather than failing the whole job at the last step.
   let gemResult: { gemConversationId: string; gemSystemPrompt: string; report: string } | null = null;
   for (let attempt = 0; attempt < 3 && !gemResult; attempt++) {
@@ -621,7 +621,7 @@ async function runJob(jobId: string): Promise<void> {
       );
     } catch (gemRetryErr) {
       if (gemRetryErr instanceof LLMAllKeysCoolingError && attempt < 2) {
-        await appendLog(jobId, "All LLM keys cooling during final synthesis — retrying in 10 minutes.");
+        await appendLog(jobId, "All LLM keys cooling during final synthesis, retrying in 10 minutes.");
         void notifyAll(`Research nearly done: ${job.title}`, "Every LLM key is cooling down. Jarvis will write the final report when a key revives.", "/");
         await sleep(10 * 60 * 1000);
       } else {
@@ -643,7 +643,7 @@ async function runJob(jobId: string): Promise<void> {
     await appendLog(jobId, "Done. The gem chat is ready.");
     void notifyAll(
       `Research complete: ${job.title}`,
-      "Your deep research finished — the expert gem is ready to open.",
+      "Your deep research finished, the expert gem is ready to open.",
       "/",
     );
   } catch (gemErr) {
@@ -672,11 +672,11 @@ export async function recoverStuckJobs(): Promise<void> {
       .from(researchJobs)
       .where(or(eq(researchJobs.status, "running"), eq(researchJobs.status, "queued")));
     for (const job of unfinished) {
-      await appendLog(job.id, "Server (re)started — resuming research from accumulated notes.");
+      await appendLog(job.id, "Server (re)started, resuming research from accumulated notes.");
       void startResearchJob(job.id);
     }
   } catch {
-    logger.warn("recoverStuckJobs: DB unavailable at boot — research jobs will start when the server can reach the DB.");
+    logger.warn("recoverStuckJobs: DB unavailable at boot, research jobs will start when the server can reach the DB.");
   }
 }
 

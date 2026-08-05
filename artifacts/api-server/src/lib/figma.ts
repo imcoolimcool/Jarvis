@@ -2,7 +2,7 @@
  * Figma design-to-code bridge.
  *
  * Reads the REAL design data from a Figma file via the REST API
- * (https://www.figma.com/developers/api) — not a screenshot guess. Extracts:
+ * (https://www.figma.com/developers/api), not a screenshot guess. Extracts:
  *   - font families + weights actually used (from TEXT node styles)
  *   - font sizes used
  *   - solid fill colors (deduped, as hex + rgba)
@@ -11,7 +11,7 @@
  *
  * Auth: X-Figma-Token header with FIGMA_ACCESS_TOKEN (free personal access
  * token, Figma → Settings → Security). The embed iframe does NOT need a
- * token — only this design-data extraction does.
+ * token, only this design-data extraction does.
  */
 
 export interface FigmaDesignToken {
@@ -152,7 +152,7 @@ export async function fetchFigmaDesignTokens(
   if (!parsed) return { ok: false, error: "Not a valid Figma URL." };
   const token = getFigmaToken();
   if (!token) {
-    return { ok: false, error: "FIGMA_ACCESS_TOKEN not configured — add a Figma personal access token in Settings → API keys." };
+    return { ok: false, error: "FIGMA_ACCESS_TOKEN not configured, add a Figma personal access token in Settings → API keys." };
   }
   try {
     const res = await fetch(`https://api.figma.com/v1/files/${parsed.fileKey}`, {
@@ -180,7 +180,7 @@ export function figmaTokensToContext(tokens: FigmaDesignToken): string {
     ? tokens.fonts.map((f) => `- ${f.family} ${f.weight} @ ${f.size}px`).join("\n")
     : "- (no text styles found)";
   const colors = tokens.colors.length > 0
-    ? tokens.colors.map((c) => `- ${c.hex} (${c.rgba}) — used ${c.count}x`).join("\n")
+    ? tokens.colors.map((c) => `- ${c.hex} (${c.rgba}), used ${c.count}x`).join("\n")
     : "- (no solid fills found)";
   const samples = tokens.textSamples.length > 0
     ? tokens.textSamples.map((s) => `- "${s.text}" (${s.fontFamily ?? "?"} ${s.fontSize ?? "?"}px)`).join("\n")
@@ -189,7 +189,7 @@ export function figmaTokensToContext(tokens: FigmaDesignToken): string {
     ? tokens.children.map((c) => `- ${c.name} (${c.type}) ${Math.round(c.width)}×${Math.round(c.height)}`).join("\n")
     : "- (no child frames)";
   return [
-    `## FIGMA DESIGN — "${tokens.frameName}" (${tokens.width}×${tokens.height}) from "${tokens.name}"`,
+    `## FIGMA DESIGN, "${tokens.frameName}" (${tokens.width}×${tokens.height}) from "${tokens.name}"`,
     `These are the REAL design tokens read from the Figma file via the API.`,
     ``,
     `### Fonts used`,
@@ -207,6 +207,6 @@ export function figmaTokensToContext(tokens: FigmaDesignToken): string {
     `### Frame structure`,
     structure,
     ``,
-    `BUILD INSTRUCTION: Reproduce this design as code — use EXACTLY the fonts and colors above (Google Fonts for the families, exact hex/rgba values), the same layout proportions, and the same text content. Write the files with write_source_file.`,
+    `BUILD INSTRUCTION: Reproduce this design as code, use EXACTLY the fonts and colors above (Google Fonts for the families, exact hex/rgba values), the same layout proportions, and the same text content. Write the files with write_source_file.`,
   ].join("\n");
 }

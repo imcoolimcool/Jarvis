@@ -7,7 +7,7 @@ interface ImageResultsWidgetProps {
   results: ImageResult[];
 }
 
-/** Real web image search results (via Openverse — CC-licensed images from Flickr/Wikimedia/etc). */
+/** Real web image search results (via Openverse, CC-licensed images from Flickr/Wikimedia/etc). */
 export function ImageResultsWidget({ query, results }: ImageResultsWidgetProps) {
   const [failed, setFailed] = useState<Set<number>>(new Set());
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -61,7 +61,7 @@ export function ImageResultsWidget({ query, results }: ImageResultsWidgetProps) 
         ))}
       </div>
       <p className="mt-2 text-[9px] leading-relaxed text-muted-foreground/40">
-        CC-licensed images from the web — tap any photo to open its source page.
+        CC-licensed images from the web, tap any photo to open its source page.
       </p>
     </div>
   );

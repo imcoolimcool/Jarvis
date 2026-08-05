@@ -75,7 +75,7 @@ router.post("/generate-image", async (req, res) => {
       images?: string[];
     };
 
-    // Extract the generated image — NVIDIA NIM returns artifacts[].base64
+    // Extract the generated image, NVIDIA NIM returns artifacts[].base64
     let imageBase64: string | null = null;
     let mimeType = "image/png";
 

@@ -18,7 +18,7 @@ function formatTime(s: number) {
 }
 
 /**
- * Durable timer strip — shows every server-side timer as a compact pill above
+ * Durable timer strip, shows every server-side timer as a compact pill above
  * the orb. Countdowns derive from the server's wall-clock `fireAt`, so the
  * remaining time stays correct across reloads; cancel/pause/resume go back to
  * the server. The strip only renders when at least one timer is live.

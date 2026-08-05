@@ -1,5 +1,5 @@
 /**
- * Web Push helper — registers the service worker and subscribes this browser
+ * Web Push helper, registers the service worker and subscribes this browser
  * to real system notifications (they arrive even when the tab is closed).
  *
  * Safe to call anywhere: returns false (no throw) when unsupported, denied,

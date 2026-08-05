@@ -1,5 +1,5 @@
 /**
- * Jarvis's Personal Browser — Puppeteer-based visible browser.
+ * Jarvis's Personal Browser, Puppeteer-based visible browser.
  * The user can see exactly what Jarvis is browsing, and can take control at any time.
  *
  * Architecture:
@@ -66,7 +66,7 @@ function isBlockedUrl(raw: string, forNavigation = false): { blocked: boolean; r
     return { blocked: true, reason: "browser-internal page" };
   }
   // For navigation, also refuse chrome-extension:// (extension dashboards). In
-  // the request layer those must stay ALLOWED — loaded extensions fetch their
+  // the request layer those must stay ALLOWED, loaded extensions fetch their
   // own resources over chrome-extension:// (blocking would break uBlock).
   if (forNavigation && raw.startsWith("chrome-extension://")) {
     return { blocked: true, reason: "browser-internal page" };
@@ -105,7 +105,7 @@ async function resolveChromeExecutable(): Promise<string | undefined> {
     const p = await puppeteer.executablePath();
     if (p && fs.existsSync(p)) return p;
   } catch {
-    // Not found on the default cache — fall through to manual scan.
+    // Not found on the default cache, fall through to manual scan.
   }
 
   // 3. Depth-limited scan for a chrome/chrome-headless-shell binary.
@@ -193,7 +193,7 @@ export class JarvisBrowser extends EventEmitter {
   async launch(): Promise<void> {
     const path = await import("path");
     const os = await import("os");
-    // Persistent profile — an ephemeral profile makes every session a brand-new
+    // Persistent profile, an ephemeral profile makes every session a brand-new
     // "first visit" (no cookies/localStorage), which is the #1 captcha magnet.
     // Falls back to ephemeral if the profile can't be opened (corrupt/locked).
     // Set JARVIS_BROWSER_PROFILE_DIR to override the location, or
@@ -221,7 +221,7 @@ export class JarvisBrowser extends EventEmitter {
           .filter((e) => e.isDirectory())
           .map((e) => path.join(extDir, e.name));
       } catch {
-        // No default extension directory — run without extensions.
+        // No default extension directory, run without extensions.
       }
     }
     const args = [
@@ -258,7 +258,7 @@ export class JarvisBrowser extends EventEmitter {
 
     // Always-on guardrails: abort requests to adult / browser-internal URLs so
     // the agent can't fetch them even indirectly. The agent has no way to turn
-    // this off — it's enforced at the network layer inside the browser.
+    // this off, it's enforced at the network layer inside the browser.
     await this.page.setRequestInterception(true);
     this.page.on("request", (req) => {
       const check = isBlockedUrl(req.url());
@@ -346,7 +346,7 @@ export class JarvisBrowser extends EventEmitter {
           }
         }
       } catch {
-        // Page might be navigating — skip this frame
+        // Page might be navigating, skip this frame
       }
     });
   }
@@ -449,7 +449,7 @@ export class JarvisBrowser extends EventEmitter {
 
     // Inject the grid overlay as a browser-side DOM layer. We use a STRING
     // evaluate (like getContent above) so the Node-side tsconfig does not
-    // need the DOM lib — the code runs inside the page, not in Node.
+    // need the DOM lib, the code runs inside the page, not in Node.
     const injectScript = `
       (() => {
         const size = ${cellSize};
@@ -558,7 +558,7 @@ export class JarvisBrowser extends EventEmitter {
    * Clickability is detected with multiple signals, because markup alone
    * misses most modern apps:
    *   1. Structural tags + roles + tabindex + inline handlers.
-   *   2. Computed `cursor: pointer` — the reliable signal for React/Vue apps,
+   *   2. Computed `cursor: pointer`, the reliable signal for React/Vue apps,
    *      which attach click handlers via event delegation (no `[onclick]`
    *      attribute ever exists in the DOM).
    * Skips invisible/zero-size elements, elements nested inside a bigger
@@ -569,7 +569,7 @@ export class JarvisBrowser extends EventEmitter {
     if (!this.page) return [];
     return (await this.page.evaluate(
       (max: number) => {
-        // Runs in the browser context — the server tsconfig has no DOM lib, so
+        // Runs in the browser context, the server tsconfig has no DOM lib, so
         // type everything as any here instead of referencing DOM globals.
         const doc: any = (globalThis as any).document;
         const out: { index: number; tag: string; text: string; hint: string }[] = [];
@@ -617,7 +617,7 @@ export class JarvisBrowser extends EventEmitter {
           out.push({ index: out.length, tag: d.tag, text: d.text, hint: d.hint });
         };
 
-        // Pass 1 — structural signals (tags + ANY role + tabindex + inline handlers).
+        // Pass 1, structural signals (tags + ANY role + tabindex + inline handlers).
         const STRUCTURAL =
           "a, button, input, textarea, select, summary, label, " +
           "[role], [onclick], [onmousedown], [onpointerdown], [onkeydown], [tabindex]";
@@ -627,7 +627,7 @@ export class JarvisBrowser extends EventEmitter {
           tryAdd(n, true);
         }
 
-        // Pass 2 — computed cursor:pointer catches clickable divs/spans/lis that
+        // Pass 2, computed cursor:pointer catches clickable divs/spans/lis that
         // have no markup signal (React/Vue event delegation). Capped walk so
         // getComputedStyle cost stays bounded on huge pages.
         if (out.length < max) {
@@ -663,7 +663,7 @@ export class JarvisBrowser extends EventEmitter {
    * Detect whether the current page is showing an anti-bot challenge
    * (reCAPTCHA, hCaptcha, Cloudflare Turnstile, geetest, …). The agent loop
    * uses this to auto-pause so the human can solve it in the PiP viewer's
-   * manual controls, then resume — the agent can't (and shouldn't) solve it.
+   * manual controls, then resume, the agent can't (and shouldn't) solve it.
    */
   async hasCaptcha(): Promise<boolean> {
     if (!this.page) return false;

@@ -104,28 +104,28 @@ function detectIntent(msg: string): Intent {
   if (/\b(countdown|count down)\b/.test(t)) return 'timer';
   if (/\b(set( an?)? alarm|wake me up( at)?|alarm( at| for)?|remind me at)\b/.test(t)) return 'alarm';
   if (/\b(calendar|my schedule|agenda|upcoming events?|what('?s| is) (on|happening)|this week|next week|show me (my )?(events?|calendar))\b/.test(t)) return 'calendar';
-  // Images — "show me an image of a dog" → REAL web image search (not generation)
+  // Images, "show me an image of a dog" → REAL web image search (not generation)
   if (/\b(show|find|get|give)\s+(me\s+)?(a\s+|an\s+|some\s+)?(image|picture|photo|pic|pictures|photos|images)\s+of\b/.test(t)
     || /\b(what does|what does a|what does an)\s+[a-z]+.*\blook like\b/.test(t)
     || /\bshow me what .* looks like\b/.test(t)
     || /\b(picture|image|photo|pictures|images|photos)s?\s+of\b/.test(t)) return 'images';
-  // Date — "what's the date", "what day is it", "today's date"
+  // Date, "what's the date", "what day is it", "today's date"
   if (/\b(what('?s| is) (the )?date|what day is it|today('?s)? date|date today|what date is it)\b/.test(t)) return 'date';
-  // Calculator — "what is 15% of 200", "calculate 5*7+2"
+  // Calculator, "what is 15% of 200", "calculate 5*7+2"
   const hasMath = /[0-9]/.test(t) && /[+\-*/%^]|%\s+of/.test(t);
   const mathAsk = /\b(what('?s| is)|calculate|how much is|how much)\b/.test(t);
   if (hasMath && (mathAsk || /%\s+of\b/.test(t))) return 'calculator';
-  // Define — "define serendipity", "what does serendipity mean"
+  // Define, "define serendipity", "what does serendipity mean"
   if (/\bdefine\b|\bmeaning of\b|\bwhat does [a-z]+ mean\b/.test(t)) return 'define';
-  // Unit conversion — "convert 5 miles to km", "how many feet in 2 meters", "5kg in lbs"
+  // Unit conversion, "convert 5 miles to km", "how many feet in 2 meters", "5kg in lbs"
   if (/\b(convert|how many|how much is|in)\b/.test(t) && /\b(km|kilometers?|kilometres?|miles?|meters?|metres?|feet|foot|inches?|pounds?|lbs?|kilograms?|kilos?|grams?|ounces?|liters?|litres?|gallons?|celsius|fahrenheit|°c|°f|cm|mm)\b/.test(t)) return 'unit';
-  // Currency — "convert 100 usd to eur", "how much is 50 euros in dollars"
+  // Currency, "convert 100 usd to eur", "how much is 50 euros in dollars"
   if (/\b(usd|eur|gbp|yen|jpy|euros?|dollars?|pounds sterling|currency)\b/.test(t) && /\b(convert|how much|to|in)\b/.test(t)) return 'currency';
-  // Map — "where is paris", "show me a map of tokyo", "map of london"
+  // Map, "where is paris", "show me a map of tokyo", "map of london"
   if (/\b(where is|where's|show me (a map|the location)|map of|location of)\b/.test(t)) return 'map';
-  // Random — "roll a dice", "flip a coin", "pick a random number between 1 and 100"
+  // Random, "roll a dice", "flip a coin", "pick a random number between 1 and 100"
   if (/\b(roll|dice|die|flip|coin|heads|tails|random number|pick a number)\b/.test(t)) return 'random';
-  // Music — "play some music", "make a song", "compose a beat", "play something chill/happy"
+  // Music, "play some music", "make a song", "compose a beat", "play something chill/happy"
   if (/\b(play|make|compose|create|write|hear|sing)\s+(me\s+)?(some|a|an)?\s*(music|song|melody|beat|tune|track|jam|audio)\b/.test(t)
     || /\b(play something|some music|make music|music please)\b/.test(t)) return 'music';
 
@@ -133,12 +133,12 @@ function detectIntent(msg: string): Intent {
 }
 
 /**
- * LLM fallback for widget intent — catches natural phrasings the regex misses
+ * LLM fallback for widget intent, catches natural phrasings the regex misses
  * ("is it hot in Berlin?", "what's the exchange rate today?", …).
  *
  * Only reached when `detectIntent` returns null, so regex hits keep their
  * zero-cost fast path. Time-boxed: if the LLM is slow or every key is cooling,
- * it resolves `null` and the message proceeds normally — the widget layer must
+ * it resolves `null` and the message proceeds normally, the widget layer must
  * never block or break a chat turn.
  */
 function detectWidgetIntentWithLLM(userMessage: string): Promise<Intent> {
@@ -148,25 +148,25 @@ function detectWidgetIntentWithLLM(userMessage: string): Promise<Intent> {
     'currency', 'map', 'random', 'music',
   ];
   const prompt =
-    'Classify this user message into EXACTLY ONE label. Reply with the label only — nothing else, no punctuation.\n\n' +
+    'Classify this user message into EXACTLY ONE label. Reply with the label only, nothing else, no punctuation.\n\n' +
     'Labels:\n' +
-    '- clock — asking the time, or the time in a city ("what time is it", "time in Tokyo")\n' +
-    '- weather — weather, temperature, forecast, "is it hot/cold" ("is it hot in Berlin?")\n' +
-    '- timer — setting a timer or countdown ("set a 20 minute timer")\n' +
-    '- timer_edit — changing/extending an existing timer ("add 5 minutes to the timer")\n' +
-    '- timer_cancel — cancelling/stopping a timer ("cancel the timer")\n' +
-    '- alarm — setting an alarm or wake-up ("wake me at 7am")\n' +
-    '- calendar — schedule, events, agenda ("what do I have on today")\n' +
-    '- images — wanting to SEE real photos/pictures of something ("show me pictures of golden retrievers")\n' +
-    '- date — today\'s date or day ("what day is it")\n' +
-    '- calculator — doing math ("what is 15% of 200")\n' +
-    '- define — definition of a word ("define serendipity")\n' +
-    '- unit — converting units ("5 miles to km", "2 liters to cups")\n' +
-    '- currency — converting money between currencies ("100 usd to eur")\n' +
-    '- map — where a place is / its location ("where is Paris")\n' +
-    '- random — dice, coin flip, random number ("roll a dice")\n' +
-    '- music — composing/playing a song ("make a happy song")\n' +
-    '- NONE — anything that does not clearly fit the above (general chat, questions, requests, commands)\n\n' +
+    '- clock, asking the time, or the time in a city ("what time is it", "time in Tokyo")\n' +
+    '- weather, weather, temperature, forecast, "is it hot/cold" ("is it hot in Berlin?")\n' +
+    '- timer, setting a timer or countdown ("set a 20 minute timer")\n' +
+    '- timer_edit, changing/extending an existing timer ("add 5 minutes to the timer")\n' +
+    '- timer_cancel, cancelling/stopping a timer ("cancel the timer")\n' +
+    '- alarm, setting an alarm or wake-up ("wake me at 7am")\n' +
+    '- calendar, schedule, events, agenda ("what do I have on today")\n' +
+    '- images, wanting to SEE real photos/pictures of something ("show me pictures of golden retrievers")\n' +
+    '- date, today\'s date or day ("what day is it")\n' +
+    '- calculator, doing math ("what is 15% of 200")\n' +
+    '- define, definition of a word ("define serendipity")\n' +
+    '- unit, converting units ("5 miles to km", "2 liters to cups")\n' +
+    '- currency, converting money between currencies ("100 usd to eur")\n' +
+    '- map, where a place is / its location ("where is Paris")\n' +
+    '- random, dice, coin flip, random number ("roll a dice")\n' +
+    '- music, composing/playing a song ("make a happy song")\n' +
+    '- NONE, anything that does not clearly fit the above (general chat, questions, requests, commands)\n\n' +
     `Message: ${userMessage.slice(0, 500)}\n\nLabel:`;
 
   const classify = pooledClient()
@@ -230,7 +230,7 @@ const DEFAULT_TIMEZONES: ClockTimezone[] = [
   { label: 'Sydney',      tz: 'Australia/Sydney' },
 ];
 
-/** Map a free-form location string to an IANA timezone — used for weather_location → clock tz */
+/** Map a free-form location string to an IANA timezone, used for weather_location → clock tz */
 function getTimezoneFromLocation(location: string): string {
   const t = location.toLowerCase().trim();
   // Direct city match
@@ -272,7 +272,7 @@ function buildClockWidget(msg: string, settings: Record<string, string>): Extrac
   }
   if (found.length > 0) return { type: 'clock', timezones: found };
 
-  // No specific city mentioned — use the user's weather location for local time
+  // No specific city mentioned, use the user's weather location for local time
   const weatherLoc = settings['weather_location']?.trim();
   if (weatherLoc) {
     const tz = getTimezoneFromLocation(weatherLoc);
@@ -427,7 +427,7 @@ function parseAlarmWidget(msg: string): Extract<Widget, { type: 'alarm' }> | nul
   return { type: 'alarm', time };
 }
 
-// ─── Images (real web image search via Openverse — free, no API key) ─────────
+// ─── Images (real web image search via Openverse, free, no API key) ─────────
 
 /** Extract the image-search query from a message like "show me an image of a dog". */
 function extractImageQuery(msg: string): string | null {
@@ -571,7 +571,7 @@ function buildCalculatorWidget(msg: string): Extract<Widget, { type: 'calculator
   return { type: 'calculator', expression: cleaned, result: String(result) };
 }
 
-// ─── Define (dictionaryapi.dev — free, no API key) ───────────────────────────
+// ─── Define (dictionaryapi.dev, free, no API key) ───────────────────────────
 
 function extractDefineWord(msg: string): string | null {
   const t = msg.toLowerCase();
@@ -706,7 +706,7 @@ function buildUnitWidget(msg: string): Extract<Widget, { type: 'unit' }> | null 
   };
 }
 
-// ─── Currency (open.er-api.com — free, no key) ───────────────────────────────
+// ─── Currency (open.er-api.com, free, no key) ───────────────────────────────
 
 const CURRENCY_ALIASES: Record<string, string> = {
   'usd': 'USD', 'dollar': 'USD', 'dollars': 'USD', '$': 'USD',
@@ -806,15 +806,15 @@ function buildRandomWidget(msg: string): Extract<Widget, { type: 'random' }> | n
       const lo = Math.min(parseInt(range[1]), parseInt(range[2]));
       const hi = Math.max(parseInt(range[1]), parseInt(range[2]));
       if (hi - lo <= 1_000_000) {
-        return { type: 'random', kind: 'number', value: lo + Math.floor(Math.random() * (hi - lo + 1)), label: `${lo}–${hi}` };
+        return { type: 'random', kind: 'number', value: lo + Math.floor(Math.random() * (hi - lo + 1)), label: `${lo}-${hi}` };
       }
     }
-    return { type: 'random', kind: 'number', value: Math.floor(Math.random() * 100) + 1, label: '1–100' };
+    return { type: 'random', kind: 'number', value: Math.floor(Math.random() * 100) + 1, label: '1-100' };
   }
   return null;
 }
 
-// ─── Music (mood-aware composition — played client-side with Web Audio) ─────
+// ─── Music (mood-aware composition, played client-side with Web Audio) ─────
 
 const NOTE_SEMITONES: Record<string, number> = {
   'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4, 'F': 5,
@@ -1011,7 +1011,7 @@ export async function detectAndBuildWidget(
 ): Promise<Widget | null> {
   let intent = detectIntent(userMessage);
   if (!intent) {
-    // Regex missed — let the LLM take one cheap shot before giving up. This is
+    // Regex missed, let the LLM take one cheap shot before giving up. This is
     // time-boxed and failure-safe: `null` on any error/cooldown/timeout.
     intent = await detectWidgetIntentWithLLM(userMessage);
   }

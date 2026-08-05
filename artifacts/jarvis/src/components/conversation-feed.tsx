@@ -14,7 +14,7 @@ import { FileEditCard } from '@/components/widgets/FileEditCard';
 import { ImageConfirmationCard, ImageGeneratingCard, ScreenShareConfirmationCard, AgentBrowserConfirmationCard, SourceCodeConfirmationCard, BuildModeConfirmationCard } from '@/components/image-confirmation-card';
 
 export interface ChatMessage {
-  /** Stable client-side id — avoids duplicate-key warnings during stream updates. */
+  /** Stable client-side id, avoids duplicate-key warnings during stream updates. */
   id?: string;
   role: 'user' | 'assistant';
   content: string;
@@ -36,7 +36,7 @@ export interface ChatMessage {
   pendingBuildMode?: { // "Open Build Mode?" confirmation
     userText: string;
   };
-  /** Thinking mode — private reasoning chain shown in a collapsible block. */
+  /** Thinking mode, private reasoning chain shown in a collapsible block. */
   reasoning?: string;
   /** Terminal command cards the AI ran while answering (from run_terminal). */
   terminalResults?: TerminalResult[];
@@ -70,7 +70,7 @@ interface ConversationFeedProps {
   onBuildModeCancel?: () => void;
 }
 
-/** Collapsible "Thinking" block — shows Jarvis's private reasoning pass.
+/** Collapsible "Thinking" block, shows Jarvis's private reasoning pass.
  *  Collapsed: a quiet row with a right-pointing chevron. Expanded: the chevron
  *  turns downward (⌄) and the reasoning text slides open. */
 function ThinkingBlock({ reasoning, label }: { reasoning: string; label: string }) {
@@ -180,7 +180,7 @@ function extractHtmlBlock(content: string): string | null {
   return html;
 }
 
-/** Artifact preview — renders an HTML code block in a sandboxed iframe. */
+/** Artifact preview, renders an HTML code block in a sandboxed iframe. */
 function ArtifactPreview({ html }: { html: string }) {
   const [open, setOpen] = useState(false);
   const srcDoc = `<!doctype html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box;margin:0}body{font-family:-apple-system,'SF Pro Display',system-ui,sans-serif;padding:16px;color:#1c1c1e;background:#fff}</style></head><body>${html}</body></html>`;
@@ -214,7 +214,7 @@ function ArtifactPreview({ html }: { html: string }) {
   );
 }
 
-/** Inline editor for user messages — appears when user clicks edit */
+/** Inline editor for user messages, appears when user clicks edit */
 function InlineEditor({ content, onSave, onCancel }: {
   content: string;
   onSave: (newText: string) => void;
@@ -359,7 +359,7 @@ export function ConversationFeed({
             </p>
           </div>
 
-          {/* Quick actions — ChatGPT-style suggestion rows */}
+          {/* Quick actions, ChatGPT-style suggestion rows */}
           <div className="space-y-1.5 w-full">
             {[
               { icon: Sun, label: t('home.goodMorning'), primary: true },
@@ -495,7 +495,7 @@ export function ConversationFeed({
                 />
               ) : (
                 <div className="relative">
-                  {/* Thinking mode — collapsible private reasoning above the answer */}
+                  {/* Thinking mode, collapsible private reasoning above the answer */}
                   {!isUser && msg.reasoning && (
                     <div className="mb-2">
                       <ThinkingBlock reasoning={msg.reasoning} label={t('feed.thinking')} />
@@ -528,19 +528,19 @@ export function ConversationFeed({
                 </div>
               )}
 
-              {/* Artifact preview — HTML code blocks render in a sandboxed iframe */}
+              {/* Artifact preview, HTML code blocks render in a sandboxed iframe */}
               {!isUser && msg.content && extractHtmlBlock(msg.content) && (
                 <ArtifactPreview html={extractHtmlBlock(msg.content)!} />
               )}
 
-              {/* Widget — only for assistant messages */}
+              {/* Widget, only for assistant messages */}
               {!isUser && msg.widget && (
                 <div className="w-full max-w-xl">
                   <InlineWidget widget={msg.widget} />
                 </div>
               )}
 
-              {/* Terminal command cards the AI ran — clean minimal boxes */}
+              {/* Terminal command cards the AI ran, clean minimal boxes */}
               {!isUser && msg.terminalResults && msg.terminalResults.length > 0 && (
                 <div className="w-full max-w-xl">
                   {msg.terminalResults.map((tr, i) => <CommandCard key={i} result={tr} />)}

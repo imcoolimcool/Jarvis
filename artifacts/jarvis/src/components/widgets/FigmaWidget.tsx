@@ -43,7 +43,7 @@ export function FigmaWidget({ data }: { data: FigmaTokenCard }) {
       <div className="relative aspect-video bg-black/5">
         <iframe
           src={embedUrl}
-          title={`${data.frameName} — Figma design`}
+          title={`${data.frameName}, Figma design`}
           className="absolute inset-0 w-full h-full border-0"
           loading="lazy"
           allowFullScreen
@@ -56,7 +56,7 @@ export function FigmaWidget({ data }: { data: FigmaTokenCard }) {
         className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[#a259ff]/[0.05] transition-colors"
       >
         <Palette className="w-3.5 h-3.5 text-[#a259ff]" />
-        <span className="flex-1 text-[11px] font-medium">Design tokens — real fonts & colors</span>
+        <span className="flex-1 text-[11px] font-medium">Design tokens, real fonts & colors</span>
         {expanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/50" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50" />}
       </button>
       <AnimatePresence initial={false}>
@@ -98,7 +98,7 @@ export function FigmaWidget({ data }: { data: FigmaTokenCard }) {
                     <div
                       key={i}
                       className="flex items-center gap-1.5 px-1.5 py-1 rounded-lg border border-border/30 bg-background/60"
-                      title={`${c.hex} — used ${c.count}x`}
+                      title={`${c.hex}, used ${c.count}x`}
                     >
                       <span className="w-3.5 h-3.5 rounded border border-black/10" style={{ background: c.hex }} />
                       <span className="font-mono text-[9.5px] text-muted-foreground">{c.hex}</span>

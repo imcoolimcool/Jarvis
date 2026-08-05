@@ -7,7 +7,7 @@ import type { DetectionResult } from '@/hooks/use-object-detection';
 interface CameraFeedProps {
   /** Css class name for the wrapper */
   className?: string;
-  /** Enable object detection (uses TensorFlow.js COCO-SSD — FREE, runs in browser) */
+  /** Enable object detection (uses TensorFlow.js COCO-SSD, FREE, runs in browser) */
   enableDetection?: boolean;
   /** Called when objects are detected */
   onDetections?: (detections: DetectionResult[]) => void;
@@ -21,11 +21,11 @@ interface CameraFeedProps {
 
 /**
  * Live camera feed with optional TensorFlow.js object detection overlay.
- * Detects 80 object categories — completely free, runs in browser.
+ * Detects 80 object categories, completely free, runs in browser.
  *
  * Camera access can fail (permissions, non-secure context, iframe). When it
  * does we show a friendly error card with a Retry button and, when provided,
- * an "upload a photo instead" fallback — never a bare broken box.
+ * an "upload a photo instead" fallback, never a bare broken box.
  */
 export function CameraFeed({
   className = '',
@@ -168,7 +168,7 @@ export function CameraFeed({
     setFacingMode((prev) => (prev === 'user' ? 'environment' : 'user'));
   }, []);
 
-  // Friendly error state — Retry + optional upload-photo fallback
+  // Friendly error state, Retry + optional upload-photo fallback
   if (cameraError) {
     return (
       <div className={`flex flex-col items-center justify-center gap-3 bg-muted/20 rounded-lg border border-border/50 p-6 text-center ${className}`}>
@@ -203,7 +203,7 @@ export function CameraFeed({
 
   return (
     <div className={`relative overflow-hidden rounded-lg border border-border/50 bg-black ${className}`}>
-      {/* Camera feed — keyed so a retry fully remounts the webcam element */}
+      {/* Camera feed, keyed so a retry fully remounts the webcam element */}
       <Webcam
         key={retryKey}
         ref={webcamRef}
@@ -241,10 +241,10 @@ export function CameraFeed({
         </div>
       )}
 
-      {/* Model error — non-blocking: the camera still works, detection is just off */}
+      {/* Model error, non-blocking: the camera still works, detection is just off */}
       {enableDetection && modelError && !modelLoading && (
         <div className="absolute top-2 left-2 px-2 py-1 bg-background/80 backdrop-blur rounded text-[10px] font-mono text-amber-400">
-          Detection unavailable — camera still works
+          Detection unavailable, camera still works
         </div>
       )}
 

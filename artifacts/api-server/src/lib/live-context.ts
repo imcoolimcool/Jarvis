@@ -1,5 +1,5 @@
 /**
- * Live context utilities — fetches real-world data to inject into Jarvis's system prompt.
+ * Live context utilities, fetches real-world data to inject into Jarvis's system prompt.
  * All sources are free and require no API keys unless noted.
  */
 
@@ -17,7 +17,7 @@ export function getCurrentDatetime(): string {
   });
 }
 
-/** Current weather via wttr.in — completely free, no API key required */
+/** Current weather via wttr.in, completely free, no API key required */
 export async function getWeather(location: string): Promise<string> {
   try {
     const url = `https://wttr.in/${encodeURIComponent(location)}?format=3`;
@@ -71,7 +71,7 @@ function parseIcsEvents(icsText: string, days: number): string {
 
     const { date, allDay } = parsed;
 
-    // Skip recurring events that we don't expand — keep the first instance if it falls in range
+    // Skip recurring events that we don't expand, keep the first instance if it falls in range
     if (rrule && (date < startOfToday || date > cutoff)) continue;
 
     if (date >= startOfToday && date <= cutoff) {

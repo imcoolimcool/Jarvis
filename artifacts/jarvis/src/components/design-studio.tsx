@@ -98,7 +98,7 @@ export function DesignStudio({ open, onClose, initialImage }: DesignStudioProps)
       const data = await res.json();
       loadImage(data.image, 'ai-generated.png');
     } catch {
-      setAiError('Generation failed — is the server running?');
+      setAiError('Generation failed, is the server running?');
     } finally {
       setGenerating(false);
     }
@@ -206,7 +206,7 @@ export function DesignStudio({ open, onClose, initialImage }: DesignStudioProps)
             <div>
               <p className="text-base font-semibold mb-1">Generate with AI</p>
               <p className="text-xs text-muted-foreground/70 max-w-md">
-                Describe an image — Jarvis generates it instantly with AI, then you can edit, filter and download it.
+                Describe an image, Jarvis generates it instantly with AI, then you can edit, filter and download it.
               </p>
             </div>
 

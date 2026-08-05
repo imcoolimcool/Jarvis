@@ -30,12 +30,12 @@ function getClientSecret(): string {
   return s;
 }
 
-/** GET /api/jarvis/gmail/auth — start OAuth flow */
+/** GET /api/jarvis/gmail/auth, start OAuth flow */
 router.get("/gmail/auth", (_req, res) => {
   const clientId = getClientId();
   const redirectUri = getRedirectUri();
 
-  // Diagnostic log — shows length and last 4 chars so we can verify the exact value
+  // Diagnostic log, shows length and last 4 chars so we can verify the exact value
   const last4 = clientId.slice(-4);
   logger.info(
     { clientIdLength: clientId.length, clientIdSuffix: last4, redirectUri },
@@ -53,7 +53,7 @@ router.get("/gmail/auth", (_req, res) => {
   res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
 });
 
-/** GET /api/jarvis/gmail/callback — Google redirects here with ?code= */
+/** GET /api/jarvis/gmail/callback, Google redirects here with ?code= */
 router.get("/gmail/callback", async (req, res) => {
   const code = req.query["code"] as string | undefined;
   if (!code) {
@@ -199,7 +199,7 @@ export async function getGmailContext(): Promise<string | null> {
     const ids = listData.messages ?? [];
     if (ids.length === 0) return "Gmail: No unread emails in inbox.";
 
-    // Fetch each message (metadata only — fast)
+    // Fetch each message (metadata only, fast)
     const emails = await Promise.all(
       ids.map(async ({ id }) => {
         const r = await fetch(

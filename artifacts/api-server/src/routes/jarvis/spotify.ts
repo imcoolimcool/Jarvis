@@ -192,7 +192,7 @@ export async function getSpotifyToken(): Promise<string | null> {
   }
 }
 
-/** GET /api/jarvis/spotify/current — what's playing now */
+/** GET /api/jarvis/spotify/current, what's playing now */
 router.get("/spotify/current", async (_req, res) => {
   try {
     const token = await getSpotifyToken();
@@ -234,7 +234,7 @@ router.get("/spotify/current", async (_req, res) => {
   }
 });
 
-/** POST /api/jarvis/spotify/control — playback control */
+/** POST /api/jarvis/spotify/control, playback control */
 router.post("/spotify/control", async (req, res) => {
   const { action, query } = req.body as { action: string; query?: string };
 
@@ -291,7 +291,7 @@ router.post("/spotify/control", async (req, res) => {
             if (reason === "PREMIUM_REQUIRED") {
               res.json({ ok: false, error: "Spotify Premium is required for playback control" });
             } else if (reason === "NO_ACTIVE_DEVICE" || playRes.status === 404) {
-              res.json({ ok: false, error: "No active Spotify device found — open Spotify on a device first" });
+              res.json({ ok: false, error: "No active Spotify device found, open Spotify on a device first" });
             } else {
               res.json({ ok: false, error: errBody.error?.message ?? "Playback failed" });
             }
@@ -312,7 +312,7 @@ router.post("/spotify/control", async (req, res) => {
             const errBody = await playRes.json().catch(() => ({})) as { error?: { message?: string; reason?: string } };
             const reason = errBody.error?.reason;
             if (reason === "NO_ACTIVE_DEVICE" || playRes.status === 404) {
-              res.json({ ok: false, error: "No active Spotify device — open Spotify on a device first" });
+              res.json({ ok: false, error: "No active Spotify device, open Spotify on a device first" });
             } else {
               res.json({ ok: false, error: errBody.error?.message ?? "Playback failed" });
             }

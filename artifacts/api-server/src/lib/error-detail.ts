@@ -4,7 +4,7 @@
  * frontend can display a "Show Details" panel with full diagnostics.
  *
  * The detail object intentionally contains EVERYTHING that could be
- * relevant to the error (sanitized — secrets are booleans/redacted),
+ * relevant to the error (sanitized, secrets are booleans/redacted),
  * so the user can copy one blob and paste it into a bug report.
  */
 
@@ -23,7 +23,7 @@ export interface ErrorDetail {
   errorName: string;
   /** Original error message (before sanitization) */
   originalMessage: string;
-  /** Stack trace (sanitized — internal paths only) */
+  /** Stack trace (sanitized, internal paths only) */
   stack: string;
   /** Request info */
   request: {
@@ -62,7 +62,7 @@ export interface ErrorDetail {
       external: number;
     };
   };
-  /** Full service configuration matrix — which integrations are live */
+  /** Full service configuration matrix, which integrations are live */
   config: {
     openRouterConfigured: boolean;
     openRouterModel: string | undefined;
@@ -233,7 +233,7 @@ function deriveErrorCode(err: Error, msg: string): string {
 function extractLLMDetails(err: Error): ErrorDetail["llm"] {
   const msg = err.message;
 
-  // OpenAI SDK errors carry structured fields — use them when present.
+  // OpenAI SDK errors carry structured fields, use them when present.
   const errAny = err as unknown as {
     status?: number;
     code?: string;
@@ -279,7 +279,7 @@ export function buildErrorDetail(
   const now = Date.now();
   const msg = err.message || "Unknown error";
 
-  // Sanitize request body — remove sensitive fields
+  // Sanitize request body, remove sensitive fields
   const body = req.body as Record<string, unknown> | undefined;
   const bodyKeys = body ? Object.keys(body) : [];
 
@@ -381,13 +381,13 @@ export function buildErrorDetail(
 /** Derive a user-friendly message from the error (used in detail.message) */
 function deriveUserMessage(err: Error, msg: string): string {
   if (msg.includes("OPENAI_LLM_API_KEY") || msg.includes("OPENROUTER_API_KEY")) return "LLM API key not configured on the server.";
-  if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("User not found")) return "LLM authentication failed — the API key is invalid or expired.";
-  if (msg.includes("403")) return "LLM API key denied — verify it has access to this model.";
-  if (msg.includes("429") || msg.includes("Rate limit")) return "LLM rate limit exceeded — try again shortly.";
-  if (msg.includes("timeout") || msg.includes("abort")) return "Request timed out — check your connection.";
-  if (msg.includes("ECONNREFUSED")) return "Backend service unreachable — server may be down.";
-  if (msg.includes("502") || msg.includes("Bad Gateway") || msg.includes("upstream")) return "Upstream provider error (502) — try again; the free router may pick a different model.";
-  if (msg.includes("fetch failed") || msg.includes("network")) return "Network error — unable to reach the server.";
+  if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("User not found")) return "LLM authentication failed, the API key is invalid or expired.";
+  if (msg.includes("403")) return "LLM API key denied, verify it has access to this model.";
+  if (msg.includes("429") || msg.includes("Rate limit")) return "LLM rate limit exceeded, try again shortly.";
+  if (msg.includes("timeout") || msg.includes("abort")) return "Request timed out, check your connection.";
+  if (msg.includes("ECONNREFUSED")) return "Backend service unreachable, server may be down.";
+  if (msg.includes("502") || msg.includes("Bad Gateway") || msg.includes("upstream")) return "Upstream provider error (502), try again; the free router may pick a different model.";
+  if (msg.includes("fetch failed") || msg.includes("network")) return "Network error, unable to reach the server.";
   return msg;
 }
 

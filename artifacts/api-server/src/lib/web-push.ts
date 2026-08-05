@@ -1,5 +1,5 @@
 /**
- * Web Push backend — real system notifications that arrive even when the tab
+ * Web Push backend, real system notifications that arrive even when the tab
  * is closed.
  *
  * How it works (all free, no external service account needed):
@@ -89,7 +89,7 @@ export async function unsubscribe(endpoint: string): Promise<void> {
 /**
  * Send a push notification to every stored subscription.
  * Dead subscriptions (410/404 from the push service) are pruned.
- * Never throws — the research engine calls this fire-and-forget.
+ * Never throws, the research engine calls this fire-and-forget.
  */
 export async function notifyAll(title: string, body: string, url = "/"): Promise<{ sent: number; failed: number }> {
   try {
@@ -111,7 +111,7 @@ export async function notifyAll(title: string, body: string, url = "/"): Promise
       } catch (err) {
         const status = (err as { statusCode?: number })?.statusCode;
         if (status === 410 || status === 404) {
-          // Subscription is gone — prune it.
+          // Subscription is gone, prune it.
           await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, row.endpoint)).catch(() => {});
         }
         failed += 1;

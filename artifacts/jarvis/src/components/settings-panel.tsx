@@ -95,9 +95,9 @@ type View = 'home' | 'personalization' | 'memory' | 'language' | 'gmail' | 'spot
 interface SettingsPanelProps {
   open: boolean;
   onClose: () => void;
-  /** Current theme (from home header) — 'auto' follows the system */
+  /** Current theme (from home header), 'auto' follows the system */
   theme?: 'dark' | 'light' | 'auto';
-  /** Set theme (from home header) — pass a target mode, or toggle dark ↔ light when omitted */
+  /** Set theme (from home header), pass a target mode, or toggle dark ↔ light when omitted */
   onToggleTheme?: (next?: 'dark' | 'light' | 'auto') => void;
 }
 
@@ -168,7 +168,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Accent color options — light/dark HSL triplets + a swatch dot for the picker. */
+/** Accent color options, light/dark HSL triplets + a swatch dot for the picker. */
 const ACCENTS: Record<string, { light: string; dark: string; dot: string }> = {
   blue: { light: '211 100% 50%', dark: '211 100% 60%', dot: '#007AFF' },
   green: { light: '152 100% 38%', dark: '152 100% 45%', dot: '#34C759' },
@@ -198,7 +198,7 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
   const [visibleSlots, setVisibleSlots] = useState(1);
   const [llmKeys, setLlmKeys] = useState<LlmKeyItem[]>([]);
   const [llmForm, setLlmForm] = useState({ name: '', baseUrl: 'https://integrate.api.nvidia.com/v1', apiKey: '', model: '', priority: 0 });
-  // In-app API Keys (secrets) — the Freebuff-Keys-tab-free secret store.
+  // In-app API Keys (secrets), the Freebuff-Keys-tab-free secret store.
   const [secretItems, setSecretItems] = useState<{ env: string; label: string; description: string; prefix: string | null; configured: boolean; masked: string | null; source: string }[]>([]);
   const [secretDrafts, setSecretDrafts] = useState<Record<string, string>>({});
   const [secretSaving, setSecretSaving] = useState<string | null>(null);
@@ -210,7 +210,7 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
   const [llmTesting, setLlmTesting] = useState<string | null>(null);
   const profile = getProfile();
 
-  // Accent color — persisted, applied as theme-aware CSS variables
+  // Accent color, persisted, applied as theme-aware CSS variables
   const [accent, setAccent] = useState<string>(() => {
     try { return localStorage.getItem('jarvis-accent') || 'blue'; } catch { return 'blue'; }
   });
@@ -454,7 +454,7 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
     if (!open) { setView('home'); return; }
   }, [open]);
 
-  // Track unsaved changes — activate after initial load
+  // Track unsaved changes, activate after initial load
   const initializedRef = useRef(false);
   useEffect(() => {
     if (initializedRef.current && open) setDirty(true);
@@ -615,7 +615,7 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
             className="fixed inset-0 z-50 bg-background overflow-hidden flex flex-col"
           >
-            {/* Top bar — ChatGPT style: title left, circular close right */}
+            {/* Top bar, ChatGPT style: title left, circular close right */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-border/30 flex-shrink-0">
               <h2 className="text-[17px] font-semibold tracking-tight text-foreground">
                 {view === 'home' ? t('settings.title') : ''}
@@ -745,7 +745,7 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                       </div>
                     </div>
 
-                    {/* Accent color — ChatGPT style */}
+                    {/* Accent color, ChatGPT style */}
                     <SectionLabel>{t('settings.accentColor')}</SectionLabel>
                     <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30">
                       <SettingsRow
@@ -767,7 +767,7 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                       />
                     </div>
 
-                    {/* Web Search & Data — the only real "app settings" page */}
+                    {/* Web Search & Data, the only real "app settings" page */}
                     <SectionLabel>{t('settings.section.app')}</SectionLabel>
                     <div className="rounded-2xl border border-border/40 bg-card overflow-hidden divide-y divide-border/30">
                       <SettingsRow
@@ -942,7 +942,7 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                       </p>
                     </div>
 
-                    {/* Personality — how Jarvis talks to you */}
+                    {/* Personality, how Jarvis talks to you */}
                     <div className="pt-5 pb-1 border-t border-border/20">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-3.5 h-3.5 text-primary/70" />
@@ -1367,7 +1367,7 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
 
                     {secretDrafts.__dbHint && (
                       <div className="mt-6 mb-3 px-3 py-2 rounded-lg border border-amber-400/30 bg-amber-400/10 text-amber-300 text-[11px]">
-                        No database connection yet — add <span className="font-mono">DATABASE_URL</span> below to enable chat history and make saved keys persist.
+                        No database connection yet, add <span className="font-mono">DATABASE_URL</span> below to enable chat history and make saved keys persist.
                       </div>
                     )}
 
@@ -1421,7 +1421,7 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
                                   </div>
                                   <p className="text-[11px] text-muted-foreground/60">{item.description}</p>
                                   <p className="mt-0.5 text-[10px] font-mono text-muted-foreground/50 break-all">
-                                    {item.env}{item.configured ? ` — ${item.masked}` : ''}
+                                    {item.env}{item.configured ? `, ${item.masked}` : ''}
                                   </p>
                                 </div>
                               </div>
@@ -1635,7 +1635,7 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
               </AnimatePresence>
             </div>
 
-            {/* Save status footer — functional views only */}
+            {/* Save status footer, functional views only */}
             {view !== 'home' && view !== 'language' && view !== 'memory' && view !== 'about' && view !== 'accent' && (
               <div className="px-5 py-3 border-t border-border/30 flex-shrink-0">
                 <div className="flex items-center justify-between max-w-xl w-full mx-auto">

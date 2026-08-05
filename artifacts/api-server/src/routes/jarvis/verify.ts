@@ -95,7 +95,7 @@ router.post("/verify", async (req, res) => {
     claims.map(async (claim) => {
       const { answer, results: evidence } = await searchTavily(claim);
       if (evidence.length === 0) {
-        return { claim, verdict: "unverifiable" as const, evidence: [], note: "No sources found — could not verify." };
+        return { claim, verdict: "unverifiable" as const, evidence: [], note: "No sources found, could not verify." };
       }
       const overlap = keywordOverlap(claim, [answer ?? "", ...evidence.map((e) => e.snippet)]);
       const verdict: VerifyClaim["verdict"] = overlap >= 0.28 ? "supported" : "unverifiable";

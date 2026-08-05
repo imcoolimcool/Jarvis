@@ -249,7 +249,7 @@ function codeColor(code: string): string {
 
 /**
  * Build a fully readable plain-text dump of EVERYTHING known about the
- * error — every field flattened into lines so nothing is lost when pasted
+ * error, every field flattened into lines so nothing is lost when pasted
  * into a bug report or chat message.
  */
 function buildFullTextReport(detail: ErrorDetail): string {
@@ -261,7 +261,7 @@ function buildFullTextReport(detail: ErrorDetail): string {
   };
 
   L.push('══════════════════════════════════════════');
-  L.push('  JARVIS ERROR REPORT — EVERYTHING KNOWN');
+  L.push('  JARVIS ERROR REPORT, EVERYTHING KNOWN');
   L.push('══════════════════════════════════════════');
   L.push('');
 

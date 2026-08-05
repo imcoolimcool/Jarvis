@@ -8,7 +8,7 @@ const router = Router();
 // Resume any jobs that were left mid-flight by a server restart (fire-and-forget).
 recoverStuckJobs().catch(() => {});
 
-/** Start a new deep research job. Returns the created job immediately — the
+/** Start a new deep research job. Returns the created job immediately, the
  *  engine keeps running in the background (hours → days) and the frontend
  *  polls status. */
 router.post("/research", async (req, res) => {
@@ -40,7 +40,7 @@ router.post("/research", async (req, res) => {
       })
       .returning();
 
-    // Kick off the background loop — never await it here.
+    // Kick off the background loop, never await it here.
     void startResearchJob(job.id);
 
     req.log.info({ jobId: job.id }, "Deep research job started");
@@ -62,7 +62,7 @@ router.get("/research", async (req, res) => {
   }
 });
 
-/** Cost/duration estimate for a depth — shown before launching a job. */
+/** Cost/duration estimate for a depth, shown before launching a job. */
 router.get("/research/estimate", async (req, res) => {
   try {
     const depth = String(req.query.depth ?? "");

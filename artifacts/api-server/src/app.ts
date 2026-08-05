@@ -46,7 +46,7 @@ if (process.env["NODE_ENV"] !== "development") {
   const staticDir = path.resolve(__dirname, "..", "..", "..", "artifacts", "jarvis", "dist", "public");
   app.use(express.static(staticDir));
 
-  // ── SPA fallback — any non-API, non-static request serves index.html ──
+  // ── SPA fallback, any non-API, non-static request serves index.html ──
   app.use((req: Request, res: Response) => {
     res.sendFile(path.join(staticDir, "index.html"));
   });
@@ -57,7 +57,7 @@ if (process.env["NODE_ENV"] !== "development") {
   });
 }
 
-// ── Global error handler — catches any unhandled errors and returns detailed info ──
+// ── Global error handler, catches any unhandled errors and returns detailed info ──
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   logger.error({ err }, "Unhandled error");
   const detail = buildErrorDetail(err, req, 500, Date.now());

@@ -155,7 +155,7 @@ export function MusicStudio({ open, onClose }: MusicStudioProps) {
 
               <p className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/40 text-center">
                 <Heart className="w-3 h-3" />
-                100% free — every track is generated live with Web Audio, no server, no limits.
+                100% free, every track is generated live with Web Audio, no server, no limits.
               </p>
             </div>
           </motion.div>

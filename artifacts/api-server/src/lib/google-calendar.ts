@@ -1,5 +1,5 @@
 /**
- * Google Calendar API helper — fetches upcoming events using an OAuth access token.
+ * Google Calendar API helper, fetches upcoming events using an OAuth access token.
  * Shared credentials with Gmail (same OAuth flow, calendar scope added).
  */
 
@@ -81,7 +81,7 @@ export async function fetchGoogleCalendarEvents(
     });
 
     if (res.status === 403) {
-      // Calendar scope not yet granted — token was obtained without calendar scope
+      // Calendar scope not yet granted, token was obtained without calendar scope
       return null;
     }
 

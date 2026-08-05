@@ -3,8 +3,8 @@
  * sync with the Drizzle schema on API server startup.
  *
  * Two layers, both idempotent:
- *  1. `CREATE TABLE IF NOT EXISTS` — fresh databases get every table.
- *  2. `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` — pre-existing tables that
+ *  1. `CREATE TABLE IF NOT EXISTS`, fresh databases get every table.
+ *  2. `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, pre-existing tables that
  *     predate newer columns (e.g. `conversations.kind` added for gems) get
  *     their missing columns without touching existing data.
  */
@@ -121,11 +121,11 @@ const CREATE_TABLES = [
 ];
 
 /**
- * ALTER statements — fill in any columns missing from pre-existing tables.
+ * ALTER statements, fill in any columns missing from pre-existing tables.
  * Each is a no-op when the column already exists.
  */
 const ALTER_TABLES = [
-  // conversations — `kind` + `system_prompt` were added after the first deploy
+  // conversations, `kind` + `system_prompt` were added after the first deploy
   `ALTER TABLE "conversations" ADD COLUMN IF NOT EXISTS "kind" text NOT NULL DEFAULT 'chat'`,
   `ALTER TABLE "conversations" ADD COLUMN IF NOT EXISTS "system_prompt" text`,
   `ALTER TABLE "conversations" ADD COLUMN IF NOT EXISTS "created_at" timestamp NOT NULL DEFAULT now()`,
@@ -135,7 +135,7 @@ const ALTER_TABLES = [
   `ALTER TABLE "messages" ADD COLUMN IF NOT EXISTS "reasoning" text`,
   `ALTER TABLE "messages" ADD COLUMN IF NOT EXISTS "created_at" timestamp NOT NULL DEFAULT now()`,
 
-  // research_jobs — deep research engine columns
+  // research_jobs, deep research engine columns
   `ALTER TABLE "research_jobs" ADD COLUMN IF NOT EXISTS "mode" text NOT NULL DEFAULT 'agent'`,
   `ALTER TABLE "research_jobs" ADD COLUMN IF NOT EXISTS "depth" text NOT NULL DEFAULT 'deep'`,
   `ALTER TABLE "research_jobs" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'queued'`,
@@ -152,7 +152,7 @@ const ALTER_TABLES = [
   `ALTER TABLE "research_jobs" ADD COLUMN IF NOT EXISTS "started_at" timestamp`,
   `ALTER TABLE "research_jobs" ADD COLUMN IF NOT EXISTS "completed_at" timestamp`,
 
-  // llm_keys — rotation pool columns
+  // llm_keys, rotation pool columns
   `ALTER TABLE "llm_keys" ADD COLUMN IF NOT EXISTS "enabled" boolean NOT NULL DEFAULT true`,
   `ALTER TABLE "llm_keys" ADD COLUMN IF NOT EXISTS "priority" integer NOT NULL DEFAULT 0`,
   `ALTER TABLE "llm_keys" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'healthy'`,
@@ -182,7 +182,7 @@ export async function ensureTables(): Promise<void> {
     const { rows } = await client.query(
       `SELECT count(*)::int AS c FROM information_schema.tables WHERE table_schema = 'public'`,
     );
-    console.log(`[auto-migrate] ready — ${rows[0]?.c ?? 0} public tables, columns synced`);
+    console.log(`[auto-migrate] ready, ${rows[0]?.c ?? 0} public tables, columns synced`);
   } finally {
     client.release();
   }

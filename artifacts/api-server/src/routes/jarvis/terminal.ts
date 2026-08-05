@@ -31,7 +31,7 @@ router.post("/terminal", async (req, res) => {
   }
 });
 
-/** POST /api/jarvis/terminal/reset { sessionId } — reset shell state to workspace root. */
+/** POST /api/jarvis/terminal/reset { sessionId }, reset shell state to workspace root. */
 router.post("/terminal/reset", async (_req, res) => {
   await resetSession("default");
   res.json({ ok: true });

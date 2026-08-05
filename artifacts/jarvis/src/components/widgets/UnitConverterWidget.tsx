@@ -104,7 +104,7 @@ export function UnitConverterWidget({ value, fromUnit, toUnit, category, label }
 
       <div className="flex items-center gap-2">
         <div className="flex-1 min-w-0 bg-primary/5 border border-primary/20 rounded-xl px-3 py-2 text-right">
-          <span className="text-2xl font-bold tabular-nums text-primary truncate block">{result || '—'}</span>
+          <span className="text-2xl font-bold tabular-nums text-primary truncate block">{result || '-'}</span>
         </div>
         <select
           value={to}

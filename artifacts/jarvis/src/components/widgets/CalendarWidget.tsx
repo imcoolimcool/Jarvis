@@ -17,7 +17,7 @@ interface CalendarWidgetProps {
 }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const HOURS = Array.from({ length: 17 }, (_, i) => i + 7); // 7am–11pm
+const HOURS = Array.from({ length: 17 }, (_, i) => i + 7); // 7am-11pm
 const SLOT_H = 48; // px per hour
 
 const EVENT_COLORS = [

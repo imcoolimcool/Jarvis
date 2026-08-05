@@ -39,7 +39,7 @@ const STUDIOS: Studio[] = [
   {
     id: 'camera',
     name: 'Camera',
-    tagline: 'Point at anything — identify it live',
+    tagline: 'Point at anything, identify it live',
     replaces: 'Google Lens',
     icon: Camera,
     tint: 'bg-sky-500/10', tintDark: 'dark:bg-sky-400/15', text: 'text-sky-500 dark:text-sky-400',
@@ -125,7 +125,7 @@ export function StudiosHub({ open, onClose, onSelect }: StudiosHubProps) {
               <div>
                 <p className="text-base font-semibold">Studios</p>
                 <p className="text-[11px] text-muted-foreground/60 mt-0.5">
-                  One app instead of ten — every tool, organized.
+                  One app instead of ten, every tool, organized.
                 </p>
               </div>
               <button

@@ -1,7 +1,7 @@
 /**
  * Heuristic detection: does this message ask about Jarvis's own source code?
  * Used to show the "Use code for this answer?" confirmation card before the
- * message is sent. Kept deliberately conservative — a false positive only
+ * message is sent. Kept deliberately conservative, a false positive only
  * shows a card the user can dismiss with one tap.
  */
 

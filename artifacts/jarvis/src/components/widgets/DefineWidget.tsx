@@ -6,7 +6,7 @@ interface DefineWidgetProps {
   meanings: DefineMeaning[];
 }
 
-/** Dictionary widget — word, pronunciation, and definitions (dictionaryapi.dev). */
+/** Dictionary widget, word, pronunciation, and definitions (dictionaryapi.dev). */
 export function DefineWidget({ word, phonetic, meanings }: DefineWidgetProps) {
   return (
     <div className="mt-3 rounded-2xl border border-border/40 bg-background/60 backdrop-blur-sm p-5 shadow-lg w-full">
@@ -19,7 +19,7 @@ export function DefineWidget({ word, phonetic, meanings }: DefineWidgetProps) {
         {meanings.map((m, i) => (
           <li key={i} className="flex gap-2.5 text-sm leading-relaxed">
             <span className="text-[10px] font-mono text-primary/70 uppercase tracking-wider mt-1 flex-shrink-0 w-14">
-              {m.partOfSpeech || '—'}
+              {m.partOfSpeech || '-'}
             </span>
             <span className="text-foreground/85">
               {m.definition}

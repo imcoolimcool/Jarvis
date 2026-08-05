@@ -54,7 +54,7 @@ export default function Home() {
   const isAgentMode = mode === 'agent';
   const isCameraMode = mode === 'camera';
   const [chatInput, setChatInput] = useState('');
-  // Thinking mode — Jarvis streams a private reasoning pass before the answer
+  // Thinking mode, Jarvis streams a private reasoning pass before the answer
   // (shown in a collapsible "Thinking" block). Persisted across reloads.
   const [thinkingEnabled, setThinkingEnabled] = useState<boolean>(() => {
     try { return localStorage.getItem('jarvis-thinking') === 'true'; } catch { return false; }
@@ -73,7 +73,7 @@ export default function Home() {
   const [personalityMenuOpen, setPersonalityMenuOpen] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [activeWidget, setActiveWidget] = useState<Widget | null>(null);
-  // Server-backed timers — survive reloads and fire via web-push even with the tab closed.
+  // Server-backed timers, survive reloads and fire via web-push even with the tab closed.
   const {
     activeTimers,
     serverIdRef,
@@ -118,12 +118,12 @@ export default function Home() {
     try { localStorage.setItem('jarvis-mic-intent', 'true'); } catch { /* noop */ }
   }, []);
 
-  // Deep research — background jobs + gem chats
+  // Deep research, background jobs + gem chats
   const [researchPanelOpen, setResearchPanelOpen] = useState(false);
   const [researchJobs, setResearchJobs] = useState<ResearchJob[]>([]);
   const researchNotifiedRef = useRef<Set<string>>(new Set());
 
-  // Wave 2 — user-defined gems + Data Lab
+  // Wave 2, user-defined gems + Data Lab
   const [gemDialogOpen, setGemDialogOpen] = useState(false);
   const [dataLabOpen, setDataLabOpen] = useState(false);
   const [buildPanelOpen, setBuildPanelOpen] = useState(false);
@@ -136,7 +136,7 @@ export default function Home() {
   const [sessionCommands, setSessionCommands] = useState<TerminalResult[]>([]);
   const [commandInput, setCommandInput] = useState('');
   const [commandBusy, setCommandBusy] = useState(false);
-  // Command palette (Cmd+K) — search memory + run anything
+  // Command palette (Cmd+K), search memory + run anything
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { theme, resolved, toggle: toggleTheme } = useTheme();
   const { toast } = useToast();
@@ -155,7 +155,7 @@ export default function Home() {
   const chatDictatingRef = useRef(false);
   useEffect(() => { statusRef.current = status; }, [status]);
 
-  // Timer tracking for chat mode — timer lives inline in the feed, not in the sidebar
+  // Timer tracking for chat mode, timer lives inline in the feed, not in the sidebar
 
   // Keep a ref so speech-recognition callbacks never hold stale closures.
   const isChatModeRef = useRef(isChatMode);
@@ -175,9 +175,9 @@ export default function Home() {
     onError: (msg) => handleError(msg),
     onEnd: () => {
       // Called when the orb-tap recording session ends (no transcript came through).
-      // IMPORTANT: do NOT call startWakeWord() here — this callback fires from inside
+      // IMPORTANT: do NOT call startWakeWord() here, this callback fires from inside
       // a SpeechRecognition event, and iOS WebKit blocks new SR instances from that
-      // context. Setting status to 'wake' is enough — the useEffect will call
+      // context. Setting status to 'wake' is enough, the useEffect will call
       // startWakeWord() after React's commit phase (safely outside the SR callback).
       setStatus(prev => {
         if (prev === 'recording') {
@@ -211,7 +211,7 @@ export default function Home() {
       processUserText(text);
     },
     onError: (msg) => {
-      // QA-002: keep unsolicited permission failures quiet — the user may not
+      // QA-002: keep unsolicited permission failures quiet, the user may not
       // have asked for voice yet. Only surface a toast after explicit intent.
       if (msg.includes('denied')) {
         try { localStorage.removeItem('jarvis-mic-granted'); } catch { /* noop */ }
@@ -222,12 +222,12 @@ export default function Home() {
       setStatus('idle');
     },
     onCommandTimeout: () => {
-      // Direct-command mode timed out with no speech — fall back to idle.
+      // Direct-command mode timed out with no speech, fall back to idle.
       setStatus(prev => prev === 'recording' ? 'idle' : prev);
     },
   });
 
-  // Double clap detection — alternative activation method
+  // Double clap detection, alternative activation method
   const { start: startClapDetection, stop: stopClapDetection } = useClapDetection({
     onClap: () => {
       if (isChatMode) return;
@@ -265,7 +265,7 @@ export default function Home() {
     }
   }, [status]);
 
-  // Screen share — start/stop + track active state + latest frame for AI
+  // Screen share, start/stop + track active state + latest frame for AI
   const { start: startScreenShare, stop: stopScreenShare, latestFrame: screenFrame } = useScreenShare({
     onFrame: (frame) => {
       // Store latest frame for AI context
@@ -274,7 +274,7 @@ export default function Home() {
   const activeAudioRef = useRef<{ stop: () => void } | null>(null);
   const orbAmplitudeRafRef = useRef<number | null>(null);
   // Audio context shared across all TTS playback. Using Web Audio API with
-  // decodeAudioData fully buffers the audio before playing — eliminates the
+  // decodeAudioData fully buffers the audio before playing, eliminates the
   // "l...lo... ho...w..." stutter on Android Chrome.
   const audioContextRef = useRef<AudioContext | null>(null);
   // The unlocked Audio element is kept only for the iOS gesture unlock (the
@@ -316,7 +316,7 @@ export default function Home() {
   }, [attachedFile]);
 
   // Register for real push notifications if the user already allowed them
-  // (silent — no prompt; keeps the subscription fresh across sessions).
+  // (silent, no prompt; keeps the subscription fresh across sessions).
   useEffect(() => {
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       ensurePushSubscription().catch(() => {});
@@ -343,7 +343,7 @@ export default function Home() {
 
     if (status === 'idle' || status === 'wake') {
       // Ensure recognizer is running and not suppressed. QA-002: do NOT
-      // auto-request the mic on first load — only after the user has tapped
+      // auto-request the mic on first load, only after the user has tapped
       // a voice control (micIntentRef) or previously granted access.
       if ((micIntentRef.current || micGrantedBeforeRef.current) && isWakeWordSupported()) {
         startWakeWord(); // guard in hook prevents double-start
@@ -407,13 +407,13 @@ export default function Home() {
     }
   };
 
-  /** Fire haptic vibration on mobile — silently no-ops on desktop */
+  /** Fire haptic vibration on mobile, silently no-ops on desktop */
   const vibrate = useCallback((pattern: number | number[]) => {
     try { navigator.vibrate?.(pattern); } catch { /* not supported */ }
   }, []);
 
   const playWakeSound = useCallback(() => {
-    // #44: Reuse the shared AudioContext — creating a new one per wake-word leaks browser
+    // #44: Reuse the shared AudioContext, creating a new one per wake-word leaks browser
     // audio handles and eventually exhausts the limit (~6 contexts on Chrome/Safari).
     try {
       if (!audioContextRef.current) {
@@ -437,14 +437,14 @@ export default function Home() {
   }, []);
 
   const handleError = useCallback((msg: string, detail?: ErrorDetail, onRetry?: () => void, code?: string) => {
-    // The panel stays CLOSED until the user clicks DETAILS — the toast shows
+    // The panel stays CLOSED until the user clicks DETAILS, the toast shows
     // the message with a DETAILS button. If the server didn't send a detail
     // object, build one client-side with every bit of browser/context info
     // we can capture so the user can copy a complete bug report.
     const resolvedDetail = detail ?? buildClientErrorDetail(msg);
 
     // LLM cooldown (every provider key cooling) is an expected, temporary
-    // state on the free tier — render it as a gentle "recharging" toast, not
+    // state on the free tier, render it as a gentle "recharging" toast, not
     // a scary destructive error.
     if (code === 'llm_cooling') {
       toast({
@@ -520,7 +520,7 @@ export default function Home() {
             refreshSidebar();
             toast({
               title: t('research.notificationTitle'),
-              description: `${job.title} — ${t('research.notificationBody')}`,
+              description: `${job.title}, ${t('research.notificationBody')}`,
             });
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
               try {
@@ -533,7 +533,7 @@ export default function Home() {
             }
           }
         }
-      } catch { /* server not reachable — retry on next tick */ }
+      } catch { /* server not reachable, retry on next tick */ }
     };
     void loadResearch();
     const iv = setInterval(loadResearch, 12_000);
@@ -568,7 +568,7 @@ export default function Home() {
     e.target.value = '';
   }, [attachedFile, readFile, toast]);
 
-  /** Handle paste events — capture images pasted from clipboard */
+  /** Handle paste events, capture images pasted from clipboard */
   const handleInputPaste = useCallback(async (e: React.ClipboardEvent) => {
     const imageItem = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'));
     if (!imageItem) return;
@@ -591,7 +591,7 @@ export default function Home() {
       const res = await fetch(`/api/jarvis/conversations/${id}`);
       if (!res.ok) return;
       const data = await res.json();
-      // Filter out poisoned history entries — raw tool-call JSON an older
+      // Filter out poisoned history entries, raw tool-call JSON an older
       // broken tool-calling attempt stored as assistant messages.
       const cleanMessages = (data.messages ?? []).filter(
         (m: any) =>
@@ -622,7 +622,7 @@ export default function Home() {
     timerOriginalDurationRef.current = null;
   }, []);
 
-  // Wave 2 — a freshly created gem opens straight into chat mode
+  // Wave 2, a freshly created gem opens straight into chat mode
   const handleGemCreated = useCallback((conv: { id: string; title: string }) => {
     haptics.medium?.();
     setMode('chat');
@@ -633,7 +633,7 @@ export default function Home() {
     void loadConversation(conv.id);
   }, [loadConversation, toast, t]);
 
-  // Wave 2 — Data Lab hands a data summary to Jarvis in chat mode
+  // Wave 2, Data Lab hands a data summary to Jarvis in chat mode
   const handleDataLabAsk = useCallback((summaryText: string) => {
     haptics.medium?.();
     setMode('chat');
@@ -700,7 +700,7 @@ export default function Home() {
                   activeAudioRef.current = null;
                   onDone();
                 };
-                // MUST set onended BEFORE start(0) — on some browsers the
+                // MUST set onended BEFORE start(0), on some browsers the
                 // callback won't fire if registered after playback begins.
                 activeAudioRef.current = {
                   stop: () => {
@@ -720,7 +720,7 @@ export default function Home() {
           } catch { handleError("Failed to decode audio"); }
         },
         onError: (err) => {
-          // Surface TTS failures instead of silently returning to idle — a
+          // Surface TTS failures instead of silently returning to idle, a
           // missing/invalid ElevenLabs key otherwise looks like "voice mode
           // errors when I talk".
           const detail = (err as any)?.error?.detail as ErrorDetail | undefined;
@@ -734,7 +734,7 @@ export default function Home() {
     );
   }, [synthesizeSpeech, handleError, iosUnlockedAudioRef]);
 
-  // Chat streaming + SSE consumption — extracted to use-chat-stream for size & clarity.
+  // Chat streaming + SSE consumption, extracted to use-chat-stream for size & clarity.
   const {
     processUserText,
     processUserTextRef,
@@ -790,7 +790,7 @@ export default function Home() {
         vibrate([30, 50, 30]);
         startChatRecording();
       } else {
-        activateCommand(true); // user gesture — safe on iOS, starts listening immediately
+        activateCommand(true); // user gesture, safe on iOS, starts listening immediately
       }
       return;
     }
@@ -800,11 +800,11 @@ export default function Home() {
         return;
       }
       // Use activateCommand() instead of stopWakeWord() + startListening().
-      // This keeps a single recognizer alive — critical on iOS where start()
+      // This keeps a single recognizer alive, critical on iOS where start()
       // is only allowed from a user gesture. Here we ARE in a gesture, so
       // activateCommand()'s fallback start() is also iOS-safe.
       setStatus('recording');
-      activateCommand(true); // user gesture — safe to start a fresh recognizer on iOS
+      activateCommand(true); // user gesture, safe to start a fresh recognizer on iOS
     } else if (status === 'recording') {
       // Cancel: reset the wake-word hook to idle wake mode without stopping it.
       // suppress() clears command mode, unsuppress() re-enables callbacks —
@@ -886,7 +886,7 @@ export default function Home() {
         id: nextMsgId(),
       }]);
     } catch (err) {
-      const msg = err instanceof TypeError ? 'Network error — is the server running?' : 'Image generation failed';
+      const msg = err instanceof TypeError ? 'Network error, is the server running?' : 'Image generation failed';
       handleError(msg);
     } finally {
       setGeneratingImage(false);
@@ -933,7 +933,7 @@ export default function Home() {
 
   const pendingBuildRef = useRef<{ userText: string; file: AttachedFile | null; speak: boolean } | null>(null);
 
-  /** Studios hub — route a selected studio to its feature. */
+  /** Studios hub, route a selected studio to its feature. */
   const handleStudioSelect = useCallback((id: StudioId) => {
     haptics.medium?.();
     setStudiosOpen(false);
@@ -959,7 +959,7 @@ export default function Home() {
     el.style.height = Math.min(el.scrollHeight, 160) + 'px';
   }, [chatInput]);
 
-  // Barge-in recognizer — orb tap while Jarvis is speaking in chat mode:
+  // Barge-in recognizer, orb tap while Jarvis is speaking in chat mode:
   // auto-submit + speak back (kept separate from the input-bar dictation).
   const { start: startChatRecording, stop: stopChatRecording } = useSpeechRecognition({
     lang: lang === 'nl' ? 'nl-NL' : 'en-US',
@@ -974,7 +974,7 @@ export default function Home() {
     onEnd: () => setChatRecording(false),
   });
 
-  // In-chat dictation recognizer — Whisper transcribes into the input box and
+  // In-chat dictation recognizer, Whisper transcribes into the input box and
   // STAYS in chat mode. Continuous + interim: it keeps listening until the user
   // taps the square stop button; nothing is auto-submitted while talking.
   const { start: startChatDictation, stop: stopChatDictation } = useSpeechRecognition({
@@ -992,7 +992,7 @@ export default function Home() {
     onEnd: () => { setChatDictating(false); setChatInterim(''); },
   });
 
-  /** In-chat dictation toggle — mic button beside the input. While active it
+  /** In-chat dictation toggle, mic button beside the input. While active it
       becomes a square button; tap it to stop recording. Stays in chat mode. */
   const [chatDictating, setChatDictating] = useState(false);
   useEffect(() => { chatDictatingRef.current = chatDictating; }, [chatDictating]);
@@ -1015,7 +1015,7 @@ export default function Home() {
     startChatDictation();
   };
 
-  /** The blue circular waveform button — opens the full-screen voice assistant. */
+  /** The blue circular waveform button, opens the full-screen voice assistant. */
   const handleOpenVoiceMode = () => {
     markMicIntent(); // opening voice mode is explicit mic intent
     haptics.heavy();
@@ -1063,7 +1063,7 @@ export default function Home() {
       setTimeout(() => inputRef.current?.focus(), 50);
     } else {
       setStatus('wake');
-      startWakeWord(); // call directly — user-gesture context (iOS safe)
+      startWakeWord(); // call directly, user-gesture context (iOS safe)
     }
   };
 
@@ -1142,9 +1142,9 @@ export default function Home() {
     <div className={`${resolved} h-dvh bg-background text-foreground flex flex-col overflow-hidden`}>
 
       {/* ── Header: Apple-style translucent toolbar ── */}
-      {/* Hidden in voice mode — the orb view takes the full screen. */}
+      {/* Hidden in voice mode, the orb view takes the full screen. */}
       <header className={`glass-toolbar px-4 py-2.5 flex items-center border-b border-border/50 relative z-50 flex-shrink-0 ${mode === 'voice' ? 'hidden' : ''}`}>
-        {/* Left: hamburger (menu) — always visible, ChatGPT style */}
+        {/* Left: hamburger (menu), always visible, ChatGPT style */}
         <button
           onClick={() => setMobileSidebarOpen(open => !open)}
           className="w-9 h-9 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 text-foreground flex items-center justify-center shadow-sm transition-all hover:bg-secondary/70 active:scale-95"
@@ -1171,7 +1171,7 @@ export default function Home() {
 
       {/* ── Body ─────────────────────────────────── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Sidebar hidden in voice mode — full screen orb experience */}
+        {/* Sidebar hidden in voice mode, full screen orb experience */}
         {mode !== 'voice' && (
           <ChatSidebar
             activeId={activeConversationId}
@@ -1188,7 +1188,7 @@ export default function Home() {
 
         <main className="flex-1 flex flex-col h-full min-h-0 overflow-hidden">
 
-          {/* ── CAMERA MODE — full-screen object detection ── */}
+          {/* ── CAMERA MODE, full-screen object detection ── */}
           {mode === 'camera' && (
             <div className="flex-1 flex flex-col min-h-0 relative">
               {/* Back to chat */}
@@ -1209,16 +1209,16 @@ export default function Home() {
                   />
                 </div>
                 <p className="text-center text-xs text-muted-foreground mt-3">
-                  {t('header.mode.camera')} — object detection runs 100% in your browser
+                  {t('header.mode.camera')}, object detection runs 100% in your browser
                 </p>
               </div>
             </div>
           )}
 
-          {/* ── VOICE MODE — full screen ── */}
+          {/* ── VOICE MODE, full screen ── */}
           {mode === 'voice' && (
             <div className="flex-1 flex flex-col min-h-0 relative">
-              {/* Back to chat — header is hidden in voice mode */}
+              {/* Back to chat, header is hidden in voice mode */}
               <button
                 onClick={() => { haptics.light(); setMode('chat'); }}
                 className="absolute top-3 left-3 z-30 w-9 h-9 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/10 dark:border-white/15 text-foreground flex items-center justify-center shadow-sm hover:bg-secondary/70 active:scale-95 transition-all"
@@ -1229,7 +1229,7 @@ export default function Home() {
               </button>
               {/* Orb + status */}
               <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 min-h-0">
-                {/* Durable server-side timers — survive reloads, fire even with the tab closed */}
+                {/* Durable server-side timers, survive reloads, fire even with the tab closed */}
                 <TimerStrip
                   timers={activeTimers}
                   onCancel={(id) => void cancelTimer(id)}
@@ -1252,7 +1252,7 @@ export default function Home() {
                   amplitude={orbAmplitude}
                 />
 
-                {/* PiP toggles — agent + browser + camera */}
+                {/* PiP toggles, agent + browser + camera */}
                 <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
                   <button
                     onClick={() => { haptics.light(); setAgentModeActive(a => !a); if (!agentModeActive) setPipBrowserOpen(true); setPipFullscreen(null); }}
@@ -1320,7 +1320,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Widget panel OR conversation history — pinned to bottom */}
+              {/* Widget panel OR conversation history, pinned to bottom */}
               <div className="flex-shrink-0 px-4 sm:px-6 pb-4 sm:pb-8 pt-2 max-w-2xl w-full mx-auto">
                 {activeWidget && activeWidget.type !== 'alarm' && activeWidget.type !== 'timer' ? (
                   <div className="overflow-y-auto max-h-[40vh] sm:max-h-[55vh]">
@@ -1380,7 +1380,7 @@ export default function Home() {
               {/* Chat area */}
               <div className="flex-1 flex flex-col h-full min-h-0 bg-card/5">
 
-                {/* Durable server-side timers — survive reloads, fire even with the tab closed */}
+                {/* Durable server-side timers, survive reloads, fire even with the tab closed */}
                 <TimerStrip
                   timers={activeTimers}
                   onCancel={(id) => void cancelTimer(id)}
@@ -1470,7 +1470,7 @@ export default function Home() {
                   }}
                 />
 
-                {/* Input bar — #21: padding-bottom accounts for Safari's home indicator / safe area */}
+                {/* Input bar, #21: padding-bottom accounts for Safari's home indicator / safe area */}
                 <div
                   data-chat-composer
                   className={`border-t border-border/30 bg-background/90 backdrop-blur-md px-4 pt-3 flex-shrink-0 space-y-2 relative ${dragOver ? 'border-primary/50' : ''}`}
@@ -1573,7 +1573,7 @@ export default function Home() {
                       </button>
                     </div>
 
-                    {/* Thinking mode toggle — Jarvis streams his reasoning before answering */}
+                    {/* Thinking mode toggle, Jarvis streams his reasoning before answering */}
                     <button
                       onClick={() => { haptics.light(); setThinkingEnabled(v => !v); }}
                       disabled={isBusy}
@@ -1590,7 +1590,7 @@ export default function Home() {
                       />
                     </button>
 
-                    {/* Agent mode toggle — Jarvis researches with live web search */}
+                    {/* Agent mode toggle, Jarvis researches with live web search */}
                     <button
                       onClick={() => { haptics.light(); setAgentModeActive(a => !a); }}
                       disabled={isBusy}
@@ -1654,7 +1654,7 @@ export default function Home() {
                            : <Mic className="w-[18px] h-[18px]" strokeWidth={2} />}
                        </button>
                     </div>
-                    {/* Blue circular button — opens full-screen voice mode */}
+                    {/* Blue circular button, opens full-screen voice mode */}
                     <button onClick={handleOpenVoiceMode} disabled={isBusy}
                       title={t('input.voiceMode')}
                       className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:opacity-90 active:scale-95 transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed">
@@ -1676,7 +1676,7 @@ export default function Home() {
                     </button>
                   </div>
 
-                  {/* + menu popover — rendered through a portal so its fixed
+                  {/* + menu popover, rendered through a portal so its fixed
                       positioning is always viewport-relative (framer-motion
                       transforms on ancestors used to throw it off-screen). */}
                   <PlusMenu

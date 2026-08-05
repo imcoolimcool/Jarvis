@@ -16,7 +16,7 @@ function formatTime(s: number) {
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
-// #36: Shared module-level AudioContext — avoids creating a new context per beep
+// #36: Shared module-level AudioContext, avoids creating a new context per beep
 let _timerCtx: AudioContext | null = null;
 function getTimerCtx(): AudioContext {
   const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -64,7 +64,7 @@ export function TimerWidget({ durationSeconds, label, compact, onClose }: TimerW
     }
   }, [durationSeconds]);
 
-  // #22: Wall-clock countdown — immune to background timer throttling on mobile.
+  // #22: Wall-clock countdown, immune to background timer throttling on mobile.
   // Capture endTime at the moment running starts (or resumes) so drift accumulates
   // only in the interval granularity, not across every tick.
   useEffect(() => {

@@ -20,7 +20,7 @@ interface UseSpeechRecognitionOptions {
   onTranscript: (text: string) => void;
   onError: (msg: string) => void;
   onEnd: () => void;
-  /** Called for interim (non-final) results while speaking — live preview. */
+  /** Called for interim (non-final) results while speaking, live preview. */
   onInterim?: (text: string) => void;
   /** Keep listening after a pause instead of stopping automatically. */
   continuous?: boolean;
@@ -95,12 +95,12 @@ export function useSpeechRecognition({
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       if (event.error === 'no-speech' || event.error === 'aborted') {
-        // Do NOT call onEnd() here — the browser always fires onend after onerror,
+        // Do NOT call onEnd() here, the browser always fires onend after onerror,
         // so onEnd() would be called twice (once here, once in onend). Let onend handle it.
       } else if (event.error === 'not-allowed') {
         onError('Microphone access denied. Please allow microphone in your browser settings.');
       } else if (event.error === 'network') {
-        // #12: Distinguish network errors — give useful feedback on WiFi→LTE handoffs
+        // #12: Distinguish network errors, give useful feedback on WiFi→LTE handoffs
         if (!navigator.onLine) {
           onError('No internet connection. Speech recognition requires an active connection.');
         } else {

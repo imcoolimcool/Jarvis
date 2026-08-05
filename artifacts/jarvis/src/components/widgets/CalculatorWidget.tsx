@@ -54,7 +54,7 @@ const BTNS = [
   '0', '.', '^', '=',
 ];
 
-/** A REAL interactive calculator — full working keypad, not just the answer. */
+/** A REAL interactive calculator, full working keypad, not just the answer. */
 export function CalculatorWidget({ expression, result }: CalculatorWidgetProps) {
   const [display, setDisplay] = useState<string>(
     expression && result ? expression : (result || '0'),

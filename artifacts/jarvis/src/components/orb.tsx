@@ -6,7 +6,7 @@ export type AppState = 'idle' | 'wake' | 'recording' | 'transcribing' | 'thinkin
 interface OrbProps {
   status: AppState;
   onClick?: () => void;
-  /** Audio amplitude 0–1 for reactive particles during speaking/recording */
+  /** Audio amplitude 0-1 for reactive particles during speaking/recording */
   amplitude?: number;
 }
 
@@ -89,7 +89,7 @@ export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
         aria-hidden="true"
       />
 
-      {/* Ambient glow backdrop — radial gradient instead of blur(80px): the
+      {/* Ambient glow backdrop, radial gradient instead of blur(80px): the
           filter was repainted every frame; a gradient fades on its own. */}
       <motion.div
         className="absolute inset-0 rounded-full pointer-events-none"
@@ -109,7 +109,7 @@ export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
       {/* Status rings */}
       <StatusRings status={status} amplitude={amplitude} />
 
-      {/* Core sphere — Apple-style glass with minimal border */}
+      {/* Core sphere, Apple-style glass with minimal border */}
       <motion.div
         className="relative z-10 w-[160px] h-[160px] sm:w-[180px] sm:h-[180px] rounded-full flex items-center justify-center overflow-hidden"
         style={{
@@ -152,7 +152,7 @@ export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
           transition={{ duration: 0.5 }}
         />
 
-        {/* Static liquid-gleam highlight — avoids an always-on animation while paused. */}
+        {/* Static liquid-gleam highlight, avoids an always-on animation while paused. */}
         <div
           className="absolute inset-[-30%] opacity-20"
           style={{

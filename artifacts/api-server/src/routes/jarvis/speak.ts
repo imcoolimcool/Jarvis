@@ -52,7 +52,7 @@ router.post("/speak", async (req, res) => {
       } catch { /* keep default */ }
       const err = new Error(`ElevenLabs TTS failed (${response.status}): ${reason}`);
       const detail = buildErrorDetail(err, req, 500, startMs);
-      res.status(500).json({ error: `Speech synthesis failed — ${reason}`, detail });
+      res.status(500).json({ error: `Speech synthesis failed, ${reason}`, detail });
       return;
     }
 

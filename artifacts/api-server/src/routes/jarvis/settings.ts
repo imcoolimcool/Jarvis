@@ -27,7 +27,7 @@ const ALLOWED_KEYS = [
 ] as const;
 type SettingKey = (typeof ALLOWED_KEYS)[number];
 
-/** GET /api/jarvis/settings — returns all settings as a key→value map */
+/** GET /api/jarvis/settings, returns all settings as a key→value map */
 router.get("/settings", async (req, res) => {
   const startMs = Date.now();
   try {
@@ -42,7 +42,7 @@ router.get("/settings", async (req, res) => {
   }
 });
 
-/** PUT /api/jarvis/settings — upsert one or more settings */
+/** PUT /api/jarvis/settings, upsert one or more settings */
 router.put("/settings", async (req, res) => {
   const startMs = Date.now();
   const body = req.body as Partial<Record<SettingKey, string>>;
@@ -78,7 +78,7 @@ router.put("/settings", async (req, res) => {
   }
 });
 
-/** GET /api/jarvis/system-prompt — returns the system prompt (power user visibility) */
+/** GET /api/jarvis/system-prompt, returns the system prompt (power user visibility) */
 router.get("/system-prompt", (_req, res) => {
   res.json({
     prompt: jarvisConfig.systemPrompt,

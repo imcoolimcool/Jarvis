@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-/** Live date widget — weekday, full date, and a ticking clock with seconds. */
+/** Live date widget, weekday, full date, and a ticking clock with seconds. */
 export function DateWidget() {
   const [now, setNow] = useState(() => new Date());
 

@@ -43,15 +43,15 @@ interface ResearchPanelProps {
   onClose: () => void;
   /** Open a conversation (the finished gem chat) in the main feed. */
   onOpenGem: (conversationId: string) => void;
-  /** Fired right after a job is started — lets Home refresh + notify. */
+  /** Fired right after a job is started, lets Home refresh + notify. */
   onStarted?: (job: ResearchJob) => void;
   /** Fired when the user cancels a running job. */
   onCancel?: (jobId: string) => void;
 }
 
 const DEPTH_INFO: Record<ResearchJob['depth'], { label: string; hint: string }> = {
-  standard: { label: 'Standard', hint: '~5–12 hours' },
-  deep: { label: 'Deep', hint: '~1–3 days' },
+  standard: { label: 'Standard', hint: '~5-12 hours' },
+  deep: { label: 'Deep', hint: '~1-3 days' },
   quantum: { label: 'Quantum', hint: '~1 week+, no limit' },
   omni: { label: 'Omni', hint: '~weeks, never truly ends' },
 };
@@ -127,7 +127,7 @@ export function ResearchPanel({ jobs, onClose, onOpenGem, onStarted, onCancel }:
       setConfirming(false);
       onStarted?.(job);
     } catch {
-      alert('Network error — is the server running?');
+      alert('Network error, is the server running?');
     } finally {
       setStarting(false);
     }
@@ -178,8 +178,8 @@ export function ResearchPanel({ jobs, onClose, onOpenGem, onStarted, onCancel }:
               {estimate && (
                 <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] leading-relaxed space-y-0.5">
                   <p className="font-mono text-[10px] tracking-widest text-primary/80 font-semibold mb-1">ESTIMATE</p>
-                  <p className="text-muted-foreground/90">~{estimate.phases.min}–{estimate.phases.max} phases · {estimate.searches.min}–{estimate.searches.max} web searches</p>
-                  <p className="text-muted-foreground/90">Roughly {estimate.totalHours.min}–{estimate.totalHours.max} hours of wall time (runs in the background)</p>
+                  <p className="text-muted-foreground/90">~{estimate.phases.min}-{estimate.phases.max} phases · {estimate.searches.min}-{estimate.searches.max} web searches</p>
+                  <p className="text-muted-foreground/90">Roughly {estimate.totalHours.min}-{estimate.totalHours.max} hours of wall time (runs in the background)</p>
                   {(depth === 'quantum' || depth === 'omni') && (
                     <p className="text-amber-500/90 mt-1">⚠️ This tier is designed to run for days and will consume significant API quota. Consider a lower depth.</p>
                   )}
@@ -266,7 +266,7 @@ export function ResearchPanel({ jobs, onClose, onOpenGem, onStarted, onCancel }:
                 {t('research.start')}
               </button>
               <p className="text-[10px] text-muted-foreground/60 leading-relaxed text-center">
-                Runs in the background for hours — you can close this tab. Jarvis notifies you when the gem is ready.
+                Runs in the background for hours, you can close this tab. Jarvis notifies you when the gem is ready.
               </p>
             </motion.div>
           )}

@@ -7,7 +7,7 @@ import { haptics } from '@/lib/haptics';
 interface GemDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Called with the created conversation row — opens it in the feed. */
+  /** Called with the created conversation row, opens it in the feed. */
   onCreated: (conv: { id: string; title: string }) => void;
 }
 
@@ -40,7 +40,7 @@ export function GemDialog({ open, onClose, onCreated }: GemDialogProps) {
       onClose();
       onCreated(conv);
     } catch {
-      setError('Network error — is the server running?');
+      setError('Network error, is the server running?');
     } finally {
       setStarting(false);
     }

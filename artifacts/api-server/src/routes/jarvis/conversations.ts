@@ -6,7 +6,7 @@ const router = Router();
 
 /**
  * GET /api/jarvis/conversations/search?q=...
- * Episodic memory search — matches conversation titles AND message content,
+ * Episodic memory search, matches conversation titles AND message content,
  * returning matching conversations with a snippet of the first hit.
  */
 router.get("/conversations/search", async (req, res) => {
@@ -107,7 +107,7 @@ router.post("/conversations", async (req, res) => {
 
 /**
  * POST /conversations/gem
- * Create a user-defined expert gem — a conversation with kind "gem" and a
+ * Create a user-defined expert gem, a conversation with kind "gem" and a
  * custom system prompt. The chat route already prefers systemPrompt when set,
  * so chatting in this conversation makes Jarvis behave as the crafted expert.
  */

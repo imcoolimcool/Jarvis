@@ -28,14 +28,14 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-// Auto-create all tables on first boot (idempotent — fast no-op on subsequent
+// Auto-create all tables on first boot (idempotent, fast no-op on subsequent
 // boots). NEVER gate app.listen on this: if the DB is down, the server must
 // still boot so the health check can report db: disconnected and the frontend
 // gets a real, actionable error instead of "server unreachable".
 ensureTables().catch((err) => {
-  logger.error({ err }, "Database migration skipped — DB unreachable. Server will still start; add DATABASE_URL to bring it online.");
+  logger.error({ err }, "Database migration skipped, DB unreachable. Server will still start; add DATABASE_URL to bring it online.");
 }).then(() => {
-  // In-app API keys (Settings → API Keys) live in the DB — inject them into
+  // In-app API keys (Settings → API Keys) live in the DB, inject them into
   // process.env so every existing read site picks them up. DB values win.
   return injectDbSecretsIntoEnv();
 }).catch((err) => {

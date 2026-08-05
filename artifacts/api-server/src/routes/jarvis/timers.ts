@@ -8,7 +8,7 @@ const router = Router();
 // Resume any timers that were mid-flight before a server restart (fire-and-forget).
 startTimerScheduler().catch(() => {});
 
-const MAX_TIMER_SECONDS = 24 * 60 * 60; // 24h cap — a "timer" beyond this is a scheduled job
+const MAX_TIMER_SECONDS = 24 * 60 * 60; // 24h cap, a "timer" beyond this is a scheduled job
 
 /** Wall-clock remaining time (ms) for a row, regardless of status. */
 function remainingMsOf(t: Timer): number {
@@ -102,7 +102,7 @@ router.post("/timers/:id/extend", async (req, res) => {
   }
 });
 
-/** Pause a running timer — captures the remaining time, clears the setTimeout. */
+/** Pause a running timer, captures the remaining time, clears the setTimeout. */
 router.post("/timers/:id/pause", async (req, res) => {
   try {
     const [row] = await db.select().from(timers).where(eq(timers.id, req.params.id));
@@ -128,7 +128,7 @@ router.post("/timers/:id/pause", async (req, res) => {
   }
 });
 
-/** Resume a paused timer — schedules a new fireAt from the saved remaining time. */
+/** Resume a paused timer, schedules a new fireAt from the saved remaining time. */
 router.post("/timers/:id/resume", async (req, res) => {
   try {
     const [row] = await db.select().from(timers).where(eq(timers.id, req.params.id));
@@ -155,7 +155,7 @@ router.post("/timers/:id/resume", async (req, res) => {
   }
 });
 
-/** Cancel a timer — removes the scheduled fire. */
+/** Cancel a timer, removes the scheduled fire. */
 router.post("/timers/:id/cancel", async (req, res) => {
   try {
     const [row] = await db.select().from(timers).where(eq(timers.id, req.params.id));

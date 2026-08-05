@@ -1,11 +1,11 @@
 /**
- * LLM Key Manager — multi-provider key rotation.
+ * LLM Key Manager, multi-provider key rotation.
  *
  * The pool is built from two sources:
- *   1. Env keys   — OPENAI_LLM_API_KEY (+ _2 … _9, with optional matching
+ *   1. Env keys  , OPENAI_LLM_API_KEY (+ _2 … _9, with optional matching
  *                   OPENAI_LLM_BASE_URL / OPENAI_LLM_BASE_URL_2 …). Always
  *                   available; health is tracked in memory.
- *   2. DB keys    — rows added in Settings → LLM Keys (per-provider base URL +
+ *   2. DB keys   , rows added in Settings → LLM Keys (per-provider base URL +
  *                   model). Health/stats persist across restarts.
  *
  * Behaviour:
@@ -16,7 +16,7 @@
  *     has genuinely failed.
  *   - Keys are quarantined per error class: 401/403 → 24h (bad key),
  *     402/429/quota → 45min, bad model → 30min, transient → 5min.
- *   - `getHealthyKeys()` returns [] when everything is cooling — callers
+ *   - `getHealthyKeys()` returns [] when everything is cooling, callers
  *     (deep research) can then pause + notify + auto-resume.
  */
 
@@ -68,7 +68,7 @@ const envHealth = new Map<string, EnvHealth>();
 function envKeyEntries(): LlmKeyEntry[] {
   const out: LlmKeyEntry[] = [];
 
-  // OpenRouter (optional but preferred when set) — the free auto-router
+  // OpenRouter (optional but preferred when set), the free auto-router
   // model `openrouter/free` picks the best free provider per request and
   // routes to a vision-capable model automatically when an image is sent.
   const openRouterKey = process.env["OPENROUTER_API_KEY"];
@@ -81,7 +81,7 @@ function envKeyEntries(): LlmKeyEntry[] {
       apiKey: openRouterKey,
       model: process.env["OPENROUTER_MODEL"] ?? "openrouter/free",
       enabled: true,
-      priority: 1, // highest — tried first, NVIDIA keys become failover
+      priority: 1, // highest, tried first, NVIDIA keys become failover
       source: "env",
       status: h?.status ?? "healthy",
       coolDownUntil: h?.coolDownUntil ?? null,
@@ -159,7 +159,7 @@ async function dbKeyEntries(): Promise<LlmKeyEntry[]> {
     poolCache = { rows: mapped, at: Date.now() };
     return mapped.map((r) => toEntry(r));
   } catch {
-    // DB unavailable (e.g. migration not run yet) — fall back to env keys only.
+    // DB unavailable (e.g. migration not run yet), fall back to env keys only.
     return [];
   }
 }
@@ -181,7 +181,7 @@ function toEntry(r: PoolRow): LlmKeyEntry {
   };
 }
 
-/** Effective status — a key whose cooldown has passed is healthy again. */
+/** Effective status, a key whose cooldown has passed is healthy again. */
 function effectiveStatus(k: LlmKeyEntry): KeyStatus {
   if (!k.enabled) return "quarantined"; // treated as unavailable
   if (k.coolDownUntil && Date.now() < k.coolDownUntil) return k.status;
@@ -196,7 +196,7 @@ export function isHealthy(k: LlmKeyEntry): boolean {
 export async function listKeys(): Promise<LlmKeyEntry[]> {
   const dbKeys = await dbKeyEntries();
   const envKeys = envKeyEntries();
-  // DB keys first (by priority), then env keys — avoid duplicate env ids.
+  // DB keys first (by priority), then env keys, avoid duplicate env ids.
   return [...dbKeys, ...envKeys].sort((a, b) => a.priority - b.priority);
 }
 
@@ -292,8 +292,8 @@ export async function runWithLLM<T>(fn: (client: OpenAI, model: string) => Promi
   let lastErr: unknown = null;
   for (const key of order) {
     const client = new OpenAI({ apiKey: key.apiKey, baseURL: key.baseUrl });
-    // Transient 5xx (502/503/504) — especially from the OpenRouter free
-    // router, which picks a DIFFERENT free provider per request — is often
+    // Transient 5xx (502/503/504), especially from the OpenRouter free
+    // router, which picks a DIFFERENT free provider per request, is often
     // a single bad upstream, not a broken key. Retry the same key a couple
     // times (OpenRouter will re-route elsewhere) before declaring failure,
     // instead of quarantining the whole key for 5 minutes on one hiccup.

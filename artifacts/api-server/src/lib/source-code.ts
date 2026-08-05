@@ -22,8 +22,8 @@ export const REPO_ROOT = ((): string => {
   return path.resolve(process.cwd(), "..");
 })();
 
-/** Files/dirs Jarvis must never read — secrets and his own runtime instructions. */
-// NOTE: dot-prefixed names must use (^|[/\\]) anchors — a leading `\b` never
+/** Files/dirs Jarvis must never read, secrets and his own runtime instructions. */
+// NOTE: dot-prefixed names must use (^|[/\\]) anchors, a leading `\b` never
 // matches before a `.` when it follows a `/`, which would leak .git/.env/etc.
 export const BLOCKED_PATTERNS: RegExp[] = [
   /\bnode_modules\b/,
@@ -32,7 +32,7 @@ export const BLOCKED_PATTERNS: RegExp[] = [
   /\.(log|tsbuildinfo)$/,
   /\bdist\b/,
   /\bcoverage\b/,
-  // His own operating prompt — the exact code he's "currently using to work".
+  // His own operating prompt, the exact code he's "currently using to work".
   /config\/jarvis\.ts$/,
   /claude_changes_log\.txt$/,
   /(^|[/\\])\.session_state\.md$/,
@@ -87,7 +87,7 @@ export async function writeSourceFile(
   let oldContent: string | null = null;
   try {
     oldContent = await readFile(abs, "utf8");
-  } catch { /* file doesn't exist yet — that's fine */ }
+  } catch { /* file doesn't exist yet, that's fine */ }
   try {
     await mkdir(path.dirname(abs), { recursive: true });
     await writeFile(abs, content, "utf8");

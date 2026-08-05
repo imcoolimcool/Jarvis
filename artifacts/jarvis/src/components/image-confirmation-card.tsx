@@ -221,7 +221,7 @@ interface SourceCodeConfirmationCardProps {
   onCancel: () => void;
 }
 
-/** "Use code for this answer?" — Confirm allows Jarvis to read his own source
+/** "Use code for this answer?", Confirm allows Jarvis to read his own source
  *  code for this message; Cancel still sends the message but without code access. */
 export function SourceCodeConfirmationCard({ userText, onConfirm, onCancel }: SourceCodeConfirmationCardProps) {
   const { t } = useI18n();
@@ -282,7 +282,7 @@ interface BuildModeConfirmationCardProps {
   onCancel: () => void;
 }
 
-/** "Open Build Mode?" — Confirm gives Jarvis a Linux terminal + workspace to
+/** "Open Build Mode?", Confirm gives Jarvis a Linux terminal + workspace to
  *  set up the requested project (Replit-style). Cancel sends the message
  *  normally, no shell access. */
 export function BuildModeConfirmationCard({ userText, onConfirm, onCancel }: BuildModeConfirmationCardProps) {

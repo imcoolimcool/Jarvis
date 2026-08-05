@@ -1,7 +1,7 @@
 /**
  * Subtle haptic feedback for aesthetic UI interactions.
  *
- * Wraps the Vibration API (navigator.vibrate) — supported on Android
+ * Wraps the Vibration API (navigator.vibrate), supported on Android
  * (Chrome/Edge/Firefox). It silently no-ops everywhere else (desktop
  * browsers, iOS Safari, and any device with vibration disabled), so
  * these calls are always safe.
@@ -23,7 +23,7 @@ function canVibrate(): boolean {
       return false;
     }
   } catch {
-    /* matchMedia unavailable — proceed */
+    /* matchMedia unavailable, proceed */
   }
   return true;
 }
@@ -33,20 +33,20 @@ function buzz(pattern: HapticPattern): void {
   try {
     navigator.vibrate(pattern);
   } catch {
-    /* not supported — ignore */
+    /* not supported, ignore */
   }
 }
 
 export const haptics = {
-  /** Faint tick — mode switches, theme toggles, navigation, list taps. */
+  /** Faint tick, mode switches, theme toggles, navigation, list taps. */
   light: () => buzz(8),
-  /** Slightly firmer — sends, opens panels, confirms. */
+  /** Slightly firmer, sends, opens panels, confirms. */
   medium: () => buzz(18),
-  /** Noticeable pulse — record start/stop, destructive confirms. */
+  /** Noticeable pulse, record start/stop, destructive confirms. */
   heavy: () => buzz([20, 25, 20]),
-  /** Double tick — success / completion. */
+  /** Double tick, success / completion. */
   success: () => buzz([12, 35, 12]),
-  /** Longer single buzz — errors / warnings. */
+  /** Longer single buzz, errors / warnings. */
   error: () => buzz([60]),
   /** Fire an arbitrary pattern (power users / custom components). */
   raw: (pattern: HapticPattern) => buzz(pattern),

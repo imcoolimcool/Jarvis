@@ -18,7 +18,7 @@ interface UseObjectDetectionOptions {
 
 /**
  * Hook for real-time object detection using TensorFlow.js + COCO-SSD.
- * 100% FREE — runs entirely in the browser, no API key needed.
+ * 100% FREE, runs entirely in the browser, no API key needed.
  * Detects 80 object categories (people, phones, cups, keyboards, etc.)
  */
 export function useObjectDetection({
