@@ -9,7 +9,7 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, MicVocal, Send, Settings, PanelLeft, X, Plus, Bug, Search, Minimize2, Maximize2, AudioWaveform, ArrowLeft, MessagesSquare, MessageSquarePlus, EllipsisVertical, Camera, Globe, Sparkles, FileText } from 'lucide-react';
+import { Square, Mic, Send, Settings, PanelLeft, X, Plus, Bug, Search, Minimize2, Maximize2, Waves, ArrowLeft, MessagesSquare, SquarePen, EllipsisVertical, Camera, Globe, Lightbulb, FileText } from 'lucide-react';
 import type { Widget, TerminalResult } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, CommandCard } from '@/components/widgets';
 import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
@@ -1383,7 +1383,7 @@ export default function Home() {
               aria-label={t('sidebar.newChat')}
               title={t('sidebar.newChat')}
             >
-              <MessageSquarePlus className="w-[18px] h-[18px]" strokeWidth={2} />
+              <SquarePen className="w-[18px] h-[18px]" strokeWidth={2} />
             </button>
             <div className="w-px h-5 bg-black/10 dark:bg-white/15" />
             <button
@@ -1820,7 +1820,7 @@ export default function Home() {
                           : 'text-foreground/70 hover:text-foreground hover:bg-secondary/70'
                       }`}
                     >
-                      <Sparkles
+                      <Lightbulb
                         className={`w-[18px] h-[18px] transition-transform ${thinkingEnabled ? 'scale-110' : ''}`}
                         strokeWidth={2}
                       />
@@ -1887,14 +1887,14 @@ export default function Home() {
                        >
                          {chatDictating
                            ? <Square className="w-[17px] h-[17px] fill-current" />
-                           : <MicVocal className="w-[18px] h-[18px]" strokeWidth={2} />}
+                           : <Mic className="w-[18px] h-[18px]" strokeWidth={2} />}
                        </button>
                     </div>
                     {/* Blue circular button — opens full-screen voice mode */}
                     <button onClick={handleOpenVoiceMode} disabled={isBusy}
                       title={t('input.voiceMode')}
                       className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:opacity-90 active:scale-95 transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed">
-                       <AudioWaveform className="w-5 h-5" strokeWidth={2} />
+                       <Waves className="w-5 h-5" strokeWidth={2} />
                     </button>
                   </div>
 

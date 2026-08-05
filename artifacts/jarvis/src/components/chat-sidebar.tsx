@@ -10,9 +10,8 @@ import {
   Search,
   Download,
   Library,
-  MessageSquarePlus,
-  SlidersHorizontal,
-  Compass,
+  Pencil,
+  Settings,
 } from 'lucide-react';
 import { useI18n, type TranslationKey } from '@/lib/i18n';
 
@@ -114,7 +113,7 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
 
   const navItems = [
     { icon: MessagesSquare, label: t('sidebar.chat'), mode: 'chat' as const },
-    { icon: Compass, label: t('sidebar.navBrowser'), mode: 'agent' as const },
+    { icon: Search, label: t('sidebar.navBrowser'), mode: 'agent' as const },
   ];
 
   return (
@@ -249,7 +248,7 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
             onClick={() => { haptics.light(); onNew(); }}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-rounded rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity text-sm font-semibold shadow-sm"
           >
-            <MessageSquarePlus className="w-4 h-4" strokeWidth={2} />
+            <Pencil className="w-4 h-4" strokeWidth={2} />
             {t('sidebar.chat')}
           </button>
           <button
@@ -257,7 +256,7 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
             className="w-10 h-10 rounded-full border border-border/50 text-muted-foreground hover:text-foreground hover:bg-secondary/70 flex items-center justify-center transition-colors"
             aria-label={t('header.settings')}
           >
-            <SlidersHorizontal className="w-[18px] h-[18px]" strokeWidth={1.8} />
+            <Settings className="w-[18px] h-[18px]" strokeWidth={1.8} />
           </button>
         </div>
         {conversations.length > 0 && onClearAll ? (
