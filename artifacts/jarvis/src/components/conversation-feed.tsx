@@ -511,7 +511,7 @@ export function ConversationFeed({
         )}
       </AnimatePresence>
       {isEmpty && (
-        <div className="m-auto flex flex-col items-stretch justify-center gap-6 py-6 sm:py-8 px-4 w-full max-w-xl">
+        <div className="chat-empty-state m-auto flex flex-col items-stretch justify-center gap-6 py-6 sm:py-8 px-4 w-full max-w-xl">
           {/* Compact brand mark */}
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="relative w-12 h-12">

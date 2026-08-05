@@ -77,7 +77,8 @@ export default function Home() {
     if (plusButtonRef.current) {
       const rect = plusButtonRef.current.getBoundingClientRect();
       const MENU_W = 224; // w-56
-      const MENU_H = 380; // approximate height (menu is scrollable past this)
+      const isCompactHeight = window.innerHeight <= 700;
+      const MENU_H = isCompactHeight ? 220 : 380;
       // Align the menu's right edge with the button's right edge, but never
       // let it leave the viewport. Portal + fixed positioning means these
       // coordinates are always viewport-relative regardless of transformed
@@ -85,9 +86,15 @@ export default function Home() {
       const left = Math.max(8, Math.min(rect.right - MENU_W, window.innerWidth - MENU_W - 8));
       // Prefer opening upward (above the + button). If there isn't enough
       // room above, flip it below the button instead.
-      const roomAbove = rect.top - 8;
-      const top = roomAbove >= MENU_H
-        ? rect.top - MENU_H + 8
+      const composerRect = plusButtonRef.current
+        .closest('[data-chat-composer]')
+        ?.getBoundingClientRect();
+      const anchorBottom = composerRect?.top ?? rect.top;
+      const roomAbove = anchorBottom - 8;
+      const top = isCompactHeight
+        ? Math.max(8, anchorBottom - MENU_H - 8)
+        : roomAbove >= MENU_H
+          ? rect.top - MENU_H + 8
         : Math.min(rect.bottom + 8, Math.max(8, window.innerHeight - MENU_H - 8));
       setPlusMenuCoords({ top, left });
     }
@@ -1709,6 +1716,7 @@ export default function Home() {
 
                 {/* Input bar — #21: padding-bottom accounts for Safari's home indicator / safe area */}
                 <div
+                  data-chat-composer
                   className={`border-t border-border/30 bg-background/90 backdrop-blur-md px-4 pt-3 flex-shrink-0 space-y-2 relative ${dragOver ? 'border-primary/50' : ''}`}
                   style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
                   onDragOver={e => { e.preventDefault(); setDragOver(true); }}
@@ -1872,7 +1880,7 @@ export default function Home() {
                             : t('input.placeholder')
                         }
                         disabled={isBusy}
-                         className="w-full bg-transparent text-foreground placeholder:text-muted-foreground/50 placeholder:text-center font-sans text-[15px] pl-2 pr-12 py-2.5 outline-none resize-none min-h-[24px] max-h-[140px]"
+                          className="chat-composer-input w-full bg-transparent text-foreground placeholder:text-muted-foreground/50 placeholder:text-center font-sans text-[15px] pl-2 pr-12 py-2.5 outline-none resize-none min-h-[24px] max-h-[140px]"
                       />
                        <button
                          onClick={handleChatMicToggle}

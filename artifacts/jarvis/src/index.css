@@ -183,6 +183,53 @@
   }
 }
 
+/* The empty chat state needs height-aware positioning: the same vertical
+   offset that feels balanced on a tall phone can push the orb off-screen on
+   compact devices such as the iPhone 4. */
+.chat-empty-state {
+  transform: translateY(-5rem);
+}
+
+@media (max-height: 700px) {
+  .chat-empty-state {
+    transform: translateY(0);
+  }
+}
+
+@media (max-height: 540px) {
+  .chat-empty-state {
+    transform: translateY(0);
+    gap: 1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+}
+
+@media (max-height: 700px) {
+  .plus-menu {
+    max-height: min(14rem, calc(100dvh - 5.5rem));
+  }
+
+  .plus-menu-item {
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+  }
+}
+
+/* Keep the composer from becoming a multi-line block on narrow, short
+   phones. Enter still submits; longer draft text scrolls horizontally instead
+   of pushing the controls up the screen. */
+@media (max-width: 380px) and (max-height: 700px) {
+  .chat-composer-input {
+    height: 2.7rem;
+    min-height: 2.7rem;
+    max-height: 2.7rem;
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}
+
 /* Scrollbar — Apple-style thin */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }

@@ -15,6 +15,12 @@ For interactive coverage, isolate each major UI surface in a fresh page and re-s
 
 **How to apply:** Bound semantic control coverage per state, treat repeated data rows as one control type, and record blocked external/mutating requests separately from product failures.
 
+For mobile chat screenshots, explicitly set the persisted app mode to `chat` before loading the page; the preview may otherwise reopen in saved voice mode and hide the chat composer.
+
+**Why:** The app persists its mode in local storage, so a normal preview load can show a valid but unrelated full-screen voice surface during chat-layout QA.
+
+**How to apply:** Use a fresh page, set the mode before reload, then open overlays such as the plus menu and capture the target viewport.
+
 For end-to-end claims, DOM activation counts are not completion evidence. Each
 major surface and mutually exclusive action needs an isolated fresh state,
 post-action assertion, and a status of PASS, FAIL, BLOCKED, NOT TESTED, or

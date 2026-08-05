@@ -31,7 +31,7 @@ export function PlusMenu({ open, onClose, onAction, coords, labels }: PlusMenuPr
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="fixed z-50 w-56 rounded-xl border border-border/50 bg-background shadow-xl overflow-hidden max-h-[min(70vh,480px)] flex flex-col"
+            className="plus-menu fixed z-50 w-56 rounded-xl border border-border/50 bg-background shadow-xl overflow-y-auto max-h-[min(70vh,480px)] flex flex-col"
             style={{ top: coords.top, left: coords.left }}
           >
             <p className="px-3 pt-1.5 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Attach</p>
@@ -60,7 +60,7 @@ function Item({ icon: Icon, label, accent, onClick }: {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] transition-colors ${
+      className={`plus-menu-item w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12.5px] transition-colors ${
         accent ? 'text-foreground hover:bg-muted/50' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
       }`}
     >
