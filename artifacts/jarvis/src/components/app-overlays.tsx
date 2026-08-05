@@ -64,6 +64,7 @@ interface AppOverlaysProps {
   onSelectStudio: (id: StudioId) => void;
   designStudioOpen: boolean;
   onCloseDesign: () => void;
+  designInitialImage?: string | null;
   musicStudioOpen: boolean;
   onCloseMusic: () => void;
   // Research pulse chip
@@ -176,7 +177,7 @@ export function AppOverlays(props: AppOverlaysProps) {
       <StudiosHub open={props.studiosOpen} onClose={props.onCloseStudios} onSelect={props.onSelectStudio} />
 
       {/* ── Design Studio ── */}
-      <DesignStudio open={props.designStudioOpen} onClose={props.onCloseDesign} />
+      <DesignStudio open={props.designStudioOpen} onClose={props.onCloseDesign} initialImage={props.designInitialImage} />
 
       {/* ── Music Studio ── */}
       <MusicStudio open={props.musicStudioOpen} onClose={props.onCloseMusic} />

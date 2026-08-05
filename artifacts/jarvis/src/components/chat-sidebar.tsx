@@ -168,19 +168,19 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
 
       {/* Recent items */}
       <div className="px-4 pt-1 pb-1">
-        <p className="text-[11px] font-semibold text-muted-foreground/60 tracking-tight">{t('sidebar.recentItems')}</p>
+        <p className="text-[11px] font-semibold text-muted-foreground tracking-tight">{t('sidebar.recentItems')}</p>
       </div>
 
       {/* List */}
       <div className="flex-1 overflow-y-auto py-1 space-y-3 px-2">
         {conversations.length === 0 && (
-          <p className="text-center text-[11px] text-muted-foreground/40 mt-6 px-2">
+          <p className="text-center text-[11px] text-muted-foreground/70 mt-6 px-2">
             {t('sidebar.noConversations')}
           </p>
         )}
         {groups.map(group => (
           <div key={group.label}>
-            <p className="text-[10px] font-semibold text-muted-foreground/40 px-3 mb-1 tracking-wide">
+            <p className="text-[10px] font-semibold text-muted-foreground/70 px-3 mb-1 tracking-wide">
               {group.label}
             </p>
             <div className="space-y-0.5">

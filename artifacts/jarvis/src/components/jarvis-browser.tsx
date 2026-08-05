@@ -148,13 +148,14 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
         setConnected(false);
         wsRef.current = null;
         reconnectAttemptsRef.current += 1;
-        // After 3 failed attempts, assume Chrome is not installed
-        if (reconnectAttemptsRef.current >= 3) {
+        // After 2 failed attempts, show the browser-service unavailable state
+        // with a retry button — don't keep silently reconnecting.
+        if (reconnectAttemptsRef.current >= 2) {
           setConnectionFailed(true);
           return;
         }
-        // Auto-reconnect after 3 seconds
-        reconnectTimerRef.current = setTimeout(connectWs, 3000);
+        // Auto-reconnect once more after a short pause
+        reconnectTimerRef.current = setTimeout(connectWs, 2000);
       };
 
       ws.onerror = () => {
@@ -607,15 +608,16 @@ export function JarvisBrowser({ className = '', onAction, autoRunGoal, onGoalHan
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground text-xs font-mono">
             {connectionFailed ? (
               <>
-                <Globe className="w-8 h-8 text-muted-foreground/30" />
-                <span className="text-center max-w-[200px]">
-                  Chrome is not installed on the server. Ask your server admin to install Chromium to enable agent browsing.
+                <Globe className="w-8 h-8 text-muted-foreground/40" />
+                <span className="text-center max-w-[240px] font-sans text-muted-foreground">
+                  <span className="block font-semibold text-foreground mb-1">Browser service unavailable</span>
+                  Jarvis could not connect to the in-app browser. Make sure the Jarvis API is running and Chromium is installed on the server.
                 </span>
                 <button
                   onClick={() => { setConnectionFailed(false); reconnectAttemptsRef.current = 0; connectWs(); }}
-                  className="px-3 py-1.5 rounded border border-primary/30 text-primary hover:bg-primary/10 transition-colors text-[11px]"
+                  className="px-3 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors text-[11px]"
                 >
-                  Retry Connection
+                  Retry connection
                 </button>
               </>
             ) : connected ? (

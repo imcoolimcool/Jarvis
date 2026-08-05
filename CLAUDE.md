@@ -1,5 +1,9 @@
 # Claude Code System Routine
 
+CRITICAL RULE — ENFORCED AT END OF EVERY RESPONSE:
+- After EVERY single response (no exceptions), run: git add -A && git commit -m "<what I just did>" && git push
+- User requirement: ALWAYS PUSH AND COMMIT AFTER EVERY SINGLE RESPONSE, EVERY
+
 CRITICAL ROUTINE FOR EVERY SINGLE MESSAGE:
 1. Read the user's new message carefully.
 2. IMMEDIATELY read '.session_state.md' using a tool — this is the SOURCE OF TRUTH for all ongoing work. It tracks every single step, what's done, what's next. The very next thing I must do is the first [ ] unchecked item.

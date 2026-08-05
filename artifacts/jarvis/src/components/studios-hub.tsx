@@ -78,8 +78,8 @@ const STUDIOS: Studio[] = [
   },
   {
     id: 'factcheck',
-    name: 'Fact Check',
-    tagline: 'Verify any answer against the web',
+    name: 'Fact-check a message',
+    tagline: 'Verifies chat responses against the web',
     replaces: 'Snopes · Fact-check sites',
     icon: ShieldCheck,
     tint: 'bg-green-500/10', tintDark: 'dark:bg-green-400/15', text: 'text-green-500 dark:text-green-400',

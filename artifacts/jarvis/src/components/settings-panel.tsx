@@ -117,7 +117,7 @@ function getProfile(): { name: string; initials: string } {
       }
     }
   } catch { /* ignore */ }
-  return { name: 'Kasper Kal', initials: 'KK' };
+  return { name: 'Your profile', initials: 'Y' };
 }
 
 /** ChatGPT-style settings row */
