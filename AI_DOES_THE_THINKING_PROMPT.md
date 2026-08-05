@@ -1,4 +1,4 @@
-# JARVIS — FINAL IMPLEMENTATION PROMPT (definitive, buildable)
+# JARVIS: FINAL IMPLEMENTATION PROMPT (definitive, buildable)
 
 This is the LAST prompt. Execute it in phases, in order. Every phase must leave the app
 building and the locked list (section 13) intact. Commit after each phase. When all phases
@@ -12,26 +12,55 @@ UI (see section 14). No studio is a stub; no studio overclaims.
 
 ---
 
-## 0. EXECUTION PLAN (phases + gates)
+## 0. HOW TO EXECUTE THIS PROMPT (READ FIRST)
 
-Work strictly in this order. After each phase: typecheck, build, run the app, commit. Do not
-start the next phase until the current one passes its gate. Keep the app green the whole way.
+This project is large. It is deliberately split into 7 INDEPENDENT PHASES so that you can
+execute each phase in a fresh context window without losing the thread. Follow these rules
+exactly:
 
-- **Phase A — Foundation.** File storage (section 12.1), all new DB tables + migrations
-  (section 12.3), the intent router (section 3), and the global em-dash pass (section 2.1).
-  Gate: chat works, files persist, `grep "—"` in strings = 0, build green.
-- **Phase B — Chat surface.** Chat box (section 4), chat-header menu (section 5), projects
-  (section 6), Gallery (section 7), image scribble (section 8), accent fix (section 9),
-  settings restructure (section 10), AI answer style (section 11).
-  Gate: every acceptance item in section 15 that is marked B passes.
-- **Phase C — Groupchats + accounts.** Accounts and invite codes (section 5c), AI persona
-  roundtables, human group chats, group settings.
-  Gate: two devices can join a group via code; personas converse; build mode runs unattended.
-- **Phase D — Studios to full-parity.** Music, Design, Build (section 14).
-  Gate: each studio is feature-complete per its full surface in section 14, produces a real
-  artifact end to end, and is honestly labeled where free tech caps a feature.
-- **Phase E — Polish + QA.** Full acceptance matrix (section 15), broken-controls audit,
-  dedupe, i18n both languages, performance, final grep gates.
+- ONE PHASE PER SESSION. When you start a phase, read ONLY that phase's scope plus the code
+  it touches. Do NOT load the entire spec into context; it is too large to hold reliably.
+- WORK STRICTLY IN ORDER. Each phase ends with a GATE (a concrete check). Do not start the
+  next phase until the current gate passes.
+- KEEP IT GREEN. Every phase must leave the app building and the locked list (section 13)
+  intact. After each phase: typecheck, build, run the app, commit.
+- NEVER REGRESS WHAT ALREADY WORKS. The em-dash pass (section 2.1) is ALREADY DONE and
+  verified; treat it as a gate to preserve, not a task to redo.
+- IF A PHASE IS IMPOSSIBLE OR A REQUIREMENT CONFLICTS WITH REALITY, STOP and report it with
+  evidence. Do not quietly rewrite the spec.
+
+### The 7 phases
+
+1. **Phase A: Foundation.** File storage (section 12.1) and all new DB tables + migrations
+   (section 12.3). The em-dash pass (section 2.1) is already complete; only verify the grep
+   gate still holds.
+   Gate: chat works, files persist via R2 or the local-disk fallback, migrations apply,
+   build green.
+2. **Phase B: Intent router + chat core.** The intent router (section 3), the chat box +
+   plugin menu (section 4), AI answer style (section 11).
+   Gate: one-input routing works for the whole table in section 3; the chat box shows only
+   +, mic, voice; the "@" plugin menu exposes the rest; AI answers follow the style rules.
+3. **Phase C: Chat features.** The chat-header menu with all seven items (section 5),
+   projects (section 6), Gallery (section 7), image scribble (section 8), accent color fix
+   (section 9), settings restructure (section 10).
+   Gate: all seven menu items work; projects, gallery, scribble, accent, and settings pass
+   their acceptance checks.
+4. **Phase D: Groupchats + accounts.** Groupchats (section 5b), accounts + invite codes
+   (section 5c), group settings.
+   Gate: a second account joins a group via a 4-digit code and messages arrive live; AI
+   persona roundtables converse autonomously; build mode runs unattended.
+5. **Phase E: Build Studio (Replit-grade).** Section 14.1 in full.
+   Gate: editor, file tree, terminal, run/preview, packages/env, git, AI scaffolding, and
+   saved build-apps all work end to end.
+6. **Phase F: Design + Music studios.** Section 14.2 (Design, Canva-grade) and section 14.3
+   (Music, Suno-surface, honestly labeled).
+   Gate: Design produces and exports real designs; Music generates playable audio via the
+   worker and downloads it; both labels are honest.
+7. **Phase G: Polish + QA.** Full acceptance matrix (section 15), broken-controls audit
+   (section 10.4), dedupe (section 10.3), i18n both languages, performance, final grep
+   gates (section 2.1).
+   Gate: every acceptance item in section 15 passes; no dead controls; both languages
+   complete.
 
 ---
 
@@ -51,7 +80,7 @@ honestly in the UI rather than stubbing it.
 ## 2. GLOBAL HARD RULES
 
 ### 2.1 ZERO EM DASHES, everywhere a human can read it
-The codebase currently has 543 em dashes (—); 116 in api-server string literals (AI prompts,
+The codebase currently has 543 em dashes ; 116 in api-server string literals (AI prompts,
 errors, SSE) and 64 in jarvis string literals (labels, placeholders, toasts, aria). The AI
 mimics its own prompts, so prompts matter most.
 - Remove EVERY em dash from any string that reaches a user: UI text, i18n, placeholders,
@@ -118,17 +147,17 @@ Combo support ("research X and remind me"). Quantum/Omni research depth is NEVER
 
 Remove the Settings entry. New contents, all working:
 
-1. **Share chat** — tap Share; a confirmation states clearly "Anyone with this link can view
+1. **Share chat**: tap Share; a confirmation states clearly "Anyone with this link can view
    this ENTIRE conversation, including any personal context in it." On confirm, copy a public
    read-only link to the whole conversation. Full content, nothing stripped.
-2. **Export as .txt** — downloads the chat as a readable text file. ALSO remove the Export
+2. **Export as .txt**: downloads the chat as a readable text file. ALSO remove the Export
    button from the sidebar (it lives here now).
-3. **Groupchat** — see 5b below.
-4. **Pin** — pins the chat to the top of the history; pinned sort above all, with an
+3. **Groupchat**: see 5b below.
+4. **Pin**: pins the chat to the top of the history; pinned sort above all, with an
    indicator; toggle unpins.
-5. **Files** — every file uploaded or received in THIS chat, preview and open.
-6. **Search in chat** — filters this chat's messages and jumps to matches.
-7. **Add to project** — attaches the chat to a project (section 6), or "New project".
+5. **Files**: every file uploaded or received in THIS chat, preview and open.
+6. **Search in chat**: filters this chat's messages and jumps to matches.
+7. **Add to project**: attaches the chat to a project (section 6), or "New project".
 
 ### 5b. GROUPCHATS (two modes, one feature)
 A groupchat is a conversation with multiple participants. Creating one opens Group Settings
@@ -273,7 +302,7 @@ changes. The files DB lives in the separate Neon database; everything else in th
 - `use-chat-stream.ts` hook contract and the `processUserText` flow.
 - Group/account features degrade gracefully when single-user.
 
-## 14. STUDIOS — FULL COMPETITOR SURFACE, BEST FREE TECH, HONEST LABELS
+## 14. STUDIOS: FULL COMPETITOR SURFACE, BEST FREE TECH, HONEST LABELS
 
 Each studio is built to the FULL feature surface below. Where free/local tech caps a feature,
 ship the best free version and label it honestly in the UI (never a silent stub). "Done" for
@@ -332,44 +361,55 @@ cancellation, honest limits. Already exists; keep and polish to parity.
 
 ## 15. ACCEPTANCE CRITERIA (run per phase; no tool selection allowed)
 
-Phase B (chat surface):
-1. "What's the latest on the iPhone launch?" auto web search, cited answer, no toggle.
-2. "Set a 10 minute timer" timer pill appears. No plus menu.
-3. "Draw an image of a cat in a spacesuit" image confirm, generates.
-4. First-run screen: sidebar, orb, one input, nothing else.
-5. Chat box shows only +, mic, voice; "@" opens the plugin menu with the rest.
-6. Chat-header menu has Share, Export .txt, Groupchat, Pin, Files, Search, Add to project.
-   No Settings entry. Sidebar Export button is gone.
-6a. Share shows the full-chat confirmation; the link opens the whole chat read-only.
-7. Project: create, add chat, switch project, new chat lands in project, context flows.
-8. Gallery lists every uploaded/created file and build app across all chats, filterable.
-9. Tapping an attached image opens the scribble overlay; thickness and colour work; Save
-   attaches the annotated image.
-10. Accent colour visibly changes the whole app on pick and persists across reload.
-11. Settings: every view has real content, nothing duplicated, Quantum/Omni behind Advanced.
-12. Chat titles from the starting message, 2-4 words, never "New Conversation".
-13. Zero em dashes in any UI string, any AI answer, any notification (grep gate + live chat).
+### Phase A (foundation):
+A1. Files persist across reload (R2 or local-disk fallback); Gallery and Files-in-chat read
+    from the same layer.
+A2. All migrations apply cleanly on a fresh database.
+A3. Zero em dashes in any UI string, any AI answer, any notification (grep gate + live chat).
+    Already done; keep it that way.
 
-Phase C (groupchats + accounts):
-14. AI persona roundtable: 3 personas converse with each other autonomously; a build task
+### Phase B (intent router + chat core):
+B1. "What's the latest on the iPhone launch?" auto web search, cited answer, no toggle.
+B2. "Set a 10 minute timer" timer pill appears. No plus menu.
+B3. "Draw an image of a cat in a spacesuit" image confirm, generates.
+B4. Chat box shows only +, mic, voice; "@" opens the plugin menu with the rest.
+B5. Chat titles from the starting message, 2-4 words, never "New Conversation".
+B6. AI answers follow the style rules (no em dashes; markdown in chat, short in voice).
+
+### Phase C (chat features):
+C1. First-run screen: sidebar, orb, one input, nothing else.
+C2. Chat-header menu has Share, Export .txt, Groupchat, Pin, Files, Search, Add to project.
+    No Settings entry. Sidebar Export button is gone.
+C2a. Share shows the full-chat confirmation; the link opens the whole chat read-only.
+C3. Project: create, add chat, switch project, new chat lands in project, context flows.
+C4. Gallery lists every uploaded/created file and build app across all chats, filterable.
+C5. Tapping an attached image opens the scribble overlay; thickness and colour work; Save
+    attaches the annotated image.
+C6. Accent colour visibly changes the whole app on pick and persists across reload.
+C7. Settings: every view has real content, nothing duplicated, Quantum/Omni behind Advanced.
+
+### Phase D (groupchats + accounts):
+D1. AI persona roundtable: 3 personas converse with each other autonomously; a build task
     completes without the user typing.
-15. Human group: a second account joins via a 4-digit invite code and messages land live;
+D2. Human group: a second account joins via a 4-digit invite code and messages land live;
     the AI toggle (always vs @Jarvis) changes behavior.
-16. Group Settings button appears next to the 3-dot menu for group chats.
+D3. Group Settings button appears next to the 3-dot menu for group chats.
 
-Phase D (studios, per the full surface in section 14):
-17. Music Studio: prompt to a playable track via the worker, playback, download, history;
+### Phase E (Build Studio, Replit-grade):
+E1. Multi-file editor + file tree + terminal + run/preview with live reload, package/env
+    support, git clone/commit, AI scaffolding, saved build-apps that reopen and launch from
+    the Gallery. Genuinely Replit-grade, not a card feed.
+
+### Phase F (Design + Music):
+F1. Design Studio: canvas editor with layers/shapes/text/images, templates and presets,
+    AI edit + background removal + upscale, style presets, PNG/JPG/PDF/SVG export, saved
+    projects with history. Genuinely Canva-grade, not generate-and-edit-only.
+F2. Music Studio: prompt to a playable track via the worker, playback, download, history;
     the instrumental ceiling is labeled; 30+ tracks a month cost nothing; offline
     procedural fallback works.
-18. Design Studio: canvas editor with layers/shapes/text/images, templates and presets,
-    AI edit + background removal + upscale, style presets, PNG/JPG/PDF/SVG export, saved
-    projects with history. It is genuinely Canva-grade, not generate-and-edit-only.
-19. Build Studio: multi-file editor + file tree + terminal + run/preview with live reload,
-    package/env support, git clone/commit, AI scaffolding, saved build-apps that reopen,
-    listed in the Gallery with launch. It is genuinely Replit-grade, not a card feed.
 
-Phase E (polish):
-20. Broken-controls audit clean; dedupe done; both languages complete; app is fast.
+### Phase G (polish + QA):
+G1. Broken-controls audit clean; dedupe done; both languages complete; app is fast.
 
 ## 16. OUT OF SCOPE (never)
 
