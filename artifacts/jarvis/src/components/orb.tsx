@@ -1,4 +1,3 @@
-import { useMemo, useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square } from 'lucide-react';
 
@@ -9,68 +8,6 @@ interface OrbProps {
   onClick?: () => void;
   /** Audio amplitude 0–1 for reactive particles during speaking/recording */
   amplitude?: number;
-}
-
-// ── Lightweight particle system: a static network that responds to audio ──
-interface Particle {
-  angle: number;
-  radius: number;
-  size: number;
-  delay: number;
-  orbitSpeed: number;
-  drift: number;
-}
-
-function useParticles(count = 32) {
-  return useMemo<Particle[]>(() =>
-    Array.from({ length: count }).map((_, i) => ({
-      angle: (i / count) * 360,
-      radius: 100 + Math.random() * 60,
-      size: 1.5 + Math.random() * 3,
-      delay: Math.random() * 3,
-      orbitSpeed: 0.3 + Math.random() * 0.6,
-      drift: (Math.random() - 0.5) * 0.5,
-    })),
-    [count]
-  );
-}
-
-function ParticleRing({ status, amplitude = 0 }: { status: AppState; amplitude?: number }) {
-  const particles = useParticles(32);
-  const isVoiceState = status === 'speaking' || status === 'recording';
-
-  const color =
-    status === 'recording' ? '255, 80, 80' :
-    status === 'speaking' ? '80, 255, 180' :
-    status === 'thinking' || status === 'transcribing' ? '255, 200, 80' :
-    '0, 122, 255';
-
-  return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      {particles.map((p, i) => {
-        const radians = (p.angle * Math.PI) / 180;
-        const breathing = isVoiceState ? amplitude * (18 + Math.sin(i * 1.7) * 7) : 0;
-        const x = Math.cos(radians) * (p.radius + breathing);
-        const y = Math.sin(radians) * (p.radius + breathing);
-        const opacity = isVoiceState ? 0.16 + amplitude * 0.55 : 0.12;
-        return (
-          <div
-            key={i}
-            className="absolute rounded-full transition-[transform,opacity,box-shadow] duration-150 ease-out"
-            style={{
-              width: `${p.size + (isVoiceState ? amplitude * 3 : 0)}px`,
-              height: `${p.size + (isVoiceState ? amplitude * 3 : 0)}px`,
-              background: `rgba(${color}, ${opacity})`,
-              boxShadow: isVoiceState && amplitude > 0.04
-                ? `0 0 ${4 + amplitude * 8}px rgba(${color}, ${0.25 + amplitude * 0.45})`
-                : 'none',
-              transform: `translate(${x}px, ${y}px)`,
-            }}
-          />
-        );
-      })}
-    </div>
-  );
 }
 
 // ── Animated rings for different states ──
@@ -161,9 +98,6 @@ export function Orb({ status, onClick, amplitude = 0 }: OrbProps) {
           mass: 0.35,
         }}
       />
-
-      {/* Particle ring */}
-      <ParticleRing status={status} amplitude={amplitude} />
 
       {/* Status rings */}
       <StatusRings status={status} amplitude={amplitude} />
