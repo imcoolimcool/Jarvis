@@ -2,6 +2,10 @@
  * Build an extremely detailed error response object for debugging.
  * This is sent alongside the user-friendly error message so the
  * frontend can display a "Show Details" panel with full diagnostics.
+ *
+ * The detail object intentionally contains EVERYTHING that could be
+ * relevant to the error (sanitized — secrets are booleans/redacted),
+ * so the user can copy one blob and paste it into a bug report.
  */
 
 import type { Request } from "express";
@@ -29,12 +33,17 @@ export interface ErrorDetail {
     query: Record<string, unknown>;
     params: Record<string, unknown>;
     bodyKeys: string[];
+    bodyPreview: Record<string, unknown>;
     bodySizeBytes: number;
     contentType: string | undefined;
     userAgent: string | undefined;
     origin: string | undefined;
     referer: string | undefined;
     ip: string | undefined;
+    /** All request headers, sanitized (auth/cookie/keys redacted) */
+    headers: Record<string, string>;
+    /** Raw request body (JSON-serializable, secrets redacted, truncated) */
+    body: string;
   };
   /** Environment snapshot (safe vars only) */
   environment: {
@@ -53,6 +62,32 @@ export interface ErrorDetail {
       external: number;
     };
   };
+  /** Full service configuration matrix — which integrations are live */
+  config: {
+    openRouterConfigured: boolean;
+    openRouterModel: string | undefined;
+    openAiConfigured: boolean;
+    openAiModel: string | undefined;
+    nvidiaConfigured: boolean;
+    elevenLabsConfigured: boolean;
+    tavilyConfigured: boolean;
+    figmaConfigured: boolean;
+    weatherConfigured: boolean;
+    gmailConfigured: boolean;
+    spotifyConfigured: boolean;
+    databaseConfigured: boolean;
+    browserAutomationConfigured: boolean;
+  };
+  /** Process / runtime info */
+  process: {
+    nodeVersion: string;
+    platform: string;
+    arch: string;
+    pid: number;
+    cwd: string;
+    commandLine: string;
+    versions: Record<string, string>;
+  };
   /** Request duration in milliseconds (if measurable) */
   durationMs: number | null;
   /** LLM-specific details (if the error came from an LLM call) */
@@ -64,8 +99,53 @@ export interface ErrorDetail {
     apiErrorStatus: number | undefined;
     tokensUsed: number | undefined;
     requestId: string | undefined;
+    /** The provider's raw error body (if any) */
+    rawError: string | undefined;
+    /** The base URL that was being called */
+    baseUrl: string | undefined;
   };
 }
+
+const SENSITIVE_HEADERS = new Set([
+  "authorization",
+  "cookie",
+  "x-api-key",
+  "api-key",
+  "apikey",
+  "x-auth-token",
+  "x-access-token",
+  "proxy-authorization",
+  "set-cookie",
+  "x-google-api-key",
+  "x-rapidapi-key",
+  "x-figma-token",
+  "x-openai-api-key",
+]);
+
+const SENSITIVE_BODY_KEYS = new Set([
+  "fileBase64",
+  "password",
+  "token",
+  "secret",
+  "apiKey",
+  "api_key",
+  "apikey",
+  "authorization",
+  "auth",
+  "key",
+  "accessToken",
+  "access_token",
+  "refreshToken",
+  "refresh_token",
+  "clientSecret",
+  "client_secret",
+  "OPENROUTER_API_KEY",
+  "OPENAI_LLM_API_KEY",
+  "ELEVENLABS_API_KEY",
+  "TAVILY_API_KEY",
+  "FIGMA_ACCESS_TOKEN",
+  "DATABASE_URL",
+]);
 
 /** Sanitize a stack trace to only include project-internal paths */
 function sanitizeStack(stack: string | undefined): string {
@@ -86,12 +166,36 @@ function sanitizeStack(stack: string | undefined): string {
     .join("\n");
 }
 
+/** Redact sensitive header values */
+function sanitizeHeader(key: string, value: string): string {
+  if (SENSITIVE_HEADERS.has(key.toLowerCase())) return "[REDACTED]";
+  if (/key|token|secret|auth|cookie|password/i.test(key)) return "[REDACTED]";
+  return value.length > 300 ? value.slice(0, 300) + "..." : value;
+}
+
+/** Truncate and redact any value in a body preview */
+function sanitizeBodyValue(key: string, value: unknown): unknown {
+  if (SENSITIVE_BODY_KEYS.has(key)) return "[REDACTED]";
+  if (typeof value === "string") {
+    if (value.length > 500) return value.slice(0, 500) + "...";
+    // Looks like a base64/secret blob
+    if (value.length > 50 && /^[A-Za-z0-9+/=_-]{50,}$/.test(value)) return "[REDACTED blob]";
+  }
+  if (typeof value === "object" && value !== null) {
+    const obj = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k, sanitizeBodyValue(k, v)]),
+    );
+  }
+  return value;
+}
+
 /** Determine an error code from the error message and type */
 function deriveErrorCode(err: Error, msg: string): string {
   const name = err.name.toLowerCase();
   const m = msg.toLowerCase();
 
-  if (m.includes("api key") || m.includes("authentication") || m.includes("401") || m.includes("unauthorized"))
+  if (m.includes("api key") || m.includes("authentication") || m.includes("401") || m.includes("unauthorized") || m.includes("user not found"))
     return "LLM_AUTH_FAILED";
   if (m.includes("rate limit") || m.includes("429"))
     return "LLM_RATE_LIMITED";
@@ -101,8 +205,12 @@ function deriveErrorCode(err: Error, msg: string): string {
     return "NETWORK_ERROR";
   if (m.includes("database") || m.includes("sqlite") || m.includes("drizzle"))
     return "DATABASE_ERROR";
-  if (m.includes("openai") || m.includes("nvidia") || m.includes("llm"))
+  if (m.includes("openai") || m.includes("nvidia") || m.includes("llm") || m.includes("openrouter"))
     return "LLM_ERROR";
+  if (m.includes("bad gateway") || m.includes("502") || m.includes("upstream"))
+    return "UPSTREAM_ERROR";
+  if (m.includes("400"))
+    return "BAD_REQUEST";
   if (name === "typeerror")
     return "TYPE_ERROR";
   if (name === "referenceerror")
@@ -111,10 +219,12 @@ function deriveErrorCode(err: Error, msg: string): string {
     return "SYNTAX_ERROR";
   if (m.includes("file") || m.includes("pdf") || m.includes("mammoth"))
     return "FILE_PROCESSING_ERROR";
-  if (m.includes("browser") || m.includes("puppeteer"))
+  if (m.includes("browser") || m.includes("puppeteer") || m.includes("websocket"))
     return "BROWSER_ERROR";
   if (m.includes("tts") || m.includes("speech") || m.includes("elevenlabs"))
     return "TTS_ERROR";
+  if (m.includes("figma"))
+    return "FIGMA_ERROR";
 
   return "INTERNAL_ERROR";
 }
@@ -123,21 +233,39 @@ function deriveErrorCode(err: Error, msg: string): string {
 function extractLLMDetails(err: Error): ErrorDetail["llm"] {
   const msg = err.message;
 
-  // Try to extract HTTP status from error message
-  const statusMatch = msg.match(/status[:\s]*(\d{3})/i);
-  const apiStatus = statusMatch ? parseInt(statusMatch[1], 10) : undefined;
+  // OpenAI SDK errors carry structured fields — use them when present.
+  const errAny = err as unknown as {
+    status?: number;
+    code?: string;
+    request_id?: string;
+    headers?: Record<string, string>;
+    error?: { message?: string; code?: string; request_id?: string; type?: string };
+  };
+  const apiStatus = errAny.status;
+  const apiCode = errAny.code ?? errAny.error?.code;
+  const requestId = errAny.request_id ?? errAny.error?.request_id;
 
-  // Try to extract request ID
-  const requestIdMatch = msg.match(/request[_-]?id[:\s]*([a-zA-Z0-9_-]+)/i);
+  // Fallback: try to extract HTTP status from error message
+  const statusMatch = msg.match(/status[:\\s]*(\\d{3})/i);
+  const msgStatus = statusMatch ? parseInt(statusMatch[1], 10) : undefined;
+
+  // Try to extract request ID from message
+  const requestIdMatch = msg.match(/request[_-]?id[:\\s]*([a-zA-Z0-9_-]+)/i);
+
+  // Detect the actual endpoint being called
+  const openRouter = msg.includes("openrouter") || !!errAny.headers?.["cf-ray"];
+  const endpoint = openRouter ? "https://openrouter.ai/api/v1" : "https://integrate.api.nvidia.com/v1";
 
   return {
-    model: process.env["OPENAI_LLM_MODEL"] ?? "unknown",
-    endpoint: "https://integrate.api.nvidia.com/v1",
-    apiErrorCode: undefined,
+    model: process.env["OPENROUTER_MODEL"] ?? process.env["OPENAI_LLM_MODEL"] ?? "unknown",
+    endpoint,
+    apiErrorCode: apiCode,
     apiErrorMessage: msg.length > 500 ? msg.slice(0, 500) + "..." : msg,
-    apiErrorStatus: apiStatus,
+    apiErrorStatus: apiStatus ?? msgStatus,
     tokensUsed: undefined,
-    requestId: requestIdMatch?.[1],
+    requestId: requestId ?? requestIdMatch?.[1],
+    rawError: JSON.stringify(errAny.error ?? {}, null, 2).slice(0, 500) || undefined,
+    baseUrl: endpoint,
   };
 }
 
@@ -154,20 +282,24 @@ export function buildErrorDetail(
   // Sanitize request body — remove sensitive fields
   const body = req.body as Record<string, unknown> | undefined;
   const bodyKeys = body ? Object.keys(body) : [];
-  const sensitiveKeys = new Set(["fileBase64", "password", "token", "secret", "apiKey", "api_key"]);
-  const sanitizedBodySize = body
-    ? JSON.stringify(
-        Object.fromEntries(
-          Object.entries(body).map(([k, v]) =>
-            sensitiveKeys.has(k)
-              ? [k, `[REDACTED - ${(v as string)?.length ?? 0} chars]`]
-              : [k, typeof v === "string" && v.length > 200 ? v.slice(0, 200) + "..." : v]
-          )
-        )
-      ).length
-    : 0;
+
+  const sanitizedBody = body ? sanitizeBodyValue("body", body) as Record<string, unknown> : {};
+  const bodyPreview = Object.fromEntries(
+    Object.entries(sanitizedBody).map(([k, v]) =>
+      typeof v === "string" && v.length > 200 ? [k, v.slice(0, 200) + "..."] : [k, v],
+    ),
+  );
+  const bodySizeBytes = body ? JSON.stringify(sanitizedBody).length : 0;
 
   const mem = process.memoryUsage();
+  const pv = process.versions;
+
+  // All request headers, sanitized
+  const headers: Record<string, string> = {};
+  for (const [k, v] of Object.entries(req.headers)) {
+    if (v === undefined) continue;
+    headers[k] = sanitizeHeader(k, Array.isArray(v) ? v.join(", ") : v);
+  }
 
   const detail: ErrorDetail = {
     message: deriveUserMessage(err, msg),
@@ -184,12 +316,15 @@ export function buildErrorDetail(
       query: req.query as Record<string, unknown>,
       params: req.params,
       bodyKeys,
-      bodySizeBytes: sanitizedBodySize,
+      bodyPreview,
+      bodySizeBytes,
       contentType: req.headers["content-type"],
       userAgent: req.headers["user-agent"],
       origin: req.headers["origin"],
       referer: req.headers["referer"],
       ip: req.ip,
+      headers,
+      body: JSON.stringify(bodyPreview, null, 2).slice(0, 4000),
     },
     environment: {
       nodeEnv: process.env["NODE_ENV"],
@@ -207,6 +342,35 @@ export function buildErrorDetail(
         external: Math.round(mem.external / 1024 / 1024),
       },
     },
+    config: {
+      openRouterConfigured: !!process.env["OPENROUTER_API_KEY"],
+      openRouterModel: process.env["OPENROUTER_MODEL"],
+      openAiConfigured: !!process.env["OPENAI_LLM_API_KEY"],
+      openAiModel: process.env["OPENAI_LLM_MODEL"],
+      nvidiaConfigured: !!process.env["NVIDIA_API_KEY"] || !!process.env["NVIDIA_NIM_API_KEY"] || !!process.env["OPENAI_LLM_API_KEY"],
+      elevenLabsConfigured: !!process.env["ELEVENLABS_API_KEY"],
+      tavilyConfigured: !!(process.env["TAVILY_API_KEY"] || process.env["WEB_SEARCH_API_KEY"]),
+      figmaConfigured: !!process.env["FIGMA_ACCESS_TOKEN"],
+      weatherConfigured: !!(process.env["OPENWEATHER_API_KEY"] || process.env["WEATHER_API_KEY"]),
+      gmailConfigured: !!process.env["GMAIL_CLIENT_ID"] || !!process.env["GOOGLE_CLIENT_ID"],
+      spotifyConfigured: !!process.env["SPOTIFY_CLIENT_ID"],
+      databaseConfigured: !!process.env["DATABASE_URL"],
+      browserAutomationConfigured: !!(process.env["PUPPETEER_EXECUTABLE_PATH"] || process.env["CHROME_PATH"]),
+    },
+    process: {
+      nodeVersion: process.version,
+      platform: `${process.platform}-${process.arch}`,
+      arch: process.arch,
+      pid: process.pid,
+      cwd: process.cwd(),
+      commandLine: process.argv.slice(1, 4).join(" ").slice(0, 200),
+      versions: {
+        node: pv.node ?? "",
+        v8: pv.v8 ?? "",
+        openssl: pv.openssl ?? "",
+        "typescript-ish": "n/a",
+      },
+    },
     durationMs: now - startMs,
     llm: extractLLMDetails(err),
   };
@@ -216,11 +380,13 @@ export function buildErrorDetail(
 
 /** Derive a user-friendly message from the error (used in detail.message) */
 function deriveUserMessage(err: Error, msg: string): string {
-  if (msg.includes("OPENAI_LLM_API_KEY")) return "LLM API key not configured on the server.";
-  if (msg.includes("401") || msg.includes("Unauthorized")) return "LLM authentication failed — check API key.";
+  if (msg.includes("OPENAI_LLM_API_KEY") || msg.includes("OPENROUTER_API_KEY")) return "LLM API key not configured on the server.";
+  if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("User not found")) return "LLM authentication failed — the API key is invalid or expired.";
+  if (msg.includes("403")) return "LLM API key denied — verify it has access to this model.";
   if (msg.includes("429") || msg.includes("Rate limit")) return "LLM rate limit exceeded — try again shortly.";
   if (msg.includes("timeout") || msg.includes("abort")) return "Request timed out — check your connection.";
   if (msg.includes("ECONNREFUSED")) return "Backend service unreachable — server may be down.";
+  if (msg.includes("502") || msg.includes("Bad Gateway") || msg.includes("upstream")) return "Upstream provider error (502) — try again; the free router may pick a different model.";
   if (msg.includes("fetch failed") || msg.includes("network")) return "Network error — unable to reach the server.";
   return msg;
 }
@@ -235,6 +401,7 @@ export function buildSimpleErrorDetail(
   const now = Date.now();
   const msg = err.message || "Unknown error";
   const mem = process.memoryUsage();
+  const pv = process.versions;
 
   return {
     message: msg,
@@ -251,12 +418,15 @@ export function buildSimpleErrorDetail(
       query: {},
       params: {},
       bodyKeys: [],
+      bodyPreview: {},
       bodySizeBytes: 0,
       contentType: undefined,
       userAgent: undefined,
       origin: undefined,
       referer: undefined,
       ip: undefined,
+      headers: {},
+      body: "",
     },
     environment: {
       nodeEnv: process.env["NODE_ENV"],
@@ -272,6 +442,35 @@ export function buildSimpleErrorDetail(
         heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
         heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
         external: Math.round(mem.external / 1024 / 1024),
+      },
+    },
+    config: {
+      openRouterConfigured: !!process.env["OPENROUTER_API_KEY"],
+      openRouterModel: process.env["OPENROUTER_MODEL"],
+      openAiConfigured: !!process.env["OPENAI_LLM_API_KEY"],
+      openAiModel: process.env["OPENAI_LLM_MODEL"],
+      nvidiaConfigured: !!process.env["NVIDIA_API_KEY"] || !!process.env["NVIDIA_NIM_API_KEY"] || !!process.env["OPENAI_LLM_API_KEY"],
+      elevenLabsConfigured: !!process.env["ELEVENLABS_API_KEY"],
+      tavilyConfigured: !!(process.env["TAVILY_API_KEY"] || process.env["WEB_SEARCH_API_KEY"]),
+      figmaConfigured: !!process.env["FIGMA_ACCESS_TOKEN"],
+      weatherConfigured: !!(process.env["OPENWEATHER_API_KEY"] || process.env["WEATHER_API_KEY"]),
+      gmailConfigured: !!process.env["GMAIL_CLIENT_ID"] || !!process.env["GOOGLE_CLIENT_ID"],
+      spotifyConfigured: !!process.env["SPOTIFY_CLIENT_ID"],
+      databaseConfigured: !!process.env["DATABASE_URL"],
+      browserAutomationConfigured: !!(process.env["PUPPETEER_EXECUTABLE_PATH"] || process.env["CHROME_PATH"]),
+    },
+    process: {
+      nodeVersion: process.version,
+      platform: `${process.platform}-${process.arch}`,
+      arch: process.arch,
+      pid: process.pid,
+      cwd: process.cwd(),
+      commandLine: process.argv.slice(1, 4).join(" ").slice(0, 200),
+      versions: {
+        node: pv.node ?? "",
+        v8: pv.v8 ?? "",
+        openssl: pv.openssl ?? "",
+        "typescript-ish": "n/a",
       },
     },
     durationMs: now - startMs,

@@ -10,9 +10,9 @@ import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
 import { Square, Mic, Send, Settings, PanelLeft, X, Plus, Bug, Search, Minimize2, Maximize2, ArrowLeft, MessagesSquare, SquarePen, EllipsisVertical, Camera, Globe, Lightbulb, FileText } from 'lucide-react';
-import type { Widget, TerminalResult } from '@/types/widget';
+import type { Widget, TerminalResult, FileEdit } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, CommandCard } from '@/components/widgets';
-import { ErrorDetailPanel, type ErrorDetail } from '@/components/error-detail-panel';
+import { ErrorDetailPanel, buildClientErrorDetail, type ErrorDetail } from '@/components/error-detail-panel';
 import { useScreenShare } from '@/hooks/use-screen-share';
 import { JarvisBrowser } from '@/components/jarvis-browser';
 import { CameraFeed } from '@/components/camera-feed';
@@ -141,7 +141,7 @@ export default function Home() {
   const [designStudioOpen, setDesignStudioOpen] = useState(false);
   const [designImage, setDesignImage] = useState<string | null>(null);
   const [musicStudioOpen, setMusicStudioOpen] = useState(false);
-  const [buildTab, setBuildTab] = useState<'terminal' | 'files'>('terminal');
+  const [buildTab, setBuildTab] = useState<'terminal' | 'files' | 'clone'>('terminal');
   const [buildFiles, setBuildFiles] = useState<{ path: string; type: 'file' | 'dir'; size: number }[]>([]);
   const [sessionCommands, setSessionCommands] = useState<TerminalResult[]>([]);
   const [commandInput, setCommandInput] = useState('');
@@ -455,7 +455,11 @@ export default function Home() {
   }, []);
 
   const handleError = useCallback((msg: string, detail?: ErrorDetail, onRetry?: () => void) => {
-    setErrorDetail(detail ?? null);
+    // The panel stays CLOSED until the user clicks DETAILS — the toast shows
+    // the message with a DETAILS button. If the server didn't send a detail
+    // object, build one client-side with every bit of browser/context info
+    // we can capture so the user can copy a complete bug report.
+    const resolvedDetail = detail ?? buildClientErrorDetail(msg);
     toast({
       variant: 'destructive',
       title: 'Something went wrong',
@@ -463,15 +467,13 @@ export default function Home() {
         <span className="flex items-center gap-2">
           <span className="flex-1">{msg}</span>
           <span className="flex items-center gap-1 flex-shrink-0">
-            {detail && (
-              <button
-                onClick={() => setErrorDetail(detail)}
-                className="flex items-center gap-1 px-2 py-0.5 rounded border border-red-400/30 bg-red-400/10 text-red-400 text-[10px] font-mono tracking-wider hover:bg-red-400/20 transition-colors"
-              >
-                <Bug className="w-2.5 h-2.5" />
-                DETAILS
-              </button>
-            )}
+            <button
+              onClick={() => setErrorDetail(resolvedDetail)}
+              className="flex items-center gap-1 px-2 py-0.5 rounded border border-red-400/30 bg-red-400/10 text-red-400 text-[10px] font-mono tracking-wider hover:bg-red-400/20 transition-colors"
+            >
+              <Bug className="w-2.5 h-2.5" />
+              DETAILS
+            </button>
             {onRetry && (
               <button
                 onClick={onRetry}
@@ -483,7 +485,7 @@ export default function Home() {
           </span>
         </span>
       ),
-      duration: 8000,
+      duration: 15000, // long enough to actually click DETAILS / RETRY
     });
     vibrate([100, 50, 100]);
     setStatus('idle');
@@ -779,7 +781,12 @@ export default function Home() {
           const errBody = await res.json();
           handleError(errBody?.error || `Server error (${res.status})`, errBody?.detail, () => processUserTextRef.current?.(userText, file, speak));
         } catch {
-          handleError(`Server error (${res.status})`, undefined, () => processUserTextRef.current?.(userText, file, speak));
+          // Body isn't JSON — the API server is likely down or restarting
+          // (a gateway/proxy-level 502/500). Explain it instead of a bare number.
+          const hint = res.status >= 500
+            ? 'The Jarvis server is unreachable right now (likely restarting or down). Wait a few seconds and retry.'
+            : `Server returned HTTP ${res.status} with an unexpected response.`;
+          handleError(hint, undefined, () => processUserTextRef.current?.(userText, file, speak));
         }
         return;
       }
@@ -837,12 +844,65 @@ export default function Home() {
                 break;
               case 'done':
                 convId = parsed.conversationId ?? convId;
+                // Auto-follow-up: when Jarvis signals the next step (Build Mode
+                // multi-step workflows), auto-submit it after a short delay.
+                if (parsed.followUp && typeof parsed.followUp === 'string') {
+                  const task = parsed.followUp.trim().slice(0, 200);
+                  setTimeout(() => {
+                    setMessages(prev => [...prev, {
+                      role: 'user', content: task,
+                      timestamp: Date.now(), id: `fu${Date.now()}`,
+                    }]);
+                    processUserTextRef.current?.(task, null, false);
+                  }, 1800);
+                }
                 break;
               case 'suggestions':
                 newSuggestions = parsed.suggestions ?? [];
                 break;
               case 'widget':
                 widget = parsed.widget ?? null;
+                break;
+              case 'figma_design':
+                // The AI fetched a Figma design — show the live frame embed
+                // plus the real extracted fonts & colors on the assistant message.
+                {
+                  const fd = {
+                    fileKey: parsed.fileKey ?? '',
+                    name: parsed.name ?? 'design',
+                    frameName: parsed.frameName ?? 'Design',
+                    width: parsed.width ?? 0,
+                    height: parsed.height ?? 0,
+                    fonts: parsed.fonts ?? [],
+                    colors: parsed.colors ?? [],
+                  };
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    if (last && last.role === 'assistant') {
+                      updated[updated.length - 1] = { ...last, figma: fd };
+                    }
+                    return updated;
+                  });
+                }
+                break;
+              case 'file_edit':
+                // The AI wrote a file — show it as an expandable diff card
+                // on the current assistant message.
+                {
+                  const fe: FileEdit = { path: parsed.path, bytesWritten: parsed.bytesWritten ?? 0, oldContent: parsed.oldContent ?? '', newContent: parsed.newContent ?? '' };
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    if (last && last.role === 'assistant') {
+                      updated[updated.length - 1] = {
+                        ...last,
+                        fileEdits: [...(last.fileEdits ?? []), fe],
+                      };
+                    }
+                    return updated;
+                  });
+                }
                 break;
               case 'terminal_result':
                 // The AI ran a shell command — show it as a clean minimal card
@@ -917,8 +977,21 @@ export default function Home() {
                   }];
                 });
                 break;
+              case 'follow_up':
+                // Standalone follow-up event — auto-submit the next task
+                if (parsed.task && typeof parsed.task === 'string') {
+                  const task = parsed.task.trim().slice(0, 200);
+                  setTimeout(() => {
+                    setMessages(prev => [...prev, {
+                      role: 'user', content: task,
+                      timestamp: Date.now(), id: `fu${Date.now()}`,
+                    }]);
+                    processUserTextRef.current?.(task, null, false);
+                  }, 1500);
+                }
+                break;
               case 'error':
-                handleError(parsed.message ?? 'Stream error');
+                handleError(parsed.message ?? 'Stream error', parsed.detail as ErrorDetail | undefined);
                 return;
             }
           } catch { /* skip malformed lines */ }

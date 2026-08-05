@@ -15,6 +15,7 @@ import pushRouter from "./push";
 import llmKeysRouter from "./llm-keys";
 import terminalRouter from "./terminal";
 import verifyRouter from "./verify";
+import secretsRouter from "./secrets";
 
 const router = Router();
 
@@ -32,6 +33,7 @@ router.use(codeRouter);
 router.use(researchRouter);
 router.use(pushRouter);
 router.use(llmKeysRouter);
+router.use(secretsRouter);
 router.use(terminalRouter);
 router.use(verifyRouter);
 

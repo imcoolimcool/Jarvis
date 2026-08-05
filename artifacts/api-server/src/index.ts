@@ -1,7 +1,25 @@
-import "dotenv/config";
+// ── Environment loading ──────────────────────────────────────────────
+// Freebuff's Keys tab writes secrets to the REPO-ROOT `.env.local`, while
+// this server's CWD dotenv only reads `artifacts/api-server/.env`. That
+// mismatch silently dropped every key pasted in the Keys tab. Load BOTH
+// explicitly, in priority order (first loaded wins for dotenv):
+//   1. repo-root .env.local   ← Freebuff Keys tab
+//   2. repo-root .env         ← workspace defaults
+//   3. CWD .env               ← artifacts/api-server/.env (start-dev.sh copy)
+import { config as loadEnv } from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, "..", "..", ".."); // dist/ -> api-server/ -> artifacts/ -> repo root
+loadEnv({ path: path.join(repoRoot, ".env.local") });
+loadEnv({ path: path.join(repoRoot, ".env") });
+loadEnv({ path: path.join(__dirname, "..", ".env") });
+
 import app from "./app";
 import { logger } from "./lib/logger";
 import { ensureTables } from "./lib/auto-migrate";
+import { injectDbSecretsIntoEnv } from "./routes/jarvis/secrets";
 
 const rawPort = process.env["PORT"];
 const port = rawPort ? Number(rawPort) : 8080;
@@ -10,8 +28,19 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-// Auto-create all tables on first boot (idempotent — fast no-op on subsequent boots)
-ensureTables().then(() => {
+// Auto-create all tables on first boot (idempotent — fast no-op on subsequent
+// boots). NEVER gate app.listen on this: if the DB is down, the server must
+// still boot so the health check can report db: disconnected and the frontend
+// gets a real, actionable error instead of "server unreachable".
+ensureTables().catch((err) => {
+  logger.error({ err }, "Database migration skipped — DB unreachable. Server will still start; add DATABASE_URL to bring it online.");
+}).then(() => {
+  // In-app API keys (Settings → API Keys) live in the DB — inject them into
+  // process.env so every existing read site picks them up. DB values win.
+  return injectDbSecretsIntoEnv();
+}).catch((err) => {
+  logger.error({ err }, "Secret injection failed (non-fatal)");
+}).finally(() => {
   app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");

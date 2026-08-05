@@ -292,17 +292,32 @@ export async function runWithLLM<T>(fn: (client: OpenAI, model: string) => Promi
   let lastErr: unknown = null;
   for (const key of order) {
     const client = new OpenAI({ apiKey: key.apiKey, baseURL: key.baseUrl });
-    try {
-      const result = await fn(client, key.model);
-      await reportSuccess(key);
-      return result;
-    } catch (err) {
-      await reportFailure(key, err);
-      lastErr = err;
+    // Transient 5xx (502/503/504) — especially from the OpenRouter free
+    // router, which picks a DIFFERENT free provider per request — is often
+    // a single bad upstream, not a broken key. Retry the same key a couple
+    // times (OpenRouter will re-route elsewhere) before declaring failure,
+    // instead of quarantining the whole key for 5 minutes on one hiccup.
+    const attempts = 3;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        const result = await fn(client, key.model);
+        await reportSuccess(key);
+        return result;
+      } catch (err) {
+        const status = (err as { status?: number })?.status;
+        const why = err instanceof Error ? err.message : String(err);
+        lastErr = new Error(`${key.name} (${status ? `HTTP ${status}` : "network"}): ${why.slice(0, 200)}`);
+        const transient = status === 502 || status === 503 || status === 504 || status === 500 || status === 520 || !status;
+        if (!transient || attempt === attempts - 1) {
+          await reportFailure(key, err);
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+      }
     }
   }
   const detail = lastErr instanceof Error ? lastErr.message : String(lastErr);
-  throw new LLMAllKeysCoolingError(`All ${keys.length} LLM key(s) failed. Last error: ${detail.slice(0, 300)}`);
+  throw new LLMAllKeysCoolingError(`All ${keys.length} LLM key(s) failed. ${detail.slice(0, 400)}`);
 }
 
 /** Test a single key (Settings → Test). Throws LlmKeyTestError on failure. */

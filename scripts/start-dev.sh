@@ -23,7 +23,10 @@ sh ./scripts/chrome-deps.sh >/dev/null 2>&1 || true
 export PUPPETEER_CACHE_DIR=/home/daytona/.cache/puppeteer
 
 # 2. Env vars must reach the API server working directory.
-cp .env artifacts/api-server/.env
+#    Merge the Freebuff Keys-tab file (.env.local) with workspace defaults
+#    (.env) — keys pasted in the Keys tab previously never reached the server
+#    because only .env was copied. .env.local values win on duplicates.
+cat .env.local .env 2>/dev/null | awk -F= '!seen[$1]++' > artifacts/api-server/.env
 
 # 3. Start servers. API server in the background (output to a log file so the
 #    preview's port detection only sees Vite), frontend in the foreground.
