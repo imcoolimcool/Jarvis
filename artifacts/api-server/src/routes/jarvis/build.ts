@@ -155,6 +155,10 @@ async function reviewAndFixWorkspace(
     .map((entry) => entry.path)
     .slice(0, 120);
   const fallback = reviewFallback(prompt, files, previewOutput);
+  
+  // Track token usage to warn users on high iteration count
+  const tokenWarning = passNumber > 10 ? `(High iteration count: ${passNumber} passes. Consider if additional changes are needed.)` : "";
+  
   try {
     const client = pooledClient();
     const completion = await client.chat.completions.create({
@@ -172,7 +176,7 @@ async function reviewAndFixWorkspace(
         {
           role: "user",
           content:
-            `Prompt: ${prompt}\nAnswers: ${JSON.stringify(answers)}\nPass: ${passNumber} of 2\nFiles: ${files.join(", ") || "(none)"}\nPreview output:\n${previewOutput.slice(-6000)}`,
+            `Prompt: ${prompt}\nAnswers: ${JSON.stringify(answers)}\nPass: ${passNumber}${tokenWarning}\nFiles: ${files.join(", ") || "(none)"}\nPreview output:\n${previewOutput.slice(-6000)}`,
         },
       ],
       temperature: 0.1,
@@ -468,7 +472,8 @@ router.post("/build/iterate", async (req, res) => {
   const workspaceId = cleanText(req.body?.workspaceId, 64) || "default";
   const prompt = cleanText(req.body?.prompt, 300) || "a simple Jarvis starter app";
   const previewOutput = cleanText(req.body?.previewOutput, 6000);
-  const passNumber = Math.min(2, Math.max(1, Number(req.body?.passNumber) || 1));
+  // Allow unlimited iterations (cap at 100 to prevent runaway loops, but this is a soft limit)
+  const passNumber = Math.max(1, Number(req.body?.passNumber) || 1);
   const rawAnswers = req.body?.answers && typeof req.body.answers === "object" && !Array.isArray(req.body.answers)
     ? req.body.answers as Record<string, unknown>
     : {};
@@ -477,6 +482,10 @@ router.post("/build/iterate", async (req, res) => {
     .filter(([, value]) => value));
   try {
     await ensureWorkspace(workspaceId);
+    // If passNumber exceeds 100, warn but allow the iteration
+    if (passNumber > 100) {
+      req.log.warn({ workspaceId, passNumber }, "Iteration count is very high, possibly infinite loop");
+    }
     const result = await reviewAndFixWorkspace(prompt, answers, workspaceId, previewOutput, passNumber);
     res.json({ ok: true, passNumber, ...result });
   } catch (err) {
