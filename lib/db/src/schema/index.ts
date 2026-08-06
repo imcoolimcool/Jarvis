@@ -8,3 +8,10 @@ export * from "./push";
 export * from "./llm-keys";
 export * from "./secrets";
 export * from "./timers";
+export * from "./projects";
+export * from "./sharing";
+export * from "./accounts";
+export * from "./groups";
+export * from "./build-apps";
+// NOTE: the `files` table intentionally lives OUTSIDE this barrel. It belongs
+// to the separate files database (see lib/db/src/index.ts filesDb).

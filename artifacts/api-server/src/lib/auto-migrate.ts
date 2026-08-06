@@ -8,7 +8,7 @@
  *     predate newer columns (e.g. `conversations.kind` added for gems) get
  *     their missing columns without touching existing data.
  */
-import { pool } from "@workspace/db";
+import { pool, filesPool } from "@workspace/db";
 
 const CREATE_TABLES = [
   // ── Core chat ────────────────────────────────────────────────
@@ -118,6 +118,102 @@ const CREATE_TABLES = [
     "description" text,
     "updated_at" timestamp NOT NULL DEFAULT now()
   )`,
+
+  // ── Projects (ChatGPT-style folders) ───────────────────────────
+  `CREATE TABLE IF NOT EXISTS "projects" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "name" text NOT NULL,
+    "color" text NOT NULL DEFAULT '#0ea5e9',
+    "archived" boolean NOT NULL DEFAULT false,
+    "instructions" text,
+    "created_at" timestamp NOT NULL DEFAULT now(),
+    "updated_at" timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS "project_chats" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "project_id" uuid NOT NULL REFERENCES "projects"("id") ON DELETE CASCADE,
+    "conversation_id" uuid NOT NULL REFERENCES "conversations"("id") ON DELETE CASCADE,
+    "created_at" timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS "project_files" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "project_id" uuid NOT NULL REFERENCES "projects"("id") ON DELETE CASCADE,
+    "file_id" uuid NOT NULL,
+    "name" text NOT NULL,
+    "created_at" timestamp NOT NULL DEFAULT now()
+  )`,
+
+  // ── Pins (pinned chats sort to the top) ────────────────────────
+  `CREATE TABLE IF NOT EXISTS "pins" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "conversation_id" uuid NOT NULL UNIQUE REFERENCES "conversations"("id") ON DELETE CASCADE,
+    "created_at" timestamp NOT NULL DEFAULT now()
+  )`,
+
+  // ── Share links (public read-only conversation links) ──────────
+  `CREATE TABLE IF NOT EXISTS "share_links" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "token" text NOT NULL UNIQUE,
+    "conversation_id" uuid NOT NULL REFERENCES "conversations"("id") ON DELETE CASCADE,
+    "created_at" timestamp NOT NULL DEFAULT now(),
+    "expires_at" timestamp
+  )`,
+
+  // ── Groupchats (AI roundtables + human groups) ─────────────────
+  `CREATE TABLE IF NOT EXISTS "group_chats" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "name" text NOT NULL,
+    "kind" text NOT NULL DEFAULT 'ai',
+    "ai_toggle" text NOT NULL DEFAULT 'always',
+    "created_at" timestamp NOT NULL DEFAULT now(),
+    "updated_at" timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS "group_members" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "group_id" uuid NOT NULL REFERENCES "group_chats"("id") ON DELETE CASCADE,
+    "account_id" uuid,
+    "persona" text,
+    "role" text NOT NULL DEFAULT 'member',
+    "joined_at" timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS "invite_codes" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "group_id" uuid NOT NULL REFERENCES "group_chats"("id") ON DELETE CASCADE,
+    "code" text NOT NULL UNIQUE,
+    "created_by" uuid,
+    "created_at" timestamp NOT NULL DEFAULT now(),
+    "expires_at" timestamp,
+    "used_at" timestamp
+  )`,
+
+  // ── Accounts + sessions (invited users, minimal local auth) ────
+  `CREATE TABLE IF NOT EXISTS "accounts" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "email" text NOT NULL UNIQUE,
+    "password_hash" text NOT NULL,
+    "display_name" text NOT NULL DEFAULT '',
+    "avatar_url" text,
+    "created_at" timestamp NOT NULL DEFAULT now(),
+    "updated_at" timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS "sessions" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "token" text NOT NULL UNIQUE,
+    "account_id" uuid NOT NULL REFERENCES "accounts"("id") ON DELETE CASCADE,
+    "created_at" timestamp NOT NULL DEFAULT now(),
+    "expires_at" timestamp
+  )`,
+
+  // ── Build Studio saved apps ────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS "build_apps" (
+    "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "name" text NOT NULL,
+    "description" text NOT NULL DEFAULT '',
+    "file_id" uuid,
+    "metadata" jsonb NOT NULL DEFAULT '{}'::jsonb,
+    "created_at" timestamp NOT NULL DEFAULT now(),
+    "updated_at" timestamp NOT NULL DEFAULT now()
+  )`,
 ];
 
 /**
@@ -183,6 +279,34 @@ export async function ensureTables(): Promise<void> {
       `SELECT count(*)::int AS c FROM information_schema.tables WHERE table_schema = 'public'`,
     );
     console.log(`[auto-migrate] ready, ${rows[0]?.c ?? 0} public tables, columns synced`);
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Create the `files` table in the SEPARATE files database (DATABASE_URL_FILES,
+ * falling back to DATABASE_URL until a dedicated files DB exists). Additive
+ * and idempotent, same as ensureTables.
+ */
+export async function ensureFilesTables(): Promise<void> {
+  const client = await filesPool.connect();
+  try {
+    await client.query(`CREATE TABLE IF NOT EXISTS "files" (
+      "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      "conversation_id" uuid,
+      "kind" text NOT NULL DEFAULT 'document',
+      "name" text NOT NULL DEFAULT 'unnamed',
+      "mime" text NOT NULL DEFAULT 'application/octet-stream',
+      "size" integer NOT NULL DEFAULT 0,
+      "storage_key" text NOT NULL,
+      "bucket" text NOT NULL DEFAULT 'local',
+      "owner" text NOT NULL DEFAULT 'user',
+      "created_at" timestamp NOT NULL DEFAULT now()
+    )`);
+    await client.query(`CREATE INDEX IF NOT EXISTS "files_conversation_idx" ON "files" ("conversation_id")`);
+    await client.query(`CREATE INDEX IF NOT EXISTS "files_storage_key_idx" ON "files" ("storage_key")`);
+    console.log("[auto-migrate] files table ready (files database)");
   } finally {
     client.release();
   }

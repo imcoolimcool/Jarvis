@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
+import { files } from "./schema/files";
 
 const { Pool } = pg;
 
@@ -27,5 +28,32 @@ pool.on("error", (err) => {
 export const db = drizzle(pool, { schema });
 
 export const databaseConfigured = !!connectionString;
+
+// ── Files database (SEPARATE Neon database, per the product spec) ──────────
+// Metadata for uploaded/generated files lives here, distinct from the main DB.
+// Until a dedicated DATABASE_URL_FILES is provisioned, it falls back to the
+// main DATABASE_URL so the app works out of the box. Same fail-fast pool
+// semantics: never crash at import time, report `disconnected` instead.
+const filesConnectionString =
+  process.env["DATABASE_URL_FILES"] || process.env["DATABASE_URL"];
+
+export const filesPool = new Pool(
+  filesConnectionString
+    ? { connectionString: filesConnectionString }
+    : { connectionTimeoutMillis: 2000, idleTimeoutMillis: 2000, max: 1 },
+);
+
+filesPool.on("error", (err) => {
+  console.error(
+    `[files-db] pool error (${filesConnectionString ? "configured" : "DATABASE_URL_FILES missing"}):`,
+    err.message,
+  );
+});
+
+export const filesDb = drizzle(filesPool, { schema: { files } });
+
+export const filesDatabaseConfigured = !!filesConnectionString;
+
+export { files };
 
 export * from "./schema";

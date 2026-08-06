@@ -18,7 +18,7 @@ loadEnv({ path: path.join(__dirname, "..", ".env") });
 
 import app from "./app";
 import { logger } from "./lib/logger";
-import { ensureTables } from "./lib/auto-migrate";
+import { ensureTables, ensureFilesTables } from "./lib/auto-migrate";
 import { injectDbSecretsIntoEnv } from "./routes/jarvis/secrets";
 
 const rawPort = process.env["PORT"];
@@ -34,7 +34,16 @@ if (Number.isNaN(port) || port <= 0) {
 // gets a real, actionable error instead of "server unreachable".
 ensureTables().catch((err) => {
   logger.error({ err }, "Database migration skipped, DB unreachable. Server will still start; add DATABASE_URL to bring it online.");
-}).then(() => {
+});
+
+// Files table lives in the separate files DB (DATABASE_URL_FILES, falls back
+// to DATABASE_URL). Non-fatal: the server boots either way, and the file
+// storage layer keeps working with the local-disk fallback.
+ensureFilesTables().catch((err) => {
+  logger.error({ err }, "Files table migration skipped, DB unreachable. File storage will use the local-disk fallback.");
+});
+
+Promise.resolve().then(() => {
   // In-app API keys (Settings → API Keys) live in the DB, inject them into
   // process.env so every existing read site picks them up. DB values win.
   return injectDbSecretsIntoEnv();

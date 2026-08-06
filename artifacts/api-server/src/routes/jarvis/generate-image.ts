@@ -94,9 +94,29 @@ router.post("/generate-image", async (req, res) => {
       return;
     }
 
+    // Persist the generated image through the storage layer (local disk or
+    // R2) so it survives reloads and shows up in the Gallery. Best-effort:
+    // if persistence fails the image still streams to the user immediately.
+    let fileKey: string | null = null;
+    try {
+      const { persistFile } = await import("../../lib/storage");
+      const persisted = await persistFile({
+        data: Buffer.from(imageBase64, "base64"),
+        mimeType,
+        name: "generated-image",
+        kind: "image",
+        owner: "jarvis",
+      });
+      if (persisted) fileKey = persisted.key;
+    } catch {
+      // Persistence is best-effort, never block image generation on it.
+    }
+
     res.json({
       image: `data:${mimeType};base64,${imageBase64}`,
       mimeType,
+      fileKey,
+      imageUrl: fileKey ? `/api/files/${encodeURIComponent(fileKey)}` : undefined,
     });
   } catch (err) {
     req.log.error({ err }, "Image generation request failed");

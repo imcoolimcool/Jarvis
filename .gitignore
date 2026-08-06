@@ -50,6 +50,9 @@ Thumbs.db
 .env.*
 artifacts/api-server/.env
 
+# Local file storage (product spec 12.1, local-disk fallback)
+data/
+
 # Binary libraries (Puppeteer deps)
 *.so
 
