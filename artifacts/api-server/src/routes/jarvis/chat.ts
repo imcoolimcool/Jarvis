@@ -12,7 +12,7 @@ import { classifyCapabilityIntent } from "../../lib/capability-intent";
 import { buildErrorDetail } from "../../lib/error-detail";
 import { listSourceFiles, readSourceFile, writeSourceFile } from "../../lib/source-code";
 import { fetchFigmaDesignTokens, figmaTokensToContext } from "../../lib/figma";
-import { pooledClient, LLMAllKeysCoolingError } from "../../lib/llm-client";
+import { pooledClient, LLMAllKeysCoolingError, listKeys, resolveManualKey, runOnceWithKey, type LlmKeyEntry } from "../../lib/llm-client";
 
 /** Personality modifiers appended to the base system prompt. */
 const PERSONALITY_MODIFIERS: Record<string, string> = {
@@ -275,6 +275,27 @@ setInterval(() => {
     if (now > entry.resetAt) rateLimitMap.delete(ip);
   }
 }, 300_000).unref();
+
+/**
+ * Payload for the chat/voice manual key-retry error. Chat and voice never
+ * auto-loop through API keys; when the chosen key fails, the frontend shows
+ * "Try same key" / "Try next key" buttons. This carries the key that failed
+ * plus the next key in priority order (null when it was the last one).
+ */
+async function manualRetryPayload(key: LlmKeyEntry): Promise<{
+  code: "llm_manual_retry";
+  key: { id: string; name: string; model: string };
+  nextKey: { id: string; name: string; model: string } | null;
+}> {
+  const all = await listKeys().catch(() => []);
+  const idx = all.findIndex((k) => k.id === key.id);
+  const next = idx >= 0 && idx < all.length - 1 ? all[idx + 1] : null;
+  return {
+    code: "llm_manual_retry",
+    key: { id: key.id, name: key.name, model: key.model },
+    nextKey: next ? { id: next.id, name: next.name, model: next.model } : null,
+  };
+}
 
 /** Execute a write_source_file call, stream a file_edit SSE event with a
  *  before/after diff, and return a JSON string context for the model. */
@@ -661,6 +682,7 @@ router.post("/chat", async (req, res) => {
     emotion,
     thinkingEnabled,
     agentMode,
+    keyId,
   } = req.body as {
     userMessage: string;
     conversationId?: string;
@@ -677,6 +699,8 @@ router.post("/chat", async (req, res) => {
     thinkingEnabled?: string;
     /** Agent mode, research-style answers backed by live web search ("true"). */
     agentMode?: string;
+    /** Manual LLM key (chat/voice): force one attempt on this specific key. */
+    keyId?: string;
   };
 
   if (!userMessage || typeof userMessage !== "string") {
@@ -895,7 +919,38 @@ router.post("/chat", async (req, res) => {
       { role: "user", content: currentUserContent },
     ];
 
-    const client = pooledClient();
+    // ── Manual key mode (chat + voice) ─────────────────────────────
+    // Chat and voice do NOT auto-loop through API keys (that is the rule for
+    // every other mode: 10 attempts per key with a 10s cooldown, then the next
+    // key). Here we do ONE attempt on the requested key (or the best healthy
+    // key), and on failure the user decides: try the same key again, or move
+    // to the next key. The choices come from the `llm_manual_retry` error.
+    let manualKey: LlmKeyEntry | null = null;
+    try {
+      manualKey = await resolveManualKey(keyId);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "No LLM key available.";
+      if (res.headersSent) {
+        try {
+          res.write(`data: ${JSON.stringify({ type: "error", message: msg, code: "llm_manual_retry", key: null, nextKey: null })}\n\n`);
+          res.write("data: [DONE]\n\n");
+          res.end();
+        } catch { /* socket already closed */ }
+      } else {
+        res.status(503).json({ error: msg, code: "llm_manual_retry", key: null, nextKey: null });
+      }
+      return;
+    }
+    if (!manualKey) return; // unreachable, resolveManualKey throws or returns a key
+    // One-shot create against the chosen key. `runOnceWithKey` reports
+    // success/failure to the health pool but never retries or fails over.
+    const manualCreate = (params: unknown) =>
+      runOnceWithKey(manualKey!, (c, m) =>
+        c.chat.completions.create({
+          ...(params as object),
+          model: m,
+        } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming | OpenAI.Chat.ChatCompletionCreateParamsStreaming),
+      ) as Promise<any>;
 
     // Determine max_tokens based on response style, chat needs room, voice stays
     // short. Thinking mode needs room regardless of style (the reasoning pass
@@ -1006,17 +1061,17 @@ router.post("/chat", async (req, res) => {
       extra: Partial<OpenAI.Chat.ChatCompletionCreateParamsStreaming> = {},
       eventType: "token" | "reasoning" = "token",
     ): Promise<{ text: string; totalTokens: number; interrupted: boolean }> => {
-      const s = await client.chat.completions.create({
-        model: jarvisConfig.llmModel,
-        messages: msgs,
-        temperature: 0.7,
-        max_tokens: maxTokensForPass,
-        stream: true,
-        ...extra,
-      });
       let text = "";
       let tokens = 0;
       try {
+        const s = await manualCreate({
+          model: manualKey!.model,
+          messages: msgs,
+          temperature: 0.7,
+          max_tokens: maxTokensForPass,
+          stream: true,
+          ...extra,
+        });
         for await (const chunk of s) {
           const delta = chunk.choices[0]?.delta?.content ?? "";
           const cleanDelta = delta.replaceAll("—", "-");
@@ -1027,11 +1082,17 @@ router.post("/chat", async (req, res) => {
           if (chunk.usage) tokens = chunk.usage.total_tokens ?? 0;
         }
       } catch (streamErr) {
-        // If streaming fails mid-way, send an error event (with full detail)
-        // and bail
+        // If streaming fails mid-way, send an error event (with full detail
+        // plus the manual key-retry choices) and bail
         req.log.error({ err: streamErr }, "LLM streaming failed mid-response");
         const errDetail = buildErrorDetail(streamErr instanceof Error ? streamErr : new Error(String(streamErr)), req, 500, startMs);
-        res.write(`data: ${JSON.stringify({ type: "error", message: "Stream interrupted", detail: errDetail })}\n\n`);
+        const retry = manualKey ? await manualRetryPayload(manualKey).catch(() => null) : null;
+        res.write(`data: ${JSON.stringify({
+          type: "error",
+          message: `Stream interrupted (key \"${manualKey?.name ?? "unknown"}\")`,
+          detail: errDetail,
+          ...(retry ?? { code: undefined, key: undefined, nextKey: undefined }),
+        })}\n\n`);
         res.write("data: [DONE]\n\n");
         res.end();
         return { text, totalTokens: tokens, interrupted: true };
@@ -1079,8 +1140,8 @@ router.post("/chat", async (req, res) => {
       // as context. The marker is never shown to the user.
       let sourceContext: string | null = null;
       try {
-        const dispatchRes = await client.chat.completions.create({
-          model: jarvisConfig.llmModel,
+        const dispatchRes = await manualCreate({
+          model: manualKey!.model,
           messages: [
             ...runMessages,
             {

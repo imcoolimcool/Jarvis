@@ -98,6 +98,119 @@ async function generateStarterFiles(
   }
 }
 
+interface BuildReviewResult {
+  done: boolean;
+  summary: string;
+  fixRequest: string | null;
+  deferred: string[];
+  filesChanged: string[];
+}
+
+function parseJsonObject(raw: string): Record<string, unknown> | null {
+  const match = raw.match(/{[\s\S]*}/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function reviewFallback(prompt: string, files: string[], previewOutput: string): BuildReviewResult {
+  const hasIndex = files.some((file) => file.toLowerCase() === "index.html");
+  const hasRuntimeError = /\b(error|failed|exception|not found|cannot|syntaxerror)\b/i.test(previewOutput);
+  if (!hasIndex) {
+    return {
+      done: false,
+      summary: "The preview is missing an index.html entry point.",
+      fixRequest: `Create a complete index.html entry point for this app: ${prompt}`,
+      deferred: [],
+      filesChanged: [],
+    };
+  }
+  return {
+    done: !hasRuntimeError,
+    summary: hasRuntimeError
+      ? "The preview log contains a runtime error that needs another fix pass."
+      : "The workspace has an HTML entry point and no reported runtime errors.",
+    fixRequest: hasRuntimeError ? `Inspect and fix the runtime issue shown in this preview output:\n${previewOutput.slice(-3000)}` : null,
+    deferred: ["Accessibility and visual review should still be confirmed from the rendered preview."],
+    filesChanged: [],
+  };
+}
+
+async function reviewAndFixWorkspace(
+  prompt: string,
+  answers: Record<string, string>,
+  workspaceId: string,
+  previewOutput: string,
+  passNumber: number,
+): Promise<BuildReviewResult> {
+  const entries = await listWorkspaceFiles(workspaceId);
+  const files = entries
+    .filter((entry) => entry.type === "file" && !/^\\.?env/i.test(entry.path))
+    .map((entry) => entry.path)
+    .slice(0, 120);
+  const fallback = reviewFallback(prompt, files, previewOutput);
+  try {
+    const client = pooledClient();
+    const completion = await client.chat.completions.create({
+      model: jarvisConfig.llmModel,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are the self-reviewer inside Jarvis Build Mode. Review a locally generated web app after it has been run. " +
+            "Return ONLY JSON with this shape: {done:boolean,summary:string,fixRequest:string|null,deferred:string[]}. " +
+            "Set done false only when a concrete runtime, structure, or obvious completeness issue can be fixed now. " +
+            "Keep fixRequest short and actionable. Do not claim that a screenshot, accessibility, security, or performance check passed unless evidence is provided. " +
+            "Never use the em dash character.",
+        },
+        {
+          role: "user",
+          content:
+            `Prompt: ${prompt}\nAnswers: ${JSON.stringify(answers)}\nPass: ${passNumber} of 2\nFiles: ${files.join(", ") || "(none)"}\nPreview output:\n${previewOutput.slice(-6000)}`,
+        },
+      ],
+      temperature: 0.1,
+      max_tokens: 700,
+    });
+    const parsed = parseJsonObject(completion.choices[0]?.message?.content?.trim() ?? "");
+    if (!parsed) return fallback;
+    const done = parsed.done === true;
+    const summary = cleanText(parsed.summary, 500) || fallback.summary;
+    const fixRequest = done ? null : cleanText(parsed.fixRequest, 1800) || fallback.fixRequest;
+    const deferred = Array.isArray(parsed.deferred)
+      ? parsed.deferred.filter((item): item is string => typeof item === "string").map((item) => item.slice(0, 240)).slice(0, 8)
+      : fallback.deferred;
+    if (done || !fixRequest) return { done: true, summary, fixRequest: null, deferred, filesChanged: [] };
+
+    const existingFiles = entries.filter((entry) => entry.type === "file").map((entry) => entry.path);
+    const generated = await generateStarterFiles(prompt, answers, fixRequest, existingFiles);
+    const filesChanged: string[] = [];
+    for (const [relativePath, content] of Object.entries(generated)) {
+      if (!safeWorkspacePath(relativePath, workspaceId)) continue;
+      await writeWorkspaceFile(relativePath, content, workspaceId);
+      filesChanged.push(relativePath);
+    }
+    return { done: false, summary, fixRequest, deferred, filesChanged };
+  } catch {
+    if (fallback.done || !fallback.fixRequest) return fallback;
+    const existingFiles = entries.filter((entry) => entry.type === "file").map((entry) => entry.path);
+    const generated = await generateStarterFiles(prompt, answers, fallback.fixRequest, existingFiles);
+    const filesChanged: string[] = [];
+    for (const [relativePath, content] of Object.entries(generated)) {
+      if (!safeWorkspacePath(relativePath, workspaceId)) continue;
+      await writeWorkspaceFile(relativePath, content, workspaceId);
+      filesChanged.push(relativePath);
+    }
+    return { ...fallback, filesChanged };
+  }
+}
+
 let screenshotBrowser: Browser | null = null;
 let screenshotBrowserPromise: Promise<Browser> | null = null;
 
@@ -300,8 +413,19 @@ router.put("/build/env", async (req, res) => {
   res.json({ env });
 });
 
-router.post("/build/ask", async (_req, res) => {
+router.post("/build/ask", async (req, res) => {
+  const prompt = cleanText(req.body?.prompt, 300).toLowerCase();
+  const inventory = [
+    { key: "interface", label: "Professional responsive interface", selected: true },
+    { key: "runtime", label: "Local runnable preview", selected: true },
+    { key: "accessibility", label: "Accessibility pass", selected: /accessib|a11y|keyboard|screen reader/.test(prompt) },
+    { key: "data", label: "Local data or persistence", selected: /database|data|storage|save|persist|crud/.test(prompt) },
+    { key: "auth", label: "Local authentication flow", selected: /auth|login|log in|sign up|account|password/.test(prompt) },
+    { key: "ai", label: "AI interaction surface", selected: /\bai\b|assistant|chat|llm|model|generate/.test(prompt) },
+    { key: "mobile", label: "Mobile responsive layout", selected: /mobile|responsive|phone|tablet/.test(prompt) },
+  ];
   res.json({
+    inventory,
     questions: [
       { key: "appType", label: "What kind of app is this?", options: ["Landing page", "Dashboard", "Portfolio", "Game", "Tool or utility"] },
       { key: "uiStyle", label: "What UI style do you prefer?", options: ["Dark and futuristic", "Clean and minimal", "Colorful and playful", "Glassmorphism", "Retro or vintage"] },
@@ -333,10 +457,31 @@ router.post("/build/scaffold", async (req, res) => {
       if (!safeWorkspacePath(relPath, workspaceId)) continue;
       await writeWorkspaceFile(relPath, content, workspaceId);
     }
-    res.status(201).json({ ok: true, files: Object.keys(files) });
+    res.status(201).json({ ok: true, files: Object.keys(files), runtime: "static", previewCommand: "python3 -m http.server ${PORT}" });
   } catch (err) {
     req.log.error({ err }, "Failed to scaffold starter");
     res.status(500).json({ error: "Could not scaffold starter" });
+  }
+});
+
+router.post("/build/iterate", async (req, res) => {
+  const workspaceId = cleanText(req.body?.workspaceId, 64) || "default";
+  const prompt = cleanText(req.body?.prompt, 300) || "a simple Jarvis starter app";
+  const previewOutput = cleanText(req.body?.previewOutput, 6000);
+  const passNumber = Math.min(2, Math.max(1, Number(req.body?.passNumber) || 1));
+  const rawAnswers = req.body?.answers && typeof req.body.answers === "object" && !Array.isArray(req.body.answers)
+    ? req.body.answers as Record<string, unknown>
+    : {};
+  const answers = Object.fromEntries(Object.entries(rawAnswers)
+    .map(([key, value]) => [key, cleanText(value, 200)])
+    .filter(([, value]) => value));
+  try {
+    await ensureWorkspace(workspaceId);
+    const result = await reviewAndFixWorkspace(prompt, answers, workspaceId, previewOutput, passNumber);
+    res.json({ ok: true, passNumber, ...result });
+  } catch (err) {
+    req.log.error({ err }, "Build self-review failed");
+    res.status(500).json({ error: "Build self-review failed" });
   }
 });
 

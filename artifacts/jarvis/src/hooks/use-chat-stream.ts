@@ -4,7 +4,7 @@
  * and takes everything else through a `ChatStreamDeps` config object, so Home
  * shrinks by ~370 lines and the core chat path is isolated and reusable.
  */
-import { useCallback, useEffect, useRef, type MutableRefObject, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type Dispatch, type SetStateAction } from 'react';
 import { looksLikeCodeRequest } from '@/lib/code-intent';
 import type { Widget, FileEdit, TerminalResult } from '@/types/widget';
 import type { ErrorDetail } from '@/components/error-detail-panel';
@@ -19,6 +19,18 @@ interface AttachedFile {
   mimeType: string;
   fileName: string;
   preview?: string;
+}
+
+/**
+ * Manual LLM-key retry (chat and voice only). The chosen key failed and the
+ * user decides what to do: retry the same key, or move to the next key.
+ */
+export interface ManualKeyRetry {
+  message: string;
+  keyId: string;
+  keyName: string;
+  nextKeyId: string | null;
+  nextKeyName: string | null;
 }
 
 /** Everything `processUserText` reads or writes from the Home component. */
@@ -62,6 +74,7 @@ export interface ChatStreamResult {
     codeAllowance?: boolean,
     researchMode?: boolean,
     buildAllowance?: boolean,
+    keyId?: string,
   ) => Promise<void>;
   processUserTextRef: MutableRefObject<ChatStreamResult['processUserText'] | null>;
   nextMsgId: () => string;
@@ -69,6 +82,11 @@ export interface ChatStreamResult {
   chatTimerMsgIdxRef: MutableRefObject<number | null>;
   timerStartedAtRef: MutableRefObject<number | null>;
   timerOriginalDurationRef: MutableRefObject<number | null>;
+  /** Manual LLM-key retry (chat/voice): non-null when the chosen key failed. */
+  keyRetry: ManualKeyRetry | null;
+  retrySameKey: () => void;
+  retryNextKey: () => void;
+  dismissKeyRetry: () => void;
 }
 
 export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
@@ -90,7 +108,15 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
   const timerStartedAtRef = useRef<number | null>(null);
   const timerOriginalDurationRef = useRef<number | null>(null);
 
-  const processUserText = useCallback(async (userText: string, file?: AttachedFile | null, speak = true, codeAllowance?: boolean, researchMode = false, buildAllowance?: boolean) => {
+  // Manual LLM-key retry (chat/voice): when the chosen key fails, remember the
+  // last send so "Try same key" / "Try next key" can re-send with a keyId.
+  const [keyRetry, setKeyRetry] = useState<ManualKeyRetry | null>(null);
+  const lastSendArgsRef = useRef<{
+    userText: string; file: AttachedFile | null; speak: boolean;
+    codeAllowance?: boolean; researchMode?: boolean; buildAllowance?: boolean; keyId?: string;
+  } | null>(null);
+
+  const processUserText = useCallback(async (userText: string, file?: AttachedFile | null, speak = true, codeAllowance?: boolean, researchMode = false, buildAllowance?: boolean, keyId?: string) => {
     // ── "Use code for this answer?" confirmation gate ─────────────
     // If the message looks like a question about Jarvis's own code and the
     // user hasn't decided yet, show the confirmation card first. Confirm
@@ -109,6 +135,9 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
       return;
     }
 
+    // Remember the send so the manual key-retry buttons can re-send it.
+    lastSendArgsRef.current = { userText, file: file ?? null, speak, codeAllowance, researchMode, buildAllowance, keyId };
+    setKeyRetry(null);
     // Optimistically add message (with file preview if any)
     setMessages(prev => [...prev, { role: 'user', content: userText, file: file ?? undefined, timestamp: Date.now(), id: nextMsgId() }]);
     setSuggestions([]);
@@ -135,6 +164,7 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
       if (codeAllowance === true) body.allowSourceCode = 'true';
       else if (codeAllowance === false) body.allowSourceCode = 'false';
       if (buildAllowance === true) body.allowBuildMode = 'true';
+      if (keyId) body.keyId = keyId;
 
       const res = await fetch('/api/jarvis/chat', {
         method: 'POST',
@@ -145,6 +175,23 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
       if (!res.ok) {
         try {
           const errBody = await res.json();
+          // Chat/voice are manual: on a failed key, show "Try same key" /
+          // "Try next key" instead of a plain error.
+          if (errBody?.code === 'llm_manual_retry') {
+            if (errBody?.key?.id) {
+              setKeyRetry({
+                message: errBody.error || 'LLM key failed',
+                keyId: errBody.key.id,
+                keyName: errBody.key.name ?? errBody.key.id,
+                nextKeyId: errBody.nextKey?.id ?? null,
+                nextKeyName: errBody.nextKey?.name ?? null,
+              });
+              setStatus('idle');
+              return;
+            }
+            handleError(errBody.error || 'No LLM key available', errBody.detail);
+            return;
+          }
           handleError(errBody?.error || `Server error (${res.status})`, errBody?.detail, () => processUserTextRef.current?.(userText, file, speak));
         } catch {
           // Body isn't JSON, the API server is likely down or restarting
@@ -357,6 +404,18 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
                 }
                 break;
               case 'error':
+                // Manual key failure (chat/voice), offer the two retry buttons.
+                if (parsed.code === 'llm_manual_retry' && parsed.key?.id) {
+                  setKeyRetry({
+                    message: parsed.message ?? 'LLM key failed',
+                    keyId: parsed.key.id,
+                    keyName: parsed.key.name ?? parsed.key.id,
+                    nextKeyId: parsed.nextKey?.id ?? null,
+                    nextKeyName: parsed.nextKey?.name ?? null,
+                  });
+                  setStatus('idle');
+                  return;
+                }
                 handleError(parsed.message ?? 'Stream error', parsed.detail as ErrorDetail | undefined, undefined, parsed.code as string | undefined);
                 return;
             }
@@ -464,6 +523,26 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
   const processUserTextRef = useRef<typeof processUserText | null>(null);
   useEffect(() => { processUserTextRef.current = processUserText; }, [processUserText]);
 
+  // Re-send the last failed message against a specific key (manual mode).
+  const retryWithKey = useCallback((keyId: string | null) => {
+    const a = lastSendArgsRef.current;
+    if (!a || !keyId) return;
+    setKeyRetry(null);
+    void processUserTextRef.current?.(a.userText, a.file, a.speak, a.codeAllowance, a.researchMode, a.buildAllowance, keyId);
+  }, []);
+
+  const retrySameKey = useCallback(() => {
+    if (!keyRetry?.keyId) return;
+    retryWithKey(keyRetry.keyId);
+  }, [keyRetry, retryWithKey]);
+
+  const retryNextKey = useCallback(() => {
+    if (!keyRetry?.nextKeyId) return;
+    retryWithKey(keyRetry.nextKeyId);
+  }, [keyRetry, retryWithKey]);
+
+  const dismissKeyRetry = useCallback(() => setKeyRetry(null), []);
+
   return {
     processUserText,
     processUserTextRef,
@@ -472,5 +551,9 @@ export function useChatStream(deps: ChatStreamDeps): ChatStreamResult {
     chatTimerMsgIdxRef,
     timerStartedAtRef,
     timerOriginalDurationRef,
+    keyRetry,
+    retrySameKey,
+    retryNextKey,
+    dismissKeyRetry,
   };
 }

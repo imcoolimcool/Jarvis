@@ -9,11 +9,15 @@
  *                   model). Health/stats persist across restarts.
  *
  * Behaviour:
- *   - Round-robin over HEALTHY keys only (never pick a cooling/quarantined
- *     key, so exhausted keys are never hit again → no "retry 30 times").
+ *   - Each key is tried 10 times with a 10s cooldown between attempts before
+ *     the next key is used. Every error class is retried the full 10 times;
+ *     a key is only quarantined after all 10 attempts have failed.
  *   - `runWithLLM` retries across keys automatically; a quota error on key A
  *     silently tries key B. The user only ever sees an error when EVERY key
- *     has genuinely failed.
+ *     has genuinely failed, and a push notification is sent saying so.
+ *   - Chat and voice use MANUAL mode instead (`resolveManualKey` +
+ *     `runOnceWithKey`): one attempt on the chosen key, then the user decides
+ *     to retry the same key or move to the next one.
  *   - Keys are quarantined per error class: 401/403 → 24h (bad key),
  *     402/429/quota → 45min, bad model → 30min, transient → 5min.
  *   - `getHealthyKeys()` returns [] when everything is cooling, callers
@@ -25,6 +29,7 @@ import { db, llmKeys } from "@workspace/db";
 import { eq, asc, sql } from "drizzle-orm";
 import { jarvisConfig } from "../config/jarvis";
 import { logger } from "./logger";
+import { notifyAll } from "./web-push";
 
 export const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
 
@@ -44,6 +49,15 @@ export interface LlmKeyEntry {
   uses: number;
   failures: number;
 }
+
+/** How many times each API key is tried before moving to the next key. */
+export const LLM_KEY_ATTEMPTS = 10;
+/** Cooldown in milliseconds between attempts on the same key. */
+export const LLM_KEY_ATTEMPT_COOLDOWN_MS = 10_000;
+
+/** Throttle the all-keys-failed push notification to one per minute. */
+let lastAllFailedNotifiedAt = 0;
+const ALL_FAILED_NOTIFY_THROTTLE_MS = 60_000;
 
 export class LLMAllKeysCoolingError extends Error {
   constructor(message?: string) {
@@ -276,12 +290,18 @@ async function reportFailure(key: LlmKeyEntry, err: unknown): Promise<void> {
 /**
  * Run `fn(client, model)` with automatic failover across healthy keys.
  * - Tries the highest-priority healthy key first (OpenRouter when configured).
- * - On ANY failure: quarantines that key, tries the next one.
- * - Only throws LLMAllKeysCoolingError once every key has failed (or none are healthy).
+ * - Each key is tried LLM_KEY_ATTEMPTS times with a 10s cooldown between
+ *   attempts. Only after all attempts fail does it move to the next key.
+ * - Only throws LLMAllKeysCoolingError once every key has failed (or none are
+ *   healthy), and sends a push notification reporting the total failure.
  */
 export async function runWithLLM<T>(fn: (client: OpenAI, model: string) => Promise<T>): Promise<T> {
   const keys = await getHealthyKeys();
-  if (keys.length === 0) throw new LLMAllKeysCoolingError();
+  if (keys.length === 0) {
+    const firstFailure = new LLMAllKeysCoolingError();
+    await notifyAllKeysFailed(firstFailure);
+    throw firstFailure;
+  }
 
   // Always try the highest-priority healthy key first (OpenRouter when
   // configured), then fail over down the list. Lower priority number =
@@ -292,13 +312,11 @@ export async function runWithLLM<T>(fn: (client: OpenAI, model: string) => Promi
   let lastErr: unknown = null;
   for (const key of order) {
     const client = new OpenAI({ apiKey: key.apiKey, baseURL: key.baseUrl });
-    // Transient 5xx (502/503/504), especially from the OpenRouter free
-    // router, which picks a DIFFERENT free provider per request, is often
-    // a single bad upstream, not a broken key. Retry the same key a couple
-    // times (OpenRouter will re-route elsewhere) before declaring failure,
-    // instead of quarantining the whole key for 5 minutes on one hiccup.
-    const attempts = 3;
-    for (let attempt = 0; attempt < attempts; attempt++) {
+    // Every error class is retried the full LLM_KEY_ATTEMPTS times on the
+    // same key (rate limits often clear within tens of seconds), with a 10s
+    // cooldown between attempts. The key is only quarantined once all
+    // attempts on it have failed, then the next key is tried.
+    for (let attempt = 0; attempt < LLM_KEY_ATTEMPTS; attempt++) {
       try {
         const result = await fn(client, key.model);
         await reportSuccess(key);
@@ -307,17 +325,82 @@ export async function runWithLLM<T>(fn: (client: OpenAI, model: string) => Promi
         const status = (err as { status?: number })?.status;
         const why = err instanceof Error ? err.message : String(err);
         lastErr = new Error(`${key.name} (${status ? `HTTP ${status}` : "network"}): ${why.slice(0, 200)}`);
-        const transient = status === 502 || status === 503 || status === 504 || status === 500 || status === 520 || !status;
-        if (!transient || attempt === attempts - 1) {
-          await reportFailure(key, err);
-          break;
+        if (attempt < LLM_KEY_ATTEMPTS - 1) {
+          await new Promise((r) => setTimeout(r, LLM_KEY_ATTEMPT_COOLDOWN_MS));
         }
-        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
       }
     }
+    // All attempts on this key failed, quarantine it for the next run.
+    await reportFailure(key, lastErr);
   }
   const detail = lastErr instanceof Error ? lastErr.message : String(lastErr);
-  throw new LLMAllKeysCoolingError(`All ${keys.length} LLM key(s) failed. ${detail.slice(0, 400)}`);
+  const exhausted = new LLMAllKeysCoolingError(`All ${keys.length} LLM key(s) failed. ${detail.slice(0, 400)}`);
+  await notifyAllKeysFailed(exhausted);
+  throw exhausted;
+}
+
+/* ── manual (chat/voice) mode ─────────────────────────────────── */
+
+/**
+ * Pick the key for a manual chat/voice attempt.
+ * - `keyId` given  : force-use that key, even if it is currently cooling or
+ *                    quarantined. The user explicitly chose it, respect that.
+ * - no `keyId`      : the best healthy key; if none are healthy, fall back to
+ *                    the highest-priority key anyway so the user can decide
+ *                    what to do from the manual retry error.
+ * Throws LLMAllKeysCoolingError only when there are no keys at all.
+ */
+export async function resolveManualKey(keyId?: string): Promise<LlmKeyEntry> {
+  const all = await listKeys();
+  if (all.length === 0) {
+    throw new LLMAllKeysCoolingError("No LLM keys are configured.");
+  }
+  if (keyId) {
+    const key = all.find((k) => k.id === keyId);
+    if (!key) throw new LLMAllKeysCoolingError(`LLM key \"${keyId}\" was not found.`);
+    return key;
+  }
+  return all.find(isHealthy) ?? all[0];
+}
+
+/**
+ * Run `fn(client, model)` exactly once against ONE specific key, the manual
+ * mode used by chat and voice. Reports success/failure to the health pool
+ * (so stats stay accurate), but never retries, never loops to the next key,
+ * and never sends the all-keys-failed notification. The caller decides what
+ * to do next and surfaces the manual retry choices to the user.
+ */
+export async function runOnceWithKey<T>(key: LlmKeyEntry, fn: (client: OpenAI, model: string) => Promise<T>): Promise<T> {
+  const client = new OpenAI({ apiKey: key.apiKey, baseURL: key.baseUrl });
+  try {
+    const result = await fn(client, key.model);
+    await reportSuccess(key);
+    return result;
+  } catch (err) {
+    await reportFailure(key, err);
+    throw err;
+  }
+}
+
+/**
+ * Push-notify that every API key has failed, throttled so a burst of
+ * concurrent failing requests only produces one notification. Fire-and-forget,
+ * never throws.
+ */
+async function notifyAllKeysFailed(err: Error): Promise<void> {
+  const now = Date.now();
+  if (now - lastAllFailedNotifiedAt < ALL_FAILED_NOTIFY_THROTTLE_MS) return;
+  lastAllFailedNotifiedAt = now;
+  try {
+    await notifyAll(
+      "Jarvis failed with every API key",
+      "Every configured AI provider failed. Jarvis could not resume the request, please try again later.",
+      "/",
+    );
+  } catch {
+    // Notifications are best-effort, the error still propagates to the caller.
+  }
+  logger.warn({ err: err.message.slice(0, 300) }, "All LLM keys failed, notification sent");
 }
 
 /** Test a single key (Settings → Test). Throws LlmKeyTestError on failure. */
