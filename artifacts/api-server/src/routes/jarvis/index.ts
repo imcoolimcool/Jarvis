@@ -24,6 +24,8 @@ import hotReloadRouter from "./hot-reload";
 import packageManagerRouter from "./package-manager";
 import gitRouter from "./git";
 import searchRouter from "./search";
+import debugRouter from "./debug";
+import testRouter from "./test";
 
 const router = Router();
 
@@ -52,5 +54,7 @@ router.use(hotReloadRouter);
 router.use(packageManagerRouter);
 router.use(gitRouter);
 router.use(searchRouter);
+router.use(debugRouter);
+router.use(testRouter);
 
 export default router;
