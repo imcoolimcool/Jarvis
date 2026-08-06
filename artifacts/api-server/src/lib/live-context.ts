@@ -2,6 +2,7 @@
  * Live context utilities, fetches real-world data to inject into Jarvis's system prompt.
  * All sources are free and require no API keys unless noted.
  */
+import { geocodeLocation, fetchOpenMeteoForecast, wmoCondition } from "./open-meteo";
 
 /** Formatted current date + time */
 export function getCurrentDatetime(): string {
@@ -17,17 +18,28 @@ export function getCurrentDatetime(): string {
   });
 }
 
-/** Current weather via wttr.in, completely free, no API key required */
+/** Current weather via Open-Meteo, completely free, no API key required */
 export async function getWeather(location: string): Promise<string> {
   try {
-    const url = `https://wttr.in/${encodeURIComponent(location)}?format=3`;
-    const res = await fetch(url, {
-      headers: { "User-Agent": "JarvisAssistant/1.0" },
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!res.ok) return "Weather unavailable";
-    const text = await res.text();
-    return text.trim();
+    const geo = await geocodeLocation(location, 4000);
+    if (!geo) return "Weather unavailable";
+    const data = await fetchOpenMeteoForecast(geo.latitude, geo.longitude, 4000);
+    const cur = data?.current;
+    if (!cur || cur.temperature_2m === undefined) return "Weather unavailable";
+
+    const condition = wmoCondition(cur.weather_code);
+    const parts = [`${geo.name}: ${Math.round(cur.temperature_2m)}°C`];
+    if (cur.apparent_temperature !== undefined) {
+      parts.push(`feels like ${Math.round(cur.apparent_temperature)}°C`);
+    }
+    if (condition) parts.push(condition.toLowerCase());
+    if (cur.relative_humidity_2m !== undefined) {
+      parts.push(`humidity ${Math.round(cur.relative_humidity_2m)}%`);
+    }
+    if (cur.wind_speed_10m !== undefined) {
+      parts.push(`wind ${Math.round(cur.wind_speed_10m)} km/h`);
+    }
+    return parts.join(", ");
   } catch {
     return "Weather unavailable";
   }

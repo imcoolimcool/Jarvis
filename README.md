@@ -51,7 +51,7 @@ Auto-detected from conversation and rendered inline:
 | You say... | Widget |
 |---|---|
 | "what's the time" / "time in Tokyo" | Live clock with ticking seconds |
-| "weather in London" | Weather card (wttr.in) |
+| "weather in London" | Weather card (Open-Meteo, no API key) |
 | "set a timer for 5 minutes" | Live countdown timer |
 | "what's 15% of 200" | **Interactive calculator** — real keypad, not just the answer |
 | "convert 5 miles to km" | Unit converter (length, weight, temp, etc.) |

@@ -351,7 +351,7 @@ export function buildErrorDetail(
       elevenLabsConfigured: !!process.env["ELEVENLABS_API_KEY"],
       tavilyConfigured: !!(process.env["TAVILY_API_KEY"] || process.env["WEB_SEARCH_API_KEY"]),
       figmaConfigured: !!process.env["FIGMA_ACCESS_TOKEN"],
-      weatherConfigured: !!(process.env["OPENWEATHER_API_KEY"] || process.env["WEATHER_API_KEY"]),
+      weatherConfigured: true, // Open-Meteo, free, no API key needed
       gmailConfigured: !!process.env["GMAIL_CLIENT_ID"] || !!process.env["GOOGLE_CLIENT_ID"],
       spotifyConfigured: !!process.env["SPOTIFY_CLIENT_ID"],
       databaseConfigured: !!process.env["DATABASE_URL"],
@@ -453,7 +453,7 @@ export function buildSimpleErrorDetail(
       elevenLabsConfigured: !!process.env["ELEVENLABS_API_KEY"],
       tavilyConfigured: !!(process.env["TAVILY_API_KEY"] || process.env["WEB_SEARCH_API_KEY"]),
       figmaConfigured: !!process.env["FIGMA_ACCESS_TOKEN"],
-      weatherConfigured: !!(process.env["OPENWEATHER_API_KEY"] || process.env["WEATHER_API_KEY"]),
+      weatherConfigured: true, // Open-Meteo, free, no API key needed
       gmailConfigured: !!process.env["GMAIL_CLIENT_ID"] || !!process.env["GOOGLE_CLIENT_ID"],
       spotifyConfigured: !!process.env["SPOTIFY_CLIENT_ID"],
       databaseConfigured: !!process.env["DATABASE_URL"],

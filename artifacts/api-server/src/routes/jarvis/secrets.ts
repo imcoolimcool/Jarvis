@@ -24,7 +24,7 @@ export const KNOWN_SECRETS: {
   { env: "ELEVENLABS_API_KEY", label: "ElevenLabs", description: "Voice, text-to-speech (British male voice).", prefix: "sk_" },
   { env: "TAVILY_API_KEY", label: "Tavily", description: "Web search + fact-checking against the internet.", prefix: "tvly-" },
   { env: "FIGMA_ACCESS_TOKEN", label: "Figma", description: "Design-to-code, fetch real fonts/colors from Figma links." },
-  { env: "OPENWEATHER_API_KEY", label: "Weather", description: "Live weather for the weather widget." },
+  // Weather needs no key: powered by Open-Meteo (free, no API key).
   { env: "GMAIL_CLIENT_ID", label: "Gmail client ID", description: "Google OAuth, calendar + email integration." },
   { env: "GMAIL_CLIENT_SECRET", label: "Gmail client secret", description: "Google OAuth secret for Gmail." },
   { env: "SPOTIFY_CLIENT_ID", label: "Spotify client ID", description: "Spotify OAuth integration." },

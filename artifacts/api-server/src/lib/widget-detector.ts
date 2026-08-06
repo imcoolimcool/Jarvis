@@ -5,6 +5,7 @@
  */
 
 import { pooledClient } from "./llm-client";
+import { geocodeLocation, fetchOpenMeteoForecast, wmoToWidgetCode, wmoCondition, degreesToCompass } from "./open-meteo";
 
 // ─── Shared widget types ─────────────────────────────────────────────────────
 
@@ -283,54 +284,41 @@ function buildClockWidget(msg: string, settings: Record<string, string>): Extrac
   return { type: 'clock', timezones: DEFAULT_TIMEZONES };
 }
 
-// ─── Weather ─────────────────────────────────────────────────────────────────
-
-interface WttrJson {
-  current_condition: Array<{
-    temp_C: string; temp_F: string; FeelsLikeC: string;
-    humidity: string; weatherCode: string;
-    weatherDesc: Array<{ value: string }>;
-    windspeedKmph: string; winddir16Point: string;
-    uvIndex?: string;
-  }>;
-  weather: Array<{
-    date: string; maxTempC: string; minTempC: string;
-    hourly: Array<{ weatherCode: string; weatherDesc: Array<{ value: string }> }>;
-  }>;
-}
+// ─── Weather (Open-Meteo, free, no API key) ──────────────────────────────────
 
 async function fetchWeatherWidget(location: string): Promise<Extract<Widget, { type: 'weather' }> | null> {
   try {
-    const url = `https://wttr.in/${encodeURIComponent(location)}?format=j1`;
-    const res = await fetch(url, { headers: { 'User-Agent': 'JarvisAssistant/1.0' }, signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return null;
-    const data = await res.json() as WttrJson;
-    const cur = data.current_condition?.[0];
-    if (!cur) return null;
+    const geo = await geocodeLocation(location);
+    if (!geo) return null;
+    const data = await fetchOpenMeteoForecast(geo.latitude, geo.longitude);
+    const cur = data?.current;
+    if (!cur || cur.temperature_2m === undefined) return null;
 
-    const hour = new Date().getHours();
-    const isDay = hour >= 6 && hour < 20;
-
-    const forecast: ForecastDay[] = (data.weather ?? []).map(w => ({
-      date: w.date,
-      maxTemp_c: Number(w.maxTempC),
-      minTemp_c: Number(w.minTempC),
-      condition: w.hourly?.[4]?.weatherDesc?.[0]?.value ?? cur.weatherDesc?.[0]?.value ?? '',
-      conditionCode: Number(w.hourly?.[4]?.weatherCode ?? cur.weatherCode),
-    }));
+    const code = cur.weather_code ?? 0;
+    const daily = data?.daily;
+    const forecast: ForecastDay[] = (daily?.time ?? []).map((date, i) => {
+      const dayCode = daily?.weather_code?.[i] ?? code;
+      return {
+        date,
+        maxTemp_c: daily?.temperature_2m_max?.[i] ?? 0,
+        minTemp_c: daily?.temperature_2m_min?.[i] ?? 0,
+        condition: wmoCondition(dayCode),
+        conditionCode: wmoToWidgetCode(dayCode),
+      };
+    });
 
     return {
       type: 'weather',
-      location,
-      temp_c: Number(cur.temp_C),
-      temp_f: Number(cur.temp_F),
-      feelsLike_c: Number(cur.FeelsLikeC),
-      condition: cur.weatherDesc?.[0]?.value ?? '',
-      conditionCode: Number(cur.weatherCode),
-      humidity: Number(cur.humidity),
-      windSpeed_kmh: Number(cur.windspeedKmph),
-      windDir: cur.winddir16Point,
-      isDay,
+      location: geo.name,
+      temp_c: cur.temperature_2m,
+      temp_f: (cur.temperature_2m * 9) / 5 + 32,
+      feelsLike_c: cur.apparent_temperature ?? cur.temperature_2m,
+      condition: wmoCondition(code),
+      conditionCode: wmoToWidgetCode(code),
+      humidity: cur.relative_humidity_2m ?? 0,
+      windSpeed_kmh: cur.wind_speed_10m ?? 0,
+      windDir: degreesToCompass(cur.wind_direction_10m ?? 0),
+      isDay: (cur.is_day ?? 1) === 1,
       forecast,
     };
   } catch {
