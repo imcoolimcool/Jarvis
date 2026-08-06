@@ -14,5 +14,5 @@ if ldconfig -p 2>/dev/null | grep -q "libglib-2.0.so.0"; then
 fi
 
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq >/dev/null 2>&1 || true
-apt-get install -y -qq --no-install-recommends $DEPS >/dev/null 2>&1 || true
+apt-get update -qq
+apt-get install -y -qq --no-install-recommends $DEPS

@@ -36,6 +36,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/lib/i18n';
 import { haptics } from '@/lib/haptics';
+import { applyAccent } from '@/lib/use-accent';
 
 interface Settings {
   weather_location: string;
@@ -273,13 +274,9 @@ export function SettingsPanel({ open, onClose, theme = 'dark', onToggleTheme }: 
   }, [loadSecrets, toast]);
 
   useEffect(() => {
-    const h = ACCENTS[accent] ?? ACCENTS.blue;
-    const primary = resolvedTheme === 'dark' ? h.dark : h.light;
-    const root = document.documentElement;
-    root.style.setProperty('--primary', primary);
-    root.style.setProperty('--ring', `${primary} / 0.3`);
     try { localStorage.setItem('jarvis-accent', accent); } catch { /* ignore */ }
-  }, [accent, theme]);
+    applyAccent(accent, resolvedTheme);
+  }, [accent, resolvedTheme]);
 
   const fetchGmailStatus = useCallback(() => {
     fetch('/api/jarvis/gmail/status')

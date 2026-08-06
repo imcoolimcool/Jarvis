@@ -10,6 +10,8 @@ export const groupChats = pgTable("group_chats", {
   kind: text("kind", { enum: ["ai", "human"] }).notNull().default("ai"),
   /** "always" = Jarvis replies to everything, "mention" = only when @Jarvis. */
   aiToggle: text("ai_toggle", { enum: ["always", "mention"] }).notNull().default("always"),
+  /** Hash of the anonymous owner's browser token, never exposed to clients. */
+  ownerTokenHash: text("owner_token_hash"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

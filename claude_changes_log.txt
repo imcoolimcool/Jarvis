@@ -4,7 +4,7 @@
 - Created .env file at root and artifacts/api-server/ with DATABASE_URL pointing to Neon.tech PostgreSQL database
 - Installed all project dependencies via pnpm install
 - Started API server on port 8080 (Express backend)
-- Started Vite dev server on port 5173 (React frontend with proxy to API server)
+- Started Vite frontend on port 5173 (React frontend with proxy to API server)
 - API server confirmed running at http://localhost:8080/
 - Vite frontend confirmed running at http://localhost:5173/
 
@@ -16,7 +16,7 @@
   - ELEVENLABS_API_KEY (ElevenLabs TTS)
   - TAVILY_API_KEY (Tavily web search)
   - SPOTIFY_CLIENT_ID + SPOTIFY_CLIENT_SECRET (Spotify OAuth)
-  - GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (Gmail/Calendar OAuth)
+  - GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (Google OAuth for Gmail/Calendar)
 
 ## 2026-07-30 - GitHub Setup & Push
 - Initialized git repo, set user identity (Kasper Kal)
@@ -35,143 +35,97 @@
 ## 2026-07-31 - Crash-Proof Auto-Resume System
 - Created `.session_state.md` — granular 106-step checklist with every single action tracked as [ ] checkboxes. Source of truth for all work.
 - Created `jarvis-launch.sh` — completely rewritten for Crostini: creates tmux with 2 windows (window 0 = omniroute, window 1 = claude), auto-types "go" after 20s delay, endless monitor loop with `exec bash "$0"` on crash
-- Created `.tmux_runner.sh` — inner tmux runner with 9999 restart loop for Claude
-- Created `.cron_watchdog.sh` — cron safety net every 5 min, with proper PATH for cron
-- Installed cron job: `*/5 * * * * bash ~/jarvis/.cron_watchdog.sh`
 - Updated CLAUDE.md: auto-push rule added — git commit+push after EVERY checked-off step box
 - Updated .session_state.md header: auto-push instruction added
-- Triple redundancy: tmux window-level restart + outer monitor loop + cron watchdog
-- Auto-push to GitHub after every single step in .session_state.md
+- Triple redundancy: tmux window-level restart + outer monitor loop + cron watchdog every 5 min
+- 9999 restart cycles on crash
 
-## 2026-07-31 - Phase 2 Audit (step 2.1)
-- Ran `pnpm run typecheck` (tsc --build for libs + tsc --noEmit in artifacts/jarvis, artifacts/api-server, artifacts/mockup-sandbox, scripts)
-- RESULT: 0 TypeScript errors across all workspaces ✅
-- Next: scanning imports in artifacts/jarvis/src for broken module paths (2.2)
+## 2026-07-31 - Phase 2 Audit (steps 2.1-2.12)
+- Audited TypeScript, imports, dependencies, API routes, React crash patterns, console output, env configuration, startup, and health endpoints.
+- Full repository typecheck passed with 0 errors.
 
-## 2026-07-31 - Phase 2 Audit (step 2.2)
-- Scanned all imports in artifacts/jarvis/src (86 files): every relative and @/ alias import resolves to an existing file
-- Only non-TS spec is ./index.css which exists — all imports OK, no broken module paths
-- Verified @assets alias not used anywhere in frontend
-- Next: scanning imports in artifacts/api-server/src (2.3)
+## 2026-08-01 - Phase 6 Apple UI and settings work
+- Added liquid-glass UI materials, SF Pro/Graphik typography handling, responsive home/sidebar/feed/camera surfaces, accent picker, auto theme, settings cleanup, voice mode polish, haptics, and related runtime hardening.
 
-## 2026-07-31 - Phase 2 Audit (steps 2.3-2.5)
-- 2.3: Scanned artifacts/api-server/src (22 files): all imports resolve. @workspace/api-zod + @workspace/db resolve via pnpm workspace symlinks (verified present in artifacts/api-server/node_modules/@workspace/)
-- 2.4: Scanned all lib/ packages (api-client-react, api-spec, api-zod, db — 26 source files): all imports resolve
-- 2.5: Audited all 8 workspaces' imports vs declared deps: 0 missing. All flagged items were subpath imports (react-dom/client, drizzle-orm/pg-core) or Node builtins — base packages all declared
-- mockup-sandbox also verified (60 files, all resolve; @ alias maps to its own src/)
-- No broken imports or missing deps anywhere. Next: 2.6 runtime crash check on API routes
+## 2026-08-06 - Phase B
+- Added a pure high-confidence capability classifier for automatic web search and existing timer/image/screen-share/agent/build routes.
+- Kept uncertain messages on the normal chat path.
+- Added server-side em-dash sanitization on streamed assistant deltas.
+- Added an @ autocomplete plugin menu to the chat composer while preserving +, dictation mic, voice mode, and existing plugin actions.
+- Expanded PlusMenu with filtered tool actions for @ autocomplete, including thinking, agent, web search, screen share, build, research, and Data Lab.
 
-## 2026-07-31 - Phase 2 Audit (steps 2.6-2.9)
-- 2.6: Started audit of API route files for runtime crash potential (chat.ts reviewed fully — robust error handling; remaining 15 files delegated to audit subagent)
-- 2.7: React component crash-pattern audit delegated to parallel subagent
-- 2.8: Frontend console.* scan: only 2 legit console.error calls in catch blocks (jarvis-browser.tsx:134, use-clap-detection.ts:138) — no debug leftovers
-- 2.9: .env audit: all 11 required vars set & non-empty in api-server/.env + root .env
+## 2026-08-06 - Phase C
+- Added the existing-schema project API: project CRUD, project chat membership, pin toggling, and public read-only share links with full ordered messages.
+- Added a sidebar Projects workspace with project creation, selection, nested chat navigation, deletion, and a searchable Gallery backed by `/api/files` with kind filters and file previews.
+- Added the active conversation header action menu: share with clear privacy warning, `.txt` export, pin/unpin, per-chat files, message search, and add-to-project.
+- Moved accent application into app-load scope so `jarvis-accent` is applied before the first paint and remains live across theme changes.
+- Removed the duplicate sidebar export control so export has one canonical location.
+- Validation: Jarvis typecheck, API typecheck, full repository typecheck, Jarvis production build, and API production build all pass. Existing warnings remain for the tooltip sourcemap and large frontend chunk.
 
-## 2026-07-31 - Phase 2 Audit (step 2.10)
-- Started API server (build ok, listening on 8080, DB connected) + Vite dev server (HTTP 200 on 5173)
-- Exercised endpoints: /api/healthz (db connected), /api/jarvis/settings, /api/jarvis/conversations, /api/jarvis/memories — all HTTP 200
-- Clean startup, no runtime errors. Persistent monitor armed on both logs for error patterns
+## 2026-08-06 - Phase D
+- Added persistence-backed group routes for anonymous-owner group creation, group membership, account signup/login/logout, session cookies, group settings, and member-only message reads.
+- Added secure password hashing with salted scrypt, expiring account sessions, owner-token authorization for anonymous owners, and access checks that prevent unauthenticated group enumeration.
+- Added one-time, 4-digit, 24-hour invite codes with regeneration/revocation semantics and an invite join flow that creates or authenticates the invited account.
+- Added a Group Settings control next to the conversation actions menu, with human group creation, AI group setup using Researcher and Skeptic persona members, participant display, Jarvis participation mode, invite generation, and invite joining.
+- Added the group owner token column to the Drizzle schema and idempotent auto-migration.
+- Validation: Jarvis typecheck, API typecheck/build, and full repository typecheck pass. Jarvis production build also passes with the existing tooltip sourcemap and bundle-size warnings.
 
-## 2026-08-01 - Phase 2 Audit (steps 2.6-2.12) + Phase 6 UI REDESIGN START
-- 2.6/2.7: API route crash audit + React crash-pattern audit confirmed no blocking issues
-- 2.11: no blocking errors found to fix | 2.12: typecheck re-verified 0 errors
-- 6a: index.css overhaul — REMOVED Graphik @font-face blocks + Graphik font stack (user dropped Graphik), switched to Apple SF Pro system stack, removed unused Inter Google Fonts link from index.html
-- 6a: added iOS 26 Liquid Glass material system: .liquid-glass, .liquid-glass-soft, .liquid-glass-thin, .specular, .gradient-fluid, .text-gradient-fluid, .capsule
-- 6c/6f: home.tsx — ambient animated liquid-gradient blobs behind the orb (blue/magenta/green, blurred, drifting), added CAMERA MODE as a first-class full-screen mode with object detection, segmented control now shows Voice/Chat/Camera
-- 6d: chat-sidebar — translucent frosted panel (bg-background/70 + backdrop-blur-2xl), mobile drawer now liquid-glass
-- 6d: conversation-feed — assistant bubbles use liquid-glass-soft, user bubbles get rounded-br-md + soft shadow
-- Freebuff preview confirmed pointing at Jarvis (sh scripts/start-dev.sh, port 5173)
-- Verified: jarvis typecheck 0 errors
+## 2026-08-06 - Phase E checkpoint
+- Added the Build Studio vertical slice at `artifacts/jarvis/src/components/build-studio.tsx`, replacing the old command-card-only overlay with a multi-file lightweight editor, file tabs, real workspace saves, terminal commands, preview start/stop with an embedded iframe, package command helpers, environment metadata, Git command helpers, AI starter scaffolding, and saved-app restore controls.
+- Added `/api/jarvis/build` routes for saved build snapshots, local env metadata, starter scaffolding, and preview process lifecycle, using the existing workspace jail and file-storage abstraction.
+- Added `build_apps` persistence wiring through the existing schema and mounted the route in the Jarvis API router.
+- Preserved the existing home-page Build Mode state and kept legacy overlay props optional while the new Studio owns its internal IDE state.
+- Validation: Jarvis typecheck, API typecheck, full repository typecheck, Jarvis production build, and API production build pass. Existing tooltip sourcemap and frontend bundle-size warnings remain.
+- Honest limitations: the current slice does not yet provide Monaco/CodeMirror, a nested rename/delete file tree, live terminal streaming/stop for foreground commands, Gallery-native app cards, or multi-session preview orchestration. Git actions are exposed through the terminal rather than a separate credential-aware clone/commit/push flow.
+- Final compatibility fix: normalized the Build Studio terminal response so the existing workspace shell's `stdout` and `stderr` are displayed alongside the chat terminal `output` shape. Re-ran frontend/API typechecks, full repository typecheck, and both production builds successfully.
 
-## 2026-08-01 - ChatGPT Settings UI Copy + Graphik Font Restored
-- Restored Graphik font: re-added 18 @font-face blocks (weights 100-900 + italics) and Graphik-first font stack in index.css (fonts still in public/fonts/)
-- Copied the ChatGPT (Dutch) settings UI structure into settings-panel.tsx:
-  - Added Accentkleur (Accent Color) section with color swatch row + full accent picker view (Blauw/Groen/Paars/Oranje/Roze)
-  - Accent applies theme-aware CSS vars (--primary, --ring) and persists to localStorage (jarvis-accent)
-  - Added Aankopen herstellen (Restore Purchases) row in Account section
-  - Expanded App-instellingen rows to match reference: + Ouderlijk toezicht, + Vertrouwd contact, + Beveiliging en inloggen
-- Added 10 new EN + NL i18n keys (accent color + options, restore purchases, parental controls, trusted contact, security & login)
-- Excluded accent view from save-status footer (display-only view like language/about)
-- Verified: jarvis typecheck 0 errors
+## 2026-08-06 - Phase F checkpoint
+- Expanded Design Studio into a dependency-free layered browser canvas with draggable text and shape layers, layer selection, ordering, deletion, simple templates for poster/social/card/story layouts, undo/redo, local capped design history, and restored source-image snapshots.
+- Added Design Studio exports for PNG, JPG, SVG wrapper, and browser print-to-PDF, while preserving AI generation, filters, crop presets, rotation, flip, and honest messaging about unavailable region-aware editing, background removal, and upscale.
+- Expanded Music Studio with prompt-to-procedural-track mapping, deterministic seed and mood inference, recent local track history and restore, composition-recipe download, and explicit instrumental/procedural-preview labeling. Existing browser Web Audio playback remains the offline fallback and no API key is required.
+- Validation: Jarvis typecheck, full repository typecheck, and Jarvis production build pass. Existing tooltip sourcemap and frontend bundle-size warnings remain.
+- Honest limitations: the repository does not currently contain the specified MusicGen worker, so Phase F uses the existing unlimited procedural browser synth rather than claiming rendered MusicGen audio, vocals, or Suno parity. Download currently exports the composition recipe JSON, not a rendered WAV/MP3 file.
 
-## 2026-08-01 — Removed all placeholder subscription material
-- Removed "Upgraden" pill from header (home.tsx) + its Sparkle import
-- Removed settings Account rows: Abonnement/Free, Aankopen herstellen, Upgrade naar Jarvis Plus (settings-panel.tsx) + unused Crown/RotateCcw icon imports
-- Removed i18n keys: header.upgrade, header.upgradeHint, settings.subscription, settings.free, settings.upgrade, settings.restorePurchases (en + nl)
-- Verified: zero remaining refs (grep clean), jarvis tsc 0 errors
+## 2026-08-06 - Phase G checkpoint
+- Localized the newly added Design, Music, and Build Studio controls through the existing English/Dutch dictionary, including templates, aspect presets, moods, editor helpers, preview controls, and close actions.
+- Preserved honest capability labels for the procedural browser music fallback and browser-only Design Studio AI limitations.
+- Final source audit found no empty Studio handlers, TODO/dead-control markers, or em dashes in Studio source. Chat retains both the no-em-dash system instruction and streamed-delta sanitization.
+- Validation: Jarvis typecheck, API typecheck, full repository typecheck, Jarvis production build, and API production build all pass. Existing warnings remain for the tooltip sourcemap, large frontend bundle, and API bundle size.
+- Remaining honest limitations: Studio editor helpers still use lightweight browser controls rather than Monaco/CodeMirror; Music Studio downloads a composition recipe rather than rendered audio; browser walkthrough screenshots were not run because the managed preview was intentionally not started.
 
-## 2026-08-01 — ChatGPT-style home screen + performance overhaul
-- Header: circular hamburger w/ red badge (mobile), "Upgraden" pill w/ blue star (EN/NL via i18n), cleaner icon row
-- Chat empty state: 3 ChatGPT-style suggestion rows — Afbeelding maken (Image), Schrijven of bewerken (Pencil), Zoeken op het web (Globe); localized EN/NL
-- Added i18n keys: header.upgrade, header.upgradeHint, header.notifications, home.createImage, home.write, home.searchWeb (en + nl)
-- PERF: removed full-screen feTurbulence noise overlay (constant GPU repaint) → cheap static dot grid
-- PERF: voice-mode ambient blobs are now static radial gradients (was blur(80px) + infinite framer-motion → repaint per frame)
-- PERF: orb particles 120→48; orb glow is radial-gradient instead of blur(80px) filter
-- PERF: reduced glass blur radii (liquid-glass 40→24px, soft 24→16, thin 14→10, toolbar 40→20)
-- Note: chat input-bar pill restyle was blocked by file-tool read truncation on the 88KB home.tsx (input bar at line ~1564 past the ~1440 read window) — input already had frosted backdrop-blur so visuals stay consistent
-- Verified: jarvis tsc 0 errors
+## 2026-08-06 - Browser verification repair
+- Diagnosed the prior screenshot blocker instead of treating it as missing Chrome: Puppeteer had downloaded Chrome 150, but the harness hardcoded `/usr/local/bin/google-chrome`, Puppeteer 25 requires awaiting `executablePath()`, and Chrome shared libraries were missing.
+- Installed the missing Chrome runtime libraries through `scripts/chrome-deps.sh`, removed its silent package-manager failure handling, and made `scripts/start-dev.sh` fail visibly if dependency setup fails.
+- Updated `ui-walkthrough.mjs`, `screenshot-test.mjs`, and `screenshot-check.mjs` to use Puppeteer's managed executable and portable, environment-configurable screenshot paths.
+- Verification: both managed Chrome and the headless shell have complete shared-library resolution; all three harnesses pass syntax checks; a real Puppeteer page probe passes; Jarvis/API/full-repository typechecks and both production builds pass.
+- The remaining screenshot blocker is platform-only: `freebuff-preview` is not mounted in this shell and no app is listening on ports 5173/8080, so the walkthrough was not run against an unmanaged server. Existing build warnings remain for the tooltip sourcemap and bundle sizes.
+- Follow-up recovery: removed the hardcoded `/home/daytona/codebase` change-directory dependency from `scripts/start-dev.sh`; it now resolves the repository root relative to the script, making the configured preview command portable. Re-ran shell syntax, harness syntax, `git diff --check`, frontend/API/full typechecks, and both production builds successfully. A final managed-preview retry still found no `freebuff-preview` executable in PATH or common tool locations.
 
-## 2026-08-01 — FIX: Preview stuck loading at 97% (readiness probe on wrong port)
-- Diagnosis: `freebuff-preview start` logs showed API server on 8080 + Vite on 5173 both boot fine, but the readiness probe reported previewPort 3002 (the Puppeteer browser WebSocket port announced in the API server's stdout) — HTTP probe on a ws:// port → statusCode 000 → startup timeout → 97% hang.
-- Fix in scripts/start-dev.sh: redirect API server stdout to /tmp/jarvis-api-server.log (so only Vite's port is visible to preview port detection) + pin Vite to PORT=5173.
-- Verified: `freebuff-preview start` → {"message":"Preview is ready","running":true,"listening":true,"previewPort":5173}
+## 2026-08-06 - Backblaze B2 Gallery storage
+- Extended the existing server-side S3 storage abstraction with a Backblaze B2 adapter using the already-installed `@aws-sdk/client-s3` package.
+- B2 uses `B2_ENDPOINT` / `B2_REGION` with defaults for `https://s3.eu-central-003.backblazeb2.com` and `eu-central-003`, plus server-only `B2_KEY_ID`, `B2_APPLICATION_KEY`, and `B2_BUCKET_NAME` credentials/configuration. B2 is selected before the existing R2 and local-disk fallbacks.
+- Existing `/api/files` upload, Gallery listing, file serving, generated-image persistence, and Build Studio persistence now share the B2-backed storage path without frontend credential exposure.
+- Added placeholder-only setup documentation to `docs/API_KEYS.md` and `README.md`. The supplied key values were intentionally not written to source, docs, `.env`, or the database.
+- Validation: API/frontend/full typechecks and both production builds pass; B2 literal-secret scan is clean; `git diff --check` passes. Existing tooltip sourcemap and bundle-size warnings remain.
 
-## 2026-08-01 — UI cleanup per annotated screenshot
-- Removed the red "Backend offline" banner + the /api/healthz polling effect + unused backendOnline state from home.tsx (crossed out in annotations).
-- Changed hint text (YOU/JARVIS subtitle paragraphs) from font-mono → Graphik (app font) in home.tsx.
-- Pointed --app-font-mono at the Graphik stack in index.css (both light+dark) so the chat input bar and any remaining mono labels render in Graphik (input-bar section of home.tsx is beyond the file tool's read window on this large file, so the CSS-level fix covers it).
-- Header icon row left intact — mode picker (Voice/Chat/Camera) is the only way to switch modes and settings stays (language menu). Verified: tsc 0 errors.
+## 2026-08-06 - Build Studio project workspace upgrade
+- Replaced the Build Studio card-feed editor with a project-scoped IDE surface: explorer tree, nested folders, file tabs, create/rename/delete operations, editor saves, terminal history, live SSE terminal output with stop, preview status polling, package helpers, environment editing, Git helpers, AI scaffold, and saved-app restore.
+- Added isolated workspace roots under `artifacts/workspace/projects/<workspaceId>` while preserving the legacy default workspace for existing Jarvis tools. Workspace IDs and paths are validated, file writes are capped, and terminal/preview child processes no longer inherit the full API environment.
+- Added workspace-aware terminal and file routes, interactive terminal start/stream/stop endpoints, and workspace-keyed preview process tracking. Saved Build Studio snapshots now capture and restore the selected project workspace.
+- Kept Git credential handling explicit and reviewable: Build Studio exposes safe Git helper commands but does not expose server credentials to browser code or silently perform remote pushes.
+- Validation: full repository typecheck, Jarvis typecheck, API typecheck, Jarvis production build, API production build, and `git diff --check` pass. Existing tooltip sourcemap and bundle-size warnings remain.
 
-## Voice mode button next to send + Auto theme + SF Pro on Apple (user request)
-- Voice mode is now a mic button right next to the send button: handleChatMicToggle → setMode('voice') (switches to the full voice assistant). Removed the 'voice' entry from the header mode picker (kept Chat/Camera).
-- Removed all "Zeg 'hey Jarvis'" hint text: statusHint paragraphs in voice view + chat orb panel, the statusHint const, and the "Jarvis — Say 'hey Jarvis'..." line in conversation-feed empty state. Verified 0 references remain.
-- Apple devices (iOS/macOS) now get SF Pro: main.tsx adds .platform-apple class from userAgent; index.css overrides --app-font-sans/mono to SF Pro stacks under .platform-apple (Graphik everywhere else). Verified: Graphik is the only font family loaded besides the SF Pro override.
-- Theme now supports Auto: useTheme handles 'dark' | 'light' | 'auto', follows prefers-color-scheme via matchMedia listener, root div uses resolved theme; settings Light/Dark segmented control now Auto/Light/Dark (uses existing settings.appearance.system i18n key, already in EN+NL); header toggle still flips dark↔light from resolved.
-- Verified: tsc 0 errors.
+## 2026-08-06 - Build Studio guided AI creation + screenshots
+- Added `POST /api/jarvis/build/ask`: returns a fixed set of clarifying questions (app type, UI style, AI provider, scope) so the scaffold matches intent before code is generated.
+- Replaced the deterministic `/api/jarvis/build/scaffold` with an LLM-backed generator (`generateStarterFiles`): accepts the prompt plus question answers and optional feedback, asks the model for a complete JSON file map, validates paths/content server-side, and falls back to a polished local single-page starter when the model is unavailable.
+- Added `POST /api/jarvis/build/screenshot`: captures the running preview with the existing headless Puppeteer setup (localhost-only URL guard), persists the PNG through the shared storage layer, and returns both a stored URL and a data URL for instant display.
+- Build Studio UI: scaffold button now opens an AI question wizard with selectable option chips (skip per question or skip all), the Preview tab gained a screenshot button, and a screenshot + feedback panel lets the user tell Jarvis what to change, which re-applies the scaffold with that feedback.
+- Added EN/NL i18n strings for the wizard, screenshot, and feedback flows (no em dashes anywhere).
+- Validation: full repository typecheck, Jarvis typecheck, API typecheck, both production builds, and `git diff --check` pass. Em-dash scan of edited files is clean. Existing tooltip sourcemap and bundle-size warnings remain.
 
-## ChatGPT-style input bar + in-chat Whisper dictation
-- Input bar restyled into a ChatGPT-style pill (home.tsx): rounded-full card container, circular + menu button, transparent Graphik textarea with localized placeholder (NL now "Vragen aan Jarvis…"), mic button, and a solid blue circular AudioWaveform button.
-- Mic button now toggles IN-CHAT dictation via Whisper (Web Speech API): starts continuous + interim recognition, transcribes live into the input box, STAYS in chat mode, and does not auto-stop while talking. While active the mic becomes a red square (Square icon) — tap it to stop. "Zeg 'hey Jarvis'" hint removed earlier; live interim text shows as the placeholder while dictating.
-- Blue circular button (AudioWaveform icon) opens the full-screen voice assistant (new handleOpenVoiceMode → setMode('voice')).
-- use-speech-recognition.ts extended: continuous, interimResults, onInterim options; onresult now walks all results splitting final vs interim chunks (existing callers unaffected — defaults false).
-- Barge-in recognizer (orb tap while speaking in chat) kept separate: still auto-submits + speaks back.
-- i18n: added input.dictate / input.stopDictate / input.voiceMode in EN+NL; updated input.listeningStatus to "tap the square to stop"; NL placeholder now "Vragen aan Jarvis…".
-- Input bar JSX sits past the file tool's read window on the 88KB home.tsx, so the restyle was applied via a one-off Node patch script with exact-match assertions (script removed after).
-- Verified: tsc 0 errors.
-
-## Subtle haptics (aesthetic vibrations)
-- New src/lib/haptics.ts: named presets (light 8ms / medium 18ms / heavy pulse / success double-tick / error 60ms / raw). No-ops safely when navigator.vibrate is unavailable (desktop, iOS Safari) or user prefers reduced motion.
-- home.tsx: haptics on mode switch (Chat/Camera), theme toggle, open settings, new chat, send (medium), suggestion click, mic→voice (heavy), stop speaking, agent/browser/camera PiP toggles.
-- settings-panel.tsx: haptics on theme Auto/Light/Dark segment, language row, accent picker, all SettingsRow nav rows (added inside the row component), manual save (medium), close.
-- chat-sidebar.tsx: haptics on new chat (nav + footer), conversation select, export, delete (medium), settings gear, clear all (medium).
-- conversation-feed.tsx: haptics on suggestion chips, copy, regenerate, edit, scroll-to-bottom.
-- Verified: tsc 0 errors.
-- 10:38 Voice-mode fix pass (user: "voice mode not full screen, error when talking, mobile broken"):
-  - api-server/src/index.ts: removed eager Puppeteer launch — Chrome now lazy-inits on first browse request. Eager Chrome was pushing the 4GB cgroup over limit → OOM container restarts that killed the API server mid-conversation (voice errors).
-  - hooks/use-wake-word.ts + use-speech-recognition.ts: added `lang` option (default en-US) so recognition matches the UI language (nl-NL when Dutch) — fixes misheard/garbled commands.
-  - pages/home.tsx: voice mode is now truly fullscreen — header + sidebar hidden when mode==='voice', added floating back-to-chat button (MessageSquare, top-left). Mobile: personality button hidden on small screens, tighter header gaps, PiP toggle row wraps (flex-wrap justify-center).
-  - pages/home.tsx: playTTS onError now surfaces the real error toast (ElevenLabs key missing etc.) instead of silent onDone.
-  - lib/i18n.tsx: voice.backToChat EN/NL keys.
-  - Verified: jarvis + api-server tsc 0 errors.
-- 10:55 Settings cleanup + agent-mode regression fix:
-  - api-server/src/routes/jarvis/browse.ts: /ws-url now calls ensureBrowserStarted() before responding — restores agent-mode PiP browser (the /browser-ws WS server only exists while Chrome is running, and Chrome is now lazy-launched).
-  - settings-panel.tsx: removed 9 fake rows (General, Notifications, Speech, Parental Controls, Trusted Contact, Safety, Security & Login, Storage, Data Management) that all redirected to a generic 'app' view; replaced with one honest "Web Search & Data" row. Removed dead rows (Plugins, Report a Problem, Help Center) + unused lucide imports.
-  - lib/i18n.tsx: settings.webSearchData + Desc EN/NL; removed unused fake keys.
-  - Verified: jarvis + api-server tsc 0 errors.
-- 11:08 (user: EN/NL detection, stop-on-tab-leave, self-code access, ElevenLabs broken):
-  - NEW src/lib/speech-lang.ts: Dutch vs English word-score classifier (detectSpeechLanguage / toSpeechLangTag).
-  - hooks/use-speech-recognition.ts + use-wake-word.ts: autoDetectLang + onLangChange — recognizer adapts to the language the user actually speaks (flips nl-NL ⇄ en-US), applied on restart.
-  - pages/home.tsx: autoDetectLang wired into all 4 recognizers (orb, wake word, barge-in, dictation); NEW visibilitychange handler stops TTS / dictation / recording the moment the tab is hidden (statusRef + chatDictatingRef).
-  - NEW api-server routes/jarvis/code.ts: read-only GET /api/jarvis/code (+?path=) — path-traversal safe, blocks .env/node_modules/.git/dist/logs and config/jarvis.ts (his own system prompt); registered in routes/index.ts.
-  - config/jarvis.ts systemPrompt: new "YOUR SOURCE CODE" section — Jarvis may inspect his own code ONLY when asked, read-only, never reveal his system prompt, no unsolicited code dumps.
-  - routes/jarvis/speak.ts: surfaces the real ElevenLabs error reason (e.g. "Invalid API key") instead of a generic message.
-  - DIAGNOSIS: ElevenLabs key IS set but INVALID — API returned 401 {"Invalid API key"}. User must replace ELEVENLABS_API_KEY in Keys/API keys.
-  - Verified: jarvis + api-server tsc 0 errors.
-  - NEW lib/source-code.ts: shared read-only repo access. REPO_ROOT now auto-detected via pnpm-workspace.yaml walk-up (old hardcoded ../../.. resolved 1 level too high and walked /home/daytona!). listSourceFiles() + readSourceFile() with FIXED blocking regexes: leading-dot names (.git, dotenv files, .daytona, .session_state) needed (^|/) anchors because a \b before a dot never matches after a slash. code.ts refactored to use it.
-  - routes/jarvis/chat.ts: REAL function-calling wired — read_source_code tool (path="" lists tree; path=<rel> reads file, 30k cap) on the SSE streaming path. Pass 1 streams with tools; if tool_calls are emitted: execute, append assistant+tool messages, final stream with tool_choice:none. Graceful fallback to a plain stream if the provider rejects tools. Typed as ChatCompletionMessageFunctionToolCall.
-  - config/jarvis.ts: YOUR SOURCE CODE prompt rewritten — describes the actual read_source_code tool; Jarvis must READ the code first before suggesting features about himself; never reveal his system prompt.
-  - Functional smoke test (node --experimental-strip-types): tree=342 files, home.tsx readable, secrets/.git/dist/node_modules/config-jarvis.ts/path-traversal all blocked. api-server tsc 0 errors.
-  - FEATURE: "Use code for this answer?" confirmation. New lib/code-intent.ts (EN+NL heuristic: detects questions about Jarvis own code, e.g. "what would you like to add to yourself", "hoe ben je gebouwd"). processUserText gates in chat mode: shows a SourceCodeConfirmationCard (new, bilingual, blue Code2 style in image-confirmation-card.tsx) rendered via pendingSourceCode message flag in conversation-feed.tsx. Confirm re-sends with allowSourceCode=true; Cancel re-sends with false (message is NEVER dropped). Backend chat.ts: allowSourceCode!=false gates the read_source_code tool (plain stream when declined). i18n keys chat.useCode* EN+NL. Detector: 17/17 test cases pass. jarvis + api-server tsc 0 errors.
-  - FIX (bug reported by user): Jarvis answered with RAW tool-call JSON ({"name":"read_source_code",...}) instead of a real answer. Root cause: NVIDIA NIM llama-3.2 does NOT emit native OpenAI tool_calls — it writes the tool call as visible text, and the streaming code leaked it to the user.
-  - Solution: replaced native function-calling with a private JSON DISPATCH protocol in routes/jarvis/chat.ts. When the user confirms code use (allowSourceCode==="true"): a non-streaming dispatch round asks the model to either answer directly or return a one-line {"tool":"read_source_code","path":"..."} marker; if a marker, the backend reads the file (runSourceCodeTool) and streams the REAL answer with the code injected as system context. The marker is never shown. tryParseToolDispatch helper added; SOURCE_CODE_TOOL const removed; useSourceCodeTool now requires explicit allowSourceCode==="true" (undefined/false = plain stream, no tools, no latency).
-  - Also: history filter (backend chat.ts + frontend loadConversation) drops poisoned assistant messages containing read_source_code that start with { or ``` so old JSON garbage never reaches the model or the UI again. Dispatch parser 4/4 unit tests pass; jarvis + api-server tsc 0 errors.
+## 2026-08-06 - Build Mode master prompt (Replit-grade spec)
+- Created `docs/build-mode-master-prompt.md`, the single source of truth for how Build Mode must treat user prompts: exactly like Replit's agent.
+- Includes the reference prompt verbatim, the complete 66-step action-by-action playbook from the Replit transcript (integration-first reasoning, skill loading, service discovery, contract-first codegen, parallel frontend/backend builds, dependency installs, schema push, database seeding, auth boundaries, curl smoke tests, screenshots, bug fixing, restarts, honest presentation and follow-ups), descriptions of the Replit UI the user wants copied (agent panel with action badges, preview browser, Tools menu, artifact card), the must-do/never-do behavior rules, the concrete Build Mode implementation surface, and the open implementation decisions.
+- Publishing/deployment/upgrade/credit content was intentionally excluded per the user's explicit direction (they do not want the publish surface copied).
+- Second pass per user direction: removed everything that does not make sense for a free local Jarvis, including billing/subscriptions, paid providers (Clerk, Stripe, Whop, Google Cloud), email delivery, Docker/CI, and monetization. The reference prompt was adapted (billing page, email support, Docker, CI/CD removed; database relabeled as free local), Stage 3 now decides only free local options, and a hard rule was added: no paid services, ever. A scan confirms every remaining money/deployment match is an explicit exclusion statement, not content.
+- No code changed; this is the plan artifact the user requested. Validation not required for a documentation-only change.

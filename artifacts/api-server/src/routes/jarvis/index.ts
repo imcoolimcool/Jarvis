@@ -17,6 +17,9 @@ import terminalRouter from "./terminal";
 import verifyRouter from "./verify";
 import secretsRouter from "./secrets";
 import timersRouter from "./timers";
+import projectsRouter from "./projects";
+import groupsRouter from "./groups";
+import buildRouter from "./build";
 
 const router = Router();
 
@@ -38,5 +41,8 @@ router.use(secretsRouter);
 router.use(terminalRouter);
 router.use(verifyRouter);
 router.use(timersRouter);
+router.use(projectsRouter);
+router.use(groupsRouter);
+router.use(buildRouter);
 
 export default router;

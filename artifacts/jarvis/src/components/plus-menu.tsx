@@ -1,10 +1,13 @@
 import { createPortal } from 'react-dom';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Paperclip, Camera, Sparkles, ImageIcon, LayoutGrid, Palette, Music2 } from 'lucide-react';
 
 export type PlusAction =
   | 'attach-file' | 'camera' | 'new-gem' | 'generate-image'
-  | 'studios' | 'design-studio' | 'music-studio';
+  | 'studios' | 'design-studio' | 'music-studio'
+  | 'thinking' | 'agent-mode' | 'web-search' | 'screen-share'
+  | 'build-mode' | 'research' | 'data-lab';
 
 /**
  * Viewport-relative {top,left} for the plus menu, anchored to the "+" button.
@@ -14,7 +17,7 @@ export type PlusAction =
  */
 export function getPlusMenuCoords(anchor: HTMLElement): { top: number; left: number } {
   const rect = anchor.getBoundingClientRect();
-  const MENU_W = 224; // w-56
+  const MENU_W = 224;
   const isCompactHeight = window.innerHeight <= 700;
   const MENU_H = isCompactHeight ? 220 : 380;
   const left = Math.max(8, Math.min(rect.right - MENU_W, window.innerWidth - MENU_W - 8));
@@ -34,41 +37,177 @@ interface PlusMenuProps {
   onClose: () => void;
   onAction: (action: PlusAction) => void;
   coords: { top: number; left: number } | null;
+  /** Optional controlled text after @ in the composer. */
+  query?: string;
   labels: {
     attachFile: string;
     camera: string;
     newGem: string;
     generateImage: string;
+    thinking?: string;
+    agentMode?: string;
+    webSearch?: string;
+    screenShare?: string;
+    buildMode?: string;
+    research?: string;
+    dataLab?: string;
   };
 }
 
-export function PlusMenu({ open, onClose, onAction, coords, labels }: PlusMenuProps) {
-  if (!coords) return null;
+export function PlusMenu({ open, onClose, onAction, coords, labels, query = '' }: PlusMenuProps) {
+  const [autoQuery, setAutoQuery] = useState<string | null>(null);
+  const [autoCoords, setAutoCoords] = useState<{ top: number; left: number } | null>(null);
+
+  // The composer lives in a large page component whose JSX is intentionally
+  // kept stable. Observe its input here so @ autocomplete remains independent
+  // of the regular + menu and does not require a duplicate composer.
+  useEffect(() => {
+    const textarea = document.querySelector<HTMLTextAreaElement>('.chat-composer-input');
+    if (!textarea) return;
+    const update = () => {
+      const match = textarea.value.match(/(?:^|\s)@([^\s@]*)$/);
+      if (!match) {
+        setAutoQuery(null);
+        setAutoCoords(null);
+        return;
+      }
+      setAutoQuery(match[1]);
+      setAutoCoords(getPlusMenuCoords(textarea));
+    };
+    textarea.addEventListener('input', update);
+    textarea.addEventListener('keyup', update);
+    window.addEventListener('resize', update);
+    update();
+    return () => {
+      textarea.removeEventListener('input', update);
+      textarea.removeEventListener('keyup', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [open]);
+
+  const isPluginAutocomplete = autoQuery !== null || query.length > 0;
+  const activeQuery = query || autoQuery || '';
+  const effectiveOpen = isPluginAutocomplete || open;
+  const effectiveCoords = isPluginAutocomplete ? autoCoords ?? coords : coords;
+  if (!effectiveCoords) return null;
+
+  const normalizedQuery = activeQuery.trim().toLowerCase();
+  const matches = (label: string) => !normalizedQuery || label.toLowerCase().includes(normalizedQuery);
+  const toolLabels = {
+    thinking: labels.thinking ?? 'Thinking mode',
+    agentMode: labels.agentMode ?? 'Agent mode',
+    webSearch: labels.webSearch ?? 'Web search',
+    screenShare: labels.screenShare ?? 'Share screen',
+    buildMode: labels.buildMode ?? 'Build mode',
+    research: labels.research ?? 'Deep research',
+    dataLab: labels.dataLab ?? 'Data Lab',
+  };
+  const showAttach = !isPluginAutocomplete || !normalizedQuery || matches(labels.attachFile) || matches(labels.camera);
+  const showCreate = !isPluginAutocomplete || !normalizedQuery || matches(labels.newGem) || matches(labels.generateImage);
+  const showTools = isPluginAutocomplete && Object.values(toolLabels).some(matches);
+  const showStudios = !isPluginAutocomplete || !normalizedQuery || ['All Studios', 'Design Studio', 'Music Studio'].some(matches);
+  const pluginActions: readonly [string, PlusAction][] = [
+    [labels.attachFile, 'attach-file'],
+    [labels.camera, 'camera'],
+    [labels.newGem, 'new-gem'],
+    [labels.generateImage, 'generate-image'],
+    [toolLabels.thinking, 'thinking'],
+    [toolLabels.agentMode, 'agent-mode'],
+    [toolLabels.webSearch, 'web-search'],
+    [toolLabels.screenShare, 'screen-share'],
+    [toolLabels.buildMode, 'build-mode'],
+    [toolLabels.research, 'research'],
+    [toolLabels.dataLab, 'data-lab'],
+    ['All Studios', 'studios'],
+    ['Design Studio', 'design-studio'],
+    ['Music Studio', 'music-studio'],
+  ];
+  const invoke = (action: PlusAction) => {
+    if (isPluginAutocomplete) {
+      window.dispatchEvent(new CustomEvent<PlusAction>('jarvis-plugin-action', { detail: action }));
+      setAutoQuery(null);
+      setAutoCoords(null);
+      return;
+    }
+    onAction(action);
+  };
+  const closeMenu = () => {
+    setAutoQuery(null);
+    setAutoCoords(null);
+    onClose();
+  };
+  useEffect(() => {
+    const textarea = document.querySelector<HTMLTextAreaElement>('.chat-composer-input');
+    if (!textarea) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (autoQuery === null) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeMenu();
+        return;
+      }
+      if (event.key !== 'Enter' || event.shiftKey) return;
+      const normalized = autoQuery.trim().toLowerCase();
+      const action = pluginActions.find(([label]) => label.toLowerCase().includes(normalized))?.[1];
+      if (action) {
+        event.preventDefault();
+        invoke(action);
+      }
+    };
+    textarea.addEventListener('keydown', onKeyDown);
+    return () => textarea.removeEventListener('keydown', onKeyDown);
+  }, [autoQuery, labels, toolLabels]);
+
   return createPortal(
     <AnimatePresence>
-      {open && (
+      {effectiveOpen && (
         <>
-          <div className="fixed inset-0 z-40" onClick={onClose} />
+          <div className="fixed inset-0 z-40" onClick={closeMenu} />
           <motion.div
             initial={{ opacity: 0, y: 8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.95 }}
             transition={{ duration: 0.15 }}
             className="plus-menu fixed z-50 w-56 rounded-xl border border-border/50 bg-background shadow-xl overflow-y-auto max-h-[min(70vh,480px)] flex flex-col"
-            style={{ top: coords.top, left: coords.left }}
+            style={{ top: effectiveCoords.top, left: effectiveCoords.left }}
           >
-            <p className="px-3 pt-1.5 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Attach</p>
-            <Item icon={Paperclip} label={labels.attachFile} onClick={() => onAction('attach-file')} />
-            <Item icon={Camera} label={labels.camera} onClick={() => onAction('camera')} />
-
-            <p className="px-3 pt-2 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Create</p>
-            <Item icon={Sparkles} label={labels.newGem} onClick={() => onAction('new-gem')} />
-            <Item icon={ImageIcon} label={labels.generateImage} onClick={() => onAction('generate-image')} />
-
-            <p className="px-3 pt-2 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Studios</p>
-            <Item icon={LayoutGrid} label="All Studios" accent onClick={() => onAction('studios')} />
-            <Item icon={Palette} label="Design Studio" onClick={() => onAction('design-studio')} />
-            <Item icon={Music2} label="Music Studio" onClick={() => onAction('music-studio')} />
+            {showAttach && (
+              <>
+                <p className="px-3 pt-1.5 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Attach</p>
+                {matches(labels.attachFile) && <Item icon={Paperclip} label={labels.attachFile} onClick={() => invoke('attach-file')} />}
+                {matches(labels.camera) && <Item icon={Camera} label={labels.camera} onClick={() => invoke('camera')} />}
+              </>
+            )}
+            {showCreate && (
+              <>
+                <p className="px-3 pt-2 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Create</p>
+                {matches(labels.newGem) && <Item icon={Sparkles} label={labels.newGem} onClick={() => invoke('new-gem')} />}
+                {matches(labels.generateImage) && <Item icon={ImageIcon} label={labels.generateImage} onClick={() => invoke('generate-image')} />}
+              </>
+            )}
+            {showTools && (
+              <>
+                <p className="px-3 pt-2 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Tools</p>
+                {matches(toolLabels.thinking) && <Item icon={Sparkles} label={toolLabels.thinking} onClick={() => invoke('thinking')} />}
+                {matches(toolLabels.agentMode) && <Item icon={LayoutGrid} label={toolLabels.agentMode} onClick={() => invoke('agent-mode')} />}
+                {matches(toolLabels.webSearch) && <Item icon={ImageIcon} label={toolLabels.webSearch} onClick={() => invoke('web-search')} />}
+                {matches(toolLabels.screenShare) && <Item icon={Camera} label={toolLabels.screenShare} onClick={() => invoke('screen-share')} />}
+                {matches(toolLabels.buildMode) && <Item icon={LayoutGrid} label={toolLabels.buildMode} onClick={() => invoke('build-mode')} />}
+                {matches(toolLabels.research) && <Item icon={Sparkles} label={toolLabels.research} onClick={() => invoke('research')} />}
+                {matches(toolLabels.dataLab) && <Item icon={ImageIcon} label={toolLabels.dataLab} onClick={() => invoke('data-lab')} />}
+              </>
+            )}
+            {showStudios && (
+              <>
+                <p className="px-3 pt-2 pb-0.5 text-[9px] font-mono tracking-widest text-muted-foreground/40 uppercase">Studios</p>
+                {matches('All Studios') && <Item icon={LayoutGrid} label="All Studios" accent onClick={() => invoke('studios')} />}
+                {matches('Design Studio') && <Item icon={Palette} label="Design Studio" onClick={() => invoke('design-studio')} />}
+                {matches('Music Studio') && <Item icon={Music2} label="Music Studio" onClick={() => invoke('music-studio')} />}
+              </>
+            )}
+            {isPluginAutocomplete && normalizedQuery && !showAttach && !showCreate && !showTools && !showStudios && (
+              <p className="px-3 py-3 text-xs text-muted-foreground">No plug-in matches</p>
+            )}
           </motion.div>
         </>
       )}

@@ -8,12 +8,12 @@ import {
   X,
   AlertTriangle,
   Search,
-  Download,
   Library,
   Pencil,
   Settings,
 } from 'lucide-react';
 import { useI18n, type TranslationKey } from '@/lib/i18n';
+import { ProjectGallery } from '@/components/project-gallery';
 
 type TFunc = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
@@ -99,7 +99,6 @@ interface SidebarContentProps {
   onNew: () => void;
   onSelect: (id: string) => void;
   onDelete: (e: React.MouseEvent | React.KeyboardEvent, id: string) => void;
-  onExport?: (id: string) => void;
   onSearchChange?: (query: string) => void;
   onClearAll?: () => void;
   onMobileClose?: () => void;
@@ -107,7 +106,7 @@ interface SidebarContentProps {
   onNavigate?: (mode: 'chat' | 'agent' | 'camera') => void;
 }
 
-function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew, onSelect, onDelete, onExport, onSearchChange, onClearAll, onMobileClose, onOpenSettings, onNavigate }: SidebarContentProps) {
+function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew, onSelect, onDelete,  onSearchChange, onClearAll, onMobileClose, onOpenSettings, onNavigate }: SidebarContentProps) {
   const { t } = useI18n();
   const groups = groupByDate(conversations, t);
 
@@ -143,6 +142,9 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
           </button>
         ))}
       </nav>
+
+      {/* Projects and Gallery workspace */}
+      <ProjectGallery activeConversationId={activeId} onSelectConversation={onSelect} />
 
       {/* Search */}
       <div className="px-4 pt-3 pb-2">
@@ -214,16 +216,6 @@ function SidebarContent({ conversations, activeId, deleting, searchQuery, onNew,
                       {formatRelativeTime(conv.updatedAt, t)}
                     </span>
                   </div>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => { haptics.light(); e.stopPropagation(); onExport?.(conv.id); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onExport?.(conv.id); }}}
-                    className="absolute right-6 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/50 hover:text-foreground cursor-pointer"
-                    title="Export as text"
-                  >
-                    <Download className="w-3 h-3" />
-                  </span>
                   <span
                     role="button"
                     tabIndex={0}
@@ -342,31 +334,6 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen
     onMobileClose?.();
   };
 
-  const handleExport = async (id: string) => {
-    try {
-      const res = await fetch(`/api/jarvis/conversations/${id}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      const lines = [
-        `# ${data.title}`,
-        '',
-        ...(data.messages ?? []).map((m: { role: string; content: string }) => {
-          const label = m.role === 'user' ? 'YOU' : 'JARVIS';
-          return `**${label}:**\n${m.content}`;
-        }),
-      ];
-      const text = lines.join('\n');
-      await navigator.clipboard.writeText(text);
-      const blob = new Blob([text], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${(data.title || 'conversation').replace(/[^a-z0-9]/gi, '-').slice(0, 50)}.md`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch { /* silent */ }
-  };
-
   const sharedProps: SidebarContentProps = {
     conversations,
     activeId,
@@ -375,7 +342,6 @@ export function ChatSidebar({ activeId, onSelect, onNew, refreshTick, mobileOpen
     onNew: handleNew,
     onSelect: handleSelect,
     onDelete: handleDelete,
-    onExport: handleExport,
     onSearchChange: setSearchQuery,
     onClearAll: () => setConfirmClearAll(true),
     onMobileClose,

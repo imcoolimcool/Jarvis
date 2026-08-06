@@ -9,7 +9,7 @@ import { ConversationFeed, ChatMessage } from '@/components/conversation-feed';
 import { ChatSidebar } from '@/components/chat-sidebar';
 import { SettingsPanel } from '@/components/settings-panel';
 import { useToast } from '@/hooks/use-toast';
-import { Square, Mic, Send, PanelLeft, X, Plus, Bug, Search, Minimize2, Maximize2, ArrowLeft, MessagesSquare, SquarePen, Camera, Globe, Lightbulb, FileText } from 'lucide-react';
+import { Square, Mic, Send, PanelLeft, X, Plus, Bug, Search, Lightbulb, Minimize2, Maximize2, ArrowLeft, MessagesSquare, SquarePen, Camera, Globe, FileText } from 'lucide-react';
 import type { Widget, TerminalResult, FileEdit } from '@/types/widget';
 import { ClockWidget, WeatherWidget, TimerWidget, AlarmWidget, CalendarWidget, CommandCard } from '@/components/widgets';
 import { ErrorDetailPanel, buildClientErrorDetail, type ErrorDetail } from '@/components/error-detail-panel';
@@ -21,7 +21,7 @@ import { useTimerOrchestration } from '@/hooks/use-timer-orchestration';
 import { useChatStream } from '@/hooks/use-chat-stream';
 import { TimerStrip } from '@/components/timer-strip';
 import { useTheme } from '@/lib/use-theme';
-import { PlusMenu, getPlusMenuCoords } from '@/components/plus-menu';
+import { PlusMenu, getPlusMenuCoords, type PlusAction } from '@/components/plus-menu';
 import { AppOverlays } from '@/components/app-overlays';
 import { looksLikeCodeRequest } from '@/lib/code-intent';
 import { haptics } from '@/lib/haptics';
@@ -33,6 +33,8 @@ import { CommandPalette } from '@/components/command-palette';
 import { DesignStudio } from '@/components/design-studio';
 import { MusicStudio } from '@/components/music-studio';
 import { StudiosHub, type StudioId } from '@/components/studios-hub';
+import { ConversationActions } from '@/components/conversation-actions';
+import { GroupSettings } from '@/components/group-settings';
 import { ensurePushSubscription } from '@/lib/push';
 
 interface AttachedFile {
@@ -86,12 +88,21 @@ export default function Home() {
   const [customPrompt, setCustomPrompt] = useState('');
   const [customPromptOpen, setCustomPromptOpen] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const [pluginQuery, setPluginQuery] = useState<string | null>(null);
+  const pluginMenuOpen = pluginQuery !== null;
   const openPlusMenu = useCallback(() => {
     if (plusButtonRef.current) setPlusMenuCoords(getPlusMenuCoords(plusButtonRef.current));
+    setPluginQuery(null);
     setPlusMenuOpen(true);
+  }, []);
+  const openPluginMenu = useCallback(() => {
+    if (plusButtonRef.current) setPlusMenuCoords(getPlusMenuCoords(plusButtonRef.current));
+    setPlusMenuOpen(false);
+    setPluginQuery('');
   }, []);
   const closePlusMenu = useCallback(() => {
     setPlusMenuOpen(false);
+    setPluginQuery(null);
     setPlusMenuCoords(null);
   }, []);
   const [errorDetail, setErrorDetail] = useState<ErrorDetail | null>(null);
@@ -127,15 +138,15 @@ export default function Home() {
   const [gemDialogOpen, setGemDialogOpen] = useState(false);
   const [dataLabOpen, setDataLabOpen] = useState(false);
   const [buildPanelOpen, setBuildPanelOpen] = useState(false);
+  const [buildTab, setBuildTab] = useState<string>('terminal');
+  const [commandInput, setCommandInput] = useState('');
+  const [commandBusy, setCommandBusy] = useState(false);
   const [studiosOpen, setStudiosOpen] = useState(false);
   const [designStudioOpen, setDesignStudioOpen] = useState(false);
   const [designImage, setDesignImage] = useState<string | null>(null);
   const [musicStudioOpen, setMusicStudioOpen] = useState(false);
-  const [buildTab, setBuildTab] = useState<'terminal' | 'files' | 'clone'>('terminal');
   const [buildFiles, setBuildFiles] = useState<{ path: string; type: 'file' | 'dir'; size: number }[]>([]);
   const [sessionCommands, setSessionCommands] = useState<TerminalResult[]>([]);
-  const [commandInput, setCommandInput] = useState('');
-  const [commandBusy, setCommandBusy] = useState(false);
   // Command palette (Cmd+K), search memory + run anything
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { theme, resolved, toggle: toggleTheme } = useTheme();
@@ -933,6 +944,93 @@ export default function Home() {
 
   const pendingBuildRef = useRef<{ userText: string; file: AttachedFile | null; speak: boolean } | null>(null);
 
+  const handlePlusAction = useCallback((action: PlusAction) => {
+    closePlusMenu();
+    switch (action) {
+      case 'attach-file':
+        fileInputRef.current?.click();
+        break;
+      case 'camera':
+        setMode('camera');
+        break;
+      case 'new-gem':
+        setGemDialogOpen(true);
+        break;
+      case 'generate-image':
+        setChatInput(prev => prev || 'Create an image of ');
+        setTimeout(() => inputRef.current?.focus(), 50);
+        break;
+      case 'studios':
+        setStudiosOpen(true);
+        break;
+      case 'design-studio':
+        setDesignStudioOpen(true);
+        break;
+      case 'music-studio':
+        setMusicStudioOpen(true);
+        break;
+      case 'thinking':
+        haptics.light();
+        setThinkingEnabled(value => !value);
+        break;
+      case 'agent-mode':
+        haptics.light();
+        setAgentModeActive(value => !value);
+        break;
+      case 'web-search':
+        void handleToggleWebSearch();
+        break;
+      case 'screen-share':
+        void handleToggleScreenShare();
+        break;
+      case 'build-mode':
+        setBuildPanelOpen(true);
+        void refreshBuildFiles();
+        break;
+      case 'research':
+        setResearchPanelOpen(true);
+        break;
+      case 'data-lab':
+        setDataLabOpen(true);
+        break;
+    }
+  }, [closePlusMenu, handleToggleScreenShare, handleToggleWebSearch, refreshBuildFiles]);
+
+  const handlePluginAction = useCallback((action: PlusAction) => {
+    setChatInput(value => value.replace(/(^|\s)@[^\s@]*$/, '$1'));
+    handlePlusAction(action);
+  }, [handlePlusAction]);
+
+  const getPluginAction = useCallback((query: string): PlusAction | null => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const actions: readonly [string, PlusAction][] = [
+      [t('input.attachFile'), 'attach-file'],
+      [t('header.mode.camera'), 'camera'],
+      [t('gem.menuItem'), 'new-gem'],
+      [t('input.generateImage'), 'generate-image'],
+      [t('input.thinking'), 'thinking'],
+      [t('input.agentMode'), 'agent-mode'],
+      [t('input.webSearch'), 'web-search'],
+      [t('input.shareScreen'), 'screen-share'],
+      [t('build.menuItem'), 'build-mode'],
+      [t('research.title'), 'research'],
+      [t('datalab.menuItem'), 'data-lab'],
+      ['All Studios', 'studios'],
+      ['Design Studio', 'design-studio'],
+      ['Music Studio', 'music-studio'],
+    ];
+    return actions.find(([label]) => label.toLowerCase().includes(normalizedQuery))?.[1] ?? null;
+  }, [t]);
+
+  useEffect(() => {
+    const onPluginAction = (event: Event) => {
+      const action = (event as CustomEvent<PlusAction>).detail;
+      if (action) handlePluginAction(action);
+    };
+    window.addEventListener('jarvis-plugin-action', onPluginAction);
+    return () => window.removeEventListener('jarvis-plugin-action', onPluginAction);
+  }, [handlePluginAction]);
+
   /** Studios hub, route a selected studio to its feature. */
   const handleStudioSelect = useCallback((id: StudioId) => {
     haptics.medium?.();
@@ -1165,6 +1263,10 @@ export default function Home() {
             >
               <SquarePen className="w-[18px] h-[18px]" strokeWidth={2} />
             </button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <GroupSettings conversationId={activeConversationId} />
+            <ConversationActions conversationId={activeConversationId} />
           </div>
         </div>
       </header>

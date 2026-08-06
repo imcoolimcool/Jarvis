@@ -1,78 +1,86 @@
 import { Router } from "express";
 import {
   ensureWorkspace,
-  runTerminalCommand,
+  findInteractiveTerminal,
+  startInteractiveTerminal,
   resetSession,
-  listWorkspaceFiles,
-  readWorkspaceFile,
-  writeWorkspaceFile,
-  WORKSPACE_ROOT,
+  runTerminalCommand,
+  stopInteractiveTerminal,
+  subscribeInteractiveTerminal,
 } from "../../lib/workspace";
 
 const router = Router();
 
-/**
- * POST /api/jarvis/terminal { sessionId, command }
- * Run a Linux command in the sandboxed workspace shell. Stateful per session.
- */
+function bodyValue(req: { body?: unknown }, key: string): unknown {
+  return req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>)[key] : undefined;
+}
+
+function cleanId(value: unknown): string {
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, 64) : "default";
+}
+
 router.post("/terminal", async (req, res) => {
-  const { sessionId, command } = (req.body ?? {}) as { sessionId?: unknown; command?: unknown };
+  const command = bodyValue(req, "command");
+  const sessionId = cleanId(bodyValue(req, "sessionId"));
+  const workspaceId = cleanId(bodyValue(req, "workspaceId"));
   if (typeof command !== "string" || !command.trim()) {
     res.status(400).json({ error: "command is required" });
     return;
   }
-  const sid = typeof sessionId === "string" && sessionId ? sessionId : "default";
   try {
-    await ensureWorkspace();
-    const result = await runTerminalCommand(sid, command);
+    await ensureWorkspace(workspaceId);
+    const result = await runTerminalCommand(sessionId, command, { workspaceId });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : "Terminal failed" });
   }
 });
 
-/** POST /api/jarvis/terminal/reset { sessionId }, reset shell state to workspace root. */
-router.post("/terminal/reset", async (_req, res) => {
-  await resetSession("default");
-  res.json({ ok: true });
-});
-
-/**
- * GET /api/jarvis/workspace            → list files in the workspace
- * GET /api/jarvis/workspace?path=X     → read a file's contents
- * POST /api/jarvis/workspace { path, content } → write a file
- */
-router.get("/workspace", async (req, res) => {
-  const rel = (req.query.path as string | undefined) ?? "";
+router.post("/terminal/start", async (req, res) => {
+  const command = bodyValue(req, "command");
+  const sessionId = cleanId(bodyValue(req, "sessionId"));
+  const workspaceId = cleanId(bodyValue(req, "workspaceId"));
+  if (typeof command !== "string" || !command.trim()) {
+    res.status(400).json({ error: "command is required" });
+    return;
+  }
   try {
-    if (!rel) {
-      const files = await listWorkspaceFiles();
-      res.json({ root: WORKSPACE_ROOT, files });
-      return;
-    }
-    const result = await readWorkspaceFile(rel);
-    if (!result.ok) {
-      res.status(400).json({ error: result.error });
-      return;
-    }
-    res.json({ path: rel, content: result.content });
+    const terminal = await startInteractiveTerminal(sessionId, command, { workspaceId });
+    res.status(201).json({ id: terminal.id, sessionId, workspaceId, cwd: terminal.cwd, startedAt: terminal.startedAt });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : "Workspace failed" });
+    res.status(400).json({ error: err instanceof Error ? err.message : "Could not start terminal" });
   }
 });
 
-router.post("/workspace", async (req, res) => {
-  const { path: rel, content } = (req.body ?? {}) as { path?: unknown; content?: unknown };
-  if (typeof rel !== "string" || !rel) {
-    res.status(400).json({ error: "path is required" });
+router.get("/terminal/stream", async (req, res) => {
+  const id = typeof req.query.id === "string" ? req.query.id : "";
+  const terminal = findInteractiveTerminal(id);
+  if (!terminal) {
+    res.status(404).json({ error: "Terminal session not found" });
     return;
   }
-  const result = await writeWorkspaceFile(rel, typeof content === "string" ? content : "");
-  if (!result.ok) {
-    res.status(400).json({ error: result.error });
+  res.status(200).set({ "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
+  res.flushHeaders();
+  const send = (event: unknown) => {
+    try { res.write(`data: ${JSON.stringify(event)}\n\n`); } catch { /* client disconnected */ }
+  };
+  send({ type: "snapshot", output: terminal.output, done: terminal.done, exitCode: terminal.exitCode });
+  const unsubscribe = subscribeInteractiveTerminal(terminal, (event) => { send(event); if (event.type === "exit") res.end(); });
+  req.on("close", unsubscribe);
+});
+
+router.post("/terminal/stop", (req, res) => {
+  const id = bodyValue(req, "id");
+  if (typeof id !== "string" || !id) {
+    res.status(400).json({ error: "id is required" });
     return;
   }
-  res.json({ ok: true, path: result.path });
+  res.json({ ok: stopInteractiveTerminal(id) });
+});
+
+router.post("/terminal/reset", async (req, res) => {
+  await resetSession(cleanId(bodyValue(req, "sessionId")), cleanId(bodyValue(req, "workspaceId")));
+  res.json({ ok: true });
 });
 
 export default router;

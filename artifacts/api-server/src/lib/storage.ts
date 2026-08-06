@@ -1,11 +1,14 @@
 /**
  * File storage layer (product spec 12.1).
  *
- * Two free backends, selected by environment, with a clean abstraction:
+ * Three backends, selected by environment, with a clean abstraction:
+ *  - Backblaze B2 S3-compatible storage: enabled when B2_KEY_ID,
+ *    B2_APPLICATION_KEY and B2_BUCKET_NAME are set. B2 is preferred when
+ *    configured because it is the Gallery's configured cloud store.
  *  - Cloudflare R2 (10 GB free, zero egress): enabled when R2_ACCOUNT_ID,
  *    R2_ACCESS_KEY, R2_SECRET_KEY and R2_BUCKET are all set.
  *  - Local disk under `<repo root>/data/files/`: the fallback that runs until
- *    R2 keys exist, so the app works out of the box.
+ *    cloud keys exist, so the app works out of the box.
  *
  * Metadata (kind, name, mime, size, owner, storage key) lives in the separate
  * files database via the `files` table; blobs live in the store. The serve
@@ -82,6 +85,59 @@ class LocalDiskStorage implements FileStorage {
   }
 }
 
+class B2Storage implements FileStorage {
+  private client: S3Client;
+  private bucket: string;
+
+  constructor(bucket: string) {
+    const region = process.env["B2_REGION"] || "eu-central-003";
+    const endpoint = process.env["B2_ENDPOINT"] || `https://s3.${region}.backblazeb2.com`;
+    this.bucket = bucket;
+    this.client = new S3Client({
+      region,
+      endpoint,
+      credentials: {
+        accessKeyId: process.env["B2_KEY_ID"] ?? "",
+        secretAccessKey: process.env["B2_APPLICATION_KEY"] ?? "",
+      },
+      // B2 accepts standard S3 path-style addressing reliably across regions.
+      forcePathStyle: true,
+    });
+  }
+
+  async put(key: string, data: Buffer, contentType?: string): Promise<void> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: safeKey(key),
+        Body: data,
+        ContentType: contentType,
+      }),
+    );
+  }
+
+  async get(key: string): Promise<{ data: Buffer; contentType?: string } | null> {
+    try {
+      const res = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: safeKey(key) }),
+      );
+      if (!res.Body) return null;
+      const data = Buffer.from(await res.Body.transformToByteArray());
+      return { data, contentType: res.ContentType };
+    } catch {
+      return null;
+    }
+  }
+
+  async remove(key: string): Promise<void> {
+    try {
+      await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: safeKey(key) }));
+    } catch {
+      // Already gone, nothing to do.
+    }
+  }
+}
+
 class R2Storage implements FileStorage {
   private client: S3Client;
   private bucket: string;
@@ -133,27 +189,32 @@ class R2Storage implements FileStorage {
 
 let cachedStorage: FileStorage | null = null;
 
-/** Pick the storage backend from the environment: R2 when configured, else local disk. */
+/** Pick the storage backend from the environment: B2, then R2, else local disk. */
 export function getStorage(): FileStorage {
   if (!cachedStorage) {
-    const bucket = process.env["R2_BUCKET"];
-    if (
-      process.env["R2_ACCOUNT_ID"] &&
-      process.env["R2_ACCESS_KEY"] &&
-      process.env["R2_SECRET_KEY"] &&
-      bucket
-    ) {
-      cachedStorage = new R2Storage(bucket);
+    const b2Bucket = process.env["B2_BUCKET_NAME"];
+    if (process.env["B2_KEY_ID"] && process.env["B2_APPLICATION_KEY"] && b2Bucket) {
+      cachedStorage = new B2Storage(b2Bucket);
     } else {
-      cachedStorage = new LocalDiskStorage();
+      const r2Bucket = process.env["R2_BUCKET"];
+      if (
+        process.env["R2_ACCOUNT_ID"] &&
+        process.env["R2_ACCESS_KEY"] &&
+        process.env["R2_SECRET_KEY"] &&
+        r2Bucket
+      ) {
+        cachedStorage = new R2Storage(r2Bucket);
+      } else {
+        cachedStorage = new LocalDiskStorage();
+      }
     }
   }
   return cachedStorage;
 }
 
-/** Which backend is active: "r2" or "local". */
-export function storageBackend(): "r2" | "local" {
-  return getStorage() instanceof R2Storage ? "r2" : "local";
+/** Which backend is active: "b2", "r2", or "local". */
+export function storageBackend(): "b2" | "r2" | "local" {
+  return getStorage() instanceof B2Storage ? "b2" : getStorage() instanceof R2Storage ? "r2" : "local";
 }
 
 const MIME_EXT: Record<string, string> = {

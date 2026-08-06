@@ -1,10 +1,15 @@
 import puppeteer from 'puppeteer';
+import { mkdirSync } from 'fs';
 
-const VITE_URL = 'http://localhost:5173';
+const VITE_URL = process.env.JARVIS_PREVIEW_URL || 'http://localhost:5173';
+const SCREENSHOTS_DIR = process.env.JARVIS_SCREENSHOTS_DIR || './screenshots';
+mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
 async function takeScreenshots() {
+  const executablePath = await puppeteer.executablePath();
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
@@ -15,7 +20,7 @@ async function takeScreenshots() {
     await desktopPage.goto(VITE_URL, { waitUntil: 'networkidle0', timeout: 30000 });
     await desktopPage.waitForSelector('body', { timeout: 10000 });
     await desktopPage.screenshot({
-      path: '/home/kasperkal1970/jarvis/screenshots/desktop-ui-check.png',
+      path: `${SCREENSHOTS_DIR}/desktop-ui-check.png`,
       fullPage: true,
     });
     console.log('✅ Desktop screenshot saved');
@@ -27,7 +32,7 @@ async function takeScreenshots() {
     await mobilePage.goto(VITE_URL, { waitUntil: 'networkidle0', timeout: 30000 });
     await mobilePage.waitForSelector('body', { timeout: 10000 });
     await mobilePage.screenshot({
-      path: '/home/kasperkal1970/jarvis/screenshots/mobile-ui-check.png',
+      path: `${SCREENSHOTS_DIR}/mobile-ui-check.png`,
       fullPage: true,
     });
     console.log('✅ Mobile screenshot saved');

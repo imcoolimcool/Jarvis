@@ -13,10 +13,11 @@
 # Pinning Vite to PORT=5173 keeps the detected port unambiguous.
 
 set -e
-cd /home/daytona/codebase || exit 1
+PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$PROJECT_ROOT" || exit 1
 
 # 1. Chrome system deps for Jarvis's personal browser (Puppeteer).
-sh ./scripts/chrome-deps.sh >/dev/null 2>&1 || true
+sh ./scripts/chrome-deps.sh
 
 # Puppeteer may run under a different user (root) than the one that
 # downloaded the browser — point it at the actual cache location.

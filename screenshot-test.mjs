@@ -1,13 +1,15 @@
 import puppeteer from 'puppeteer';
 import { mkdirSync, existsSync } from 'fs';
 
-const SCREENSHOTS_DIR = '/home/kasperkal1970/jarvis/screenshots';
+const SCREENSHOTS_DIR = process.env.JARVIS_SCREENSHOTS_DIR || './screenshots';
 
 async function main() {
   if (!existsSync(SCREENSHOTS_DIR)) mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
+  const executablePath = await puppeteer.executablePath();
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
   });
 

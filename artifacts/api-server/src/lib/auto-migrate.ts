@@ -165,6 +165,7 @@ const CREATE_TABLES = [
     "name" text NOT NULL,
     "kind" text NOT NULL DEFAULT 'ai',
     "ai_toggle" text NOT NULL DEFAULT 'always',
+    "owner_token_hash" text,
     "created_at" timestamp NOT NULL DEFAULT now(),
     "updated_at" timestamp NOT NULL DEFAULT now()
   )`,
@@ -185,6 +186,8 @@ const CREATE_TABLES = [
     "expires_at" timestamp,
     "used_at" timestamp
   )`,
+
+  `ALTER TABLE "group_chats" ADD COLUMN IF NOT EXISTS "owner_token_hash" text`,
 
   // ── Accounts + sessions (invited users, minimal local auth) ────
   `CREATE TABLE IF NOT EXISTS "accounts" (

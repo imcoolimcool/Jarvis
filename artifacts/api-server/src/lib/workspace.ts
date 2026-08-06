@@ -1,23 +1,28 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 
 /**
- * Build-Mode workspace.
+ * Build Studio workspace primitives.
  *
- * A per-session Linux shell that the LLM (and the user) can fully drive:
- * commands run inside a dedicated workspace directory, `cd` persists across
- * commands (we re-capture cwd after every run), output is capped, and every
- * command has a hard timeout so nothing can hang the server.
+ * Every project gets a separate directory below WORKSPACE_ROOT/projects. The
+ * legacy default workspace remains available for existing Jarvis callers.
+ * Commands are capped and run with a deliberately small environment so API
+ * credentials are not accidentally exposed by `env` in the terminal.
  */
 
 export const WORKSPACE_ROOT = path.resolve(
   __dirname, "..", "..", "..", "..", "artifacts", "workspace",
 );
-
 export const WORKSPACE_URL = "/api/jarvis/workspace";
 
-const SESSIONS = new Map<string, string>(); // sessionId -> cwd
+const PROJECT_ID = /^[a-zA-Z0-9_-]{1,64}$/;
+const SESSIONS = new Map<string, string>();
+const RUNNING = new Map<string, InteractiveTerminal>();
+const MAX_COMMAND_LENGTH = 12_000;
+
+export interface WorkspaceEntry { path: string; type: "file" | "dir"; size: number; }
 
 export interface TerminalRun {
   stdout: string;
@@ -27,93 +32,216 @@ export interface TerminalRun {
   timedOut: boolean;
 }
 
-function shellEscape(s: string): string {
-  return `'${s.replace(/'/g, `'\\''`)}'`;
+export interface InteractiveTerminal {
+  id: string;
+  workspaceId: string;
+  sessionId: string;
+  child: ChildProcess;
+  cwd: string;
+  output: string;
+  startedAt: number;
+  listeners: Set<(event: TerminalEvent) => void>;
+  done: boolean;
+  exitCode: number | null;
 }
 
-/** Ensure the workspace dir exists (and a default .gitkeep so it's visible). */
-export async function ensureWorkspace(): Promise<string> {
-  await fs.mkdir(WORKSPACE_ROOT, { recursive: true });
-  return WORKSPACE_ROOT;
+export interface TerminalEvent {
+  type: "output" | "exit";
+  stream?: "stdout" | "stderr";
+  data?: string;
+  exitCode?: number;
+  cwd?: string;
 }
 
-export function getSessionCwd(sessionId: string): string {
-  return SESSIONS.get(sessionId) ?? WORKSPACE_ROOT;
+const SAFE_ENV_KEYS = new Set([
+  "PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TERM", "TMPDIR",
+  "NODE_PATH", "NPM_CONFIG_USERCONFIG", "PNPM_HOME", "HOSTNAME",
+]);
+
+function workspaceKey(workspaceId: string): string {
+  const value = workspaceId || "default";
+  if (!PROJECT_ID.test(value)) throw new Error("Invalid workspace id");
+  return value;
 }
 
-export async function resetSession(sessionId: string): Promise<void> {
-  SESSIONS.delete(sessionId);
-  await ensureWorkspace();
+function sessionKey(workspaceId: string, sessionId: string): string {
+  return `${workspaceKey(workspaceId)}:${sessionId || "default"}`;
 }
 
-/** Run one command in a session's shell. `cd`/env state persists via cwd tracking. */
+export function getWorkspaceRoot(workspaceId = "default"): string {
+  const id = workspaceKey(workspaceId);
+  return id === "default" ? WORKSPACE_ROOT : path.join(WORKSPACE_ROOT, "projects", id);
+}
+
+function resolveWorkspacePath(workspaceId: string, relPath: string): string | null {
+  const root = getWorkspaceRoot(workspaceId);
+  const target = path.resolve(root, relPath || ".");
+  return target === root || target.startsWith(`${root}${path.sep}`) ? target : null;
+}
+
+function safeShellEscape(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+export function getWorkspaceCommandEnvironment(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {};
+  for (const key of SAFE_ENV_KEYS) {
+    if (process.env[key]) env[key] = process.env[key];
+  }
+  env.HOME = env.HOME || getWorkspaceRoot();
+  env.TMPDIR = env.TMPDIR || path.join(getWorkspaceRoot(), ".tmp");
+  return { ...env, ...extra };
+}
+
+/** Ensure a project workspace exists. */
+export async function ensureWorkspace(workspaceId = "default"): Promise<string> {
+  const root = getWorkspaceRoot(workspaceId);
+  await fs.mkdir(root, { recursive: true });
+  await fs.mkdir(path.join(root, ".tmp"), { recursive: true });
+  return root;
+}
+
+export function getSessionCwd(sessionId: string, workspaceId = "default"): string {
+  return SESSIONS.get(sessionKey(workspaceId, sessionId)) ?? getWorkspaceRoot(workspaceId);
+}
+
+export async function resetSession(sessionId: string, workspaceId = "default"): Promise<void> {
+  SESSIONS.delete(sessionKey(workspaceId, sessionId));
+  await ensureWorkspace(workspaceId);
+}
+
+/** Run one capped command and preserve its working directory between calls. */
 export function runTerminalCommand(
   sessionId: string,
   command: string,
-  opts: { timeoutMs?: number; maxOutput?: number } = {},
+  opts: { timeoutMs?: number; maxOutput?: number; workspaceId?: string; env?: Record<string, string> } = {},
 ): Promise<TerminalRun> {
   return new Promise((resolve) => {
-    const timeoutMs = opts.timeoutMs ?? 15_000;
-    const maxOutput = opts.maxOutput ?? 30_000;
-
-    const cwd = getSessionCwd(sessionId);
-    const script = `cd ${shellEscape(cwd)}; ${command}; printf '\\n__CWD__=%s\\n' "$PWD"`;
-
+    const workspaceId = opts.workspaceId ?? "default";
+    const timeoutMs = Math.min(opts.timeoutMs ?? 15_000, 30_000);
+    const maxOutput = Math.min(opts.maxOutput ?? 30_000, 100_000);
+    const cwd = getSessionCwd(sessionId, workspaceId);
+    const boundedCommand = command.slice(0, MAX_COMMAND_LENGTH);
+    const script = `cd ${safeShellEscape(cwd)}; ${boundedCommand}; printf '\\n__CWD__=%s\\n' "$PWD"`;
     const child = execFile(
       "/bin/bash",
       ["-lc", script],
-      { timeout: timeoutMs, maxBuffer: maxOutput * 2, killSignal: "SIGKILL" },
+      {
+        cwd,
+        timeout: timeoutMs,
+        maxBuffer: maxOutput * 2,
+        killSignal: "SIGKILL",
+        env: getWorkspaceCommandEnvironment(opts.env),
+      },
       (err, stdout, stderr) => {
         let out = stdout ?? "";
-        const m = out.match(/\n__CWD__=(.+)\n?$/);
-        const newCwd = m ? m[1].trim() : cwd;
-        if (m) out = out.slice(0, m.index);
-        if (newCwd && newCwd !== cwd && path.isAbsolute(newCwd)) {
-          SESSIONS.set(sessionId, newCwd);
+        const marker = out.match(/\n__CWD__=(.+)\n?$/);
+        const newCwd = marker?.[1]?.trim();
+        if (marker?.index !== undefined) out = out.slice(0, marker.index);
+        const root = getWorkspaceRoot(workspaceId);
+        if (newCwd && path.isAbsolute(newCwd) && (newCwd === root || newCwd.startsWith(`${root}${path.sep}`))) {
+          SESSIONS.set(sessionKey(workspaceId, sessionId), newCwd);
         }
-        const timedOut = (err as { killed?: boolean } | null)?.killed === true;
+        const code = err && typeof err === "object" && "code" in err ? (err as { code?: number | string }).code : 0;
         resolve({
           stdout: out.slice(-maxOutput),
           stderr: (stderr ?? "").slice(-maxOutput),
-          cwd: SESSIONS.get(sessionId) ?? WORKSPACE_ROOT,
-          exitCode: err ? (typeof err === "object" && "code" in err ? Number((err as { code?: number | string }).code ?? 1) : 1) : 0,
-          timedOut,
+          cwd: SESSIONS.get(sessionKey(workspaceId, sessionId)) ?? root,
+          exitCode: err ? (typeof code === "number" ? code : 1) : 0,
+          timedOut: (err as { killed?: boolean } | null)?.killed === true,
         });
       },
     );
   });
 }
 
-/** List files under the workspace (relative paths), sorted dirs-first. */
-export async function listWorkspaceFiles(): Promise<{ path: string; type: "file" | "dir"; size: number }[]> {
-  await ensureWorkspace();
-  const out: { path: string; type: "file" | "dir"; size: number }[] = [];
+/** Start a command that can be observed and stopped by the terminal UI. */
+export async function startInteractiveTerminal(
+  sessionId: string,
+  command: string,
+  opts: { workspaceId?: string; env?: Record<string, string> } = {},
+): Promise<InteractiveTerminal> {
+  const workspaceId = opts.workspaceId ?? "default";
+  await ensureWorkspace(workspaceId);
+  const key = sessionKey(workspaceId, sessionId);
+  const existing = RUNNING.get(key);
+  if (existing) stopInteractiveTerminal(existing.id);
+  const cwd = getSessionCwd(sessionId, workspaceId);
+  const id = randomUUID();
+  const child = spawn("/bin/bash", ["-lc", command.slice(0, MAX_COMMAND_LENGTH)], {
+    cwd,
+    env: getWorkspaceCommandEnvironment(opts.env),
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  const terminal: InteractiveTerminal = {
+    id, workspaceId, sessionId, child, cwd, output: "", startedAt: Date.now(),
+    listeners: new Set(), done: false, exitCode: null,
+  };
+  RUNNING.set(key, terminal);
+  const emit = (event: TerminalEvent) => {
+    if (event.data) terminal.output = `${terminal.output}${event.data}`.slice(-100_000);
+    for (const listener of terminal.listeners) listener(event);
+  };
+  child.stdout?.on("data", (chunk: Buffer) => emit({ type: "output", stream: "stdout", data: chunk.toString() }));
+  child.stderr?.on("data", (chunk: Buffer) => emit({ type: "output", stream: "stderr", data: chunk.toString() }));
+  child.on("exit", (code) => {
+    terminal.done = true;
+    terminal.exitCode = typeof code === "number" ? code : 1;
+    SESSIONS.set(key, cwd);
+    emit({ type: "exit", exitCode: terminal.exitCode, cwd });
+    // Keep the completed session briefly so a fast command can still be
+    // connected to by the SSE endpoint after the start response returns.
+    setTimeout(() => { if (RUNNING.get(key)?.id === id) RUNNING.delete(key); }, 60_000);
+  });
+  return terminal;
+}
+
+export function findInteractiveTerminal(id: string): InteractiveTerminal | undefined {
+  return [...RUNNING.values()].find((terminal) => terminal.id === id);
+}
+
+export function subscribeInteractiveTerminal(terminal: InteractiveTerminal, listener: (event: TerminalEvent) => void): () => void {
+  terminal.listeners.add(listener);
+  return () => terminal.listeners.delete(listener);
+}
+
+export function stopInteractiveTerminal(id: string): boolean {
+  const terminal = findInteractiveTerminal(id);
+  if (!terminal) return false;
+  terminal.child.kill("SIGTERM");
+  setTimeout(() => { if (!terminal.done) terminal.child.kill("SIGKILL"); }, 1500);
+  return true;
+}
+
+/** List files under one project workspace, excluding generated internals. */
+export async function listWorkspaceFiles(workspaceId = "default"): Promise<WorkspaceEntry[]> {
+  const root = await ensureWorkspace(workspaceId);
+  const out: WorkspaceEntry[] = [];
   async function walk(dir: string, rel: string) {
     const entries = await fs.readdir(dir, { withFileTypes: true });
     entries.sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name));
-    for (const e of entries) {
-      if (e.name === ".git" || e.name === "node_modules") continue;
-      const full = path.join(dir, e.name);
-      const relPath = rel ? `${rel}/${e.name}` : e.name;
-      if (e.isDirectory()) {
-        out.push({ path: relPath + "/", type: "dir", size: 0 });
-        await walk(full, relPath);
+    for (const entry of entries) {
+      if (entry.name === ".git" || entry.name === "node_modules" || entry.name === ".tmp") continue;
+      const full = path.join(dir, entry.name);
+      const nextRel = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        out.push({ path: `${nextRel}/`, type: "dir", size: 0 });
+        await walk(full, nextRel);
       } else {
-        const st = await fs.stat(full);
-        out.push({ path: relPath, type: "file", size: st.size });
+        const stat = await fs.stat(full);
+        out.push({ path: nextRel, type: "file", size: stat.size });
       }
+      if (out.length >= 1_000) return;
     }
   }
-  await walk(WORKSPACE_ROOT, "");
-  return out.slice(0, 500);
+  await walk(root, "");
+  return out.slice(0, 1_000);
 }
 
-/** Read a workspace file (safe, capped). */
-export async function readWorkspaceFile(relPath: string, maxChars = 100_000): Promise<{ ok: true; content: string } | { ok: false; error: string }> {
-  const target = path.resolve(WORKSPACE_ROOT, relPath);
-  if (!target.startsWith(WORKSPACE_ROOT + path.sep) && target !== WORKSPACE_ROOT) {
-    return { ok: false, error: "Path escapes the workspace." };
-  }
+export async function readWorkspaceFile(relPath: string, maxChars = 100_000, workspaceId = "default"):
+  Promise<{ ok: true; content: string } | { ok: false; error: string }> {
+  const target = resolveWorkspacePath(workspaceId, relPath);
+  if (!target || target === getWorkspaceRoot(workspaceId)) return { ok: false, error: "Path escapes the workspace." };
   try {
     const content = await fs.readFile(target, "utf8");
     return { ok: true, content: content.slice(0, maxChars) };
@@ -122,17 +250,41 @@ export async function readWorkspaceFile(relPath: string, maxChars = 100_000): Pr
   }
 }
 
-/** Write a workspace file (safe). Creates parent dirs. */
-export async function writeWorkspaceFile(relPath: string, content: string): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
-  const target = path.resolve(WORKSPACE_ROOT, relPath);
-  if (!target.startsWith(WORKSPACE_ROOT + path.sep)) {
-    return { ok: false, error: "Path escapes the workspace." };
-  }
+export async function writeWorkspaceFile(relPath: string, content: string, workspaceId = "default"):
+  Promise<{ ok: true; path: string } | { ok: false; error: string }> {
+  const target = resolveWorkspacePath(workspaceId, relPath);
+  if (!target || target === getWorkspaceRoot(workspaceId)) return { ok: false, error: "Path escapes the workspace." };
+  if (content.length > 2_000_000) return { ok: false, error: "File is too large." };
   try {
+    await ensureWorkspace(workspaceId);
     await fs.mkdir(path.dirname(target), { recursive: true });
     await fs.writeFile(target, content, "utf8");
     return { ok: true, path: relPath };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Write failed." };
   }
+}
+
+export async function createWorkspaceDirectory(relPath: string, workspaceId = "default") {
+  const target = resolveWorkspacePath(workspaceId, relPath);
+  if (!target || target === getWorkspaceRoot(workspaceId)) return { ok: false as const, error: "Path escapes the workspace." };
+  await fs.mkdir(target, { recursive: true });
+  return { ok: true as const, path: relPath.replace(/\/+$/, "") + "/" };
+}
+
+export async function renameWorkspacePath(from: string, to: string, workspaceId = "default") {
+  const source = resolveWorkspacePath(workspaceId, from);
+  const target = resolveWorkspacePath(workspaceId, to);
+  if (!source || !target || source === getWorkspaceRoot(workspaceId) || target === getWorkspaceRoot(workspaceId)) {
+    return { ok: false as const, error: "Path escapes the workspace." };
+  }
+  await fs.rename(source, target);
+  return { ok: true as const, path: to };
+}
+
+export async function deleteWorkspacePath(relPath: string, workspaceId = "default") {
+  const target = resolveWorkspacePath(workspaceId, relPath);
+  if (!target || target === getWorkspaceRoot(workspaceId)) return { ok: false as const, error: "Cannot delete workspace root." };
+  await fs.rm(target, { recursive: true, force: false });
+  return { ok: true as const };
 }

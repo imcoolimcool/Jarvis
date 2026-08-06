@@ -8,6 +8,7 @@ import { db, conversations, messages, jarvisSettings, userMemories, spotifyToken
 import { eq, asc } from "drizzle-orm";
 import { buildLiveContext } from "../../lib/live-context";
 import { detectAndBuildWidget } from "../../lib/widget-detector";
+import { classifyCapabilityIntent } from "../../lib/capability-intent";
 import { buildErrorDetail } from "../../lib/error-detail";
 import { listSourceFiles, readSourceFile, writeSourceFile } from "../../lib/source-code";
 import { fetchFigmaDesignTokens, figmaTokensToContext } from "../../lib/figma";
@@ -237,6 +238,7 @@ Response guidelines:
 - Match the user's language and energy. Casual questions get friendly answers; technical questions get precise, dense ones.
 - When you're not certain, say so plainly and still give the best available answer.
 - Code answers: provide working, idiomatic code in fenced blocks with a language tag, plus a brief explanation of how it works.
+- Never use an em dash character. Use a comma, colon, parentheses, or a normal hyphen instead.
 - Never pad with filler, every paragraph should carry real information.
 - You have built-in capabilities (weather, timers, alarms, calendar/email context, image generation, web search, reading your own source code). A CONNECTED SERVICES block in your instructions tells you exactly what is available right now, only confirm an action when it actually works, and never pretend to play music, read email, or pull calendar events that aren't connected.`;
 
@@ -798,7 +800,9 @@ router.post("/chat", async (req, res) => {
 
     // Optional web search context, agent mode always searches
     let webContext: string | null = null;
+    const capability = classifyCapabilityIntent(sanitizedMessage);
     const shouldSearch =
+      capability.intent === "web_search" ||
       webSearchEnabled === "true" ||
       settings["web_search_enabled"] === "true" ||
       agentMode === "true";
@@ -809,7 +813,7 @@ router.post("/chat", async (req, res) => {
     // Response style modifier based on chat vs voice mode
     const style = responseStyle ?? 'voice';
     const responseStyleModifier = style === 'chat'
-      ? "You are in CHAT MODE. Provide longer, more structured responses. Use markdown formatting (headers, bullet points, code blocks). Be thorough and detailed. You can use **bold**, *italic*, `code`, and lists to organize information."
+      ? "You are in CHAT MODE. Provide longer, more structured responses. Use markdown formatting (headers, bullet points, code blocks). Be thorough and detailed. You can use **bold**, *italic*, `code`, and lists to organize information. When web results are present, cite the relevant source domains inline and finish with a concise Sources list."
       : "You are in VOICE MODE. Keep responses short, natural, and conversational, ideally 1-3 sentences. No markdown formatting since this will be spoken aloud. Be concise and direct.";
 
     // When personality is "custom", the user's prompt IS the entire system
@@ -1015,9 +1019,10 @@ router.post("/chat", async (req, res) => {
       try {
         for await (const chunk of s) {
           const delta = chunk.choices[0]?.delta?.content ?? "";
-          if (delta) {
-            text += delta;
-            res.write(`data: ${JSON.stringify({ type: eventType, content: delta })}\n\n`);
+          const cleanDelta = delta.replaceAll("—", "-");
+          if (cleanDelta) {
+            text += cleanDelta;
+            res.write(`data: ${JSON.stringify({ type: eventType, content: cleanDelta })}\n\n`);
           }
           if (chunk.usage) tokens = chunk.usage.total_tokens ?? 0;
         }

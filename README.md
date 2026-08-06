@@ -128,6 +128,10 @@ Open **http://localhost:5173**.
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | Neon PostgreSQL connection string |
+| `DATABASE_URL_FILES` | Optional separate PostgreSQL connection string for Gallery metadata |
+| `B2_KEY_ID` / `B2_APPLICATION_KEY` / `B2_BUCKET_NAME` | Optional Backblaze B2 S3-compatible Gallery storage; endpoint defaults to `https://s3.eu-central-003.backblazeb2.com` |
+| `B2_ENDPOINT` / `B2_REGION` | Optional Backblaze endpoint/region overrides; defaults to `eu-central-003` |
+| `R2_ACCOUNT_ID` / `R2_ACCESS_KEY` / `R2_SECRET_KEY` / `R2_BUCKET` | Optional Cloudflare R2 fallback; no cloud keys means local `data/files/` storage |
 | `OPENAI_LLM_API_KEY` | NVIDIA NIM — LLM + vision |
 | `OPENAI_WHISPER_API_KEY` | NVIDIA NIM — Whisper large-v3 |
 | `NVIDIA_IMAGE_API_KEY` | NVIDIA NIM — Flux image generation |

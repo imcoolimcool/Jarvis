@@ -26,9 +26,10 @@ mkdirSync(SHOTS_DIR, { recursive: true });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
+  const executablePath = await puppeteer.executablePath();
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: '/usr/local/bin/google-chrome',
+    executablePath,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--mute-audio'],
   });
 

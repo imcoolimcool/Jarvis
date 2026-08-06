@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { applyAccent } from '@/lib/use-accent';
 
 type Theme = 'dark' | 'light' | 'auto';
 
@@ -25,6 +26,7 @@ export function useTheme() {
     root.classList.remove('dark', 'light');
     root.classList.add(resolved);
     try { localStorage.setItem('jarvis-theme', theme); } catch { /* noop */ }
+    applyAccent(null, resolved);
   }, [theme, resolved]);
 
   return {
