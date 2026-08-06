@@ -49,8 +49,15 @@ export default function Home() {
   const [status, setStatus] = useState<AppState>('idle');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // #13: Persist modes across iOS Safari tab reloads
+  // Start with 'chat' as safe default - user can switch modes once loaded
   const [mode, setMode] = useState<'voice' | 'chat' | 'agent' | 'camera'>(() => {
-    try { return (localStorage.getItem('jarvis-mode') as any) || 'voice'; } catch { return 'voice'; }
+    try {
+      const saved = localStorage.getItem('jarvis-mode') as any;
+      // Validate the saved mode, fallback to 'chat' if invalid or 'agent'/'voice' (expensive modes)
+      return (saved === 'chat' || saved === 'camera') ? saved : 'chat';
+    } catch {
+      return 'chat';
+    }
   });
   const isChatMode = mode === 'chat';
   const isAgentMode = mode === 'agent';

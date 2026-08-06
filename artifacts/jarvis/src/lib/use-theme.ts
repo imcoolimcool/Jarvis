@@ -31,7 +31,7 @@ export function useTheme() {
 
   return {
     theme,
-    resolved,
+    resolved: resolved || 'light',
     setTheme,
     toggle: (next?: Theme) => setTheme(next ?? (resolved === 'dark' ? 'light' : 'dark')),
   };
