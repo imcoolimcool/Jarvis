@@ -20,6 +20,8 @@ import timersRouter from "./timers";
 import projectsRouter from "./projects";
 import groupsRouter from "./groups";
 import buildRouter from "./build";
+import hotReloadRouter from "./hot-reload";
+import packageManagerRouter from "./package-manager";
 
 const router = Router();
 
@@ -44,5 +46,7 @@ router.use(timersRouter);
 router.use(projectsRouter);
 router.use(groupsRouter);
 router.use(buildRouter);
+router.use(hotReloadRouter);
+router.use(packageManagerRouter);
 
 export default router;
