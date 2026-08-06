@@ -32,6 +32,10 @@ import communityTemplatesRouter from "./community-templates";
 import dockerRouter from "./docker";
 import databaseRouter from "./database";
 import apiExplorerRouter from "./api-explorer";
+import shortcutsRouter from "./shortcuts";
+import exportRouter from "./export";
+import importRouter from "./import";
+import historyRouter from "./history";
 
 const router = Router();
 
@@ -68,5 +72,9 @@ router.use(communityTemplatesRouter);
 router.use(dockerRouter);
 router.use(databaseRouter);
 router.use(apiExplorerRouter);
+router.use(shortcutsRouter);
+router.use(exportRouter);
+router.use(importRouter);
+router.use(historyRouter);
 
 export default router;
