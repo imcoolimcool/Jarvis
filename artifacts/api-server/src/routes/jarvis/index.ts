@@ -41,6 +41,10 @@ import performanceRouter from "./performance";
 import securityRouter from "./security";
 import accessibilityRouter from "./accessibility";
 import compatibilityRouter from "./compatibility";
+import envManagerRouter from "./env-manager";
+import configWizardRouter from "./config-wizard";
+import migrationsRouter from "./migrations";
+import packageEditorRouter from "./package-editor";
 
 const router = Router();
 
@@ -86,5 +90,9 @@ router.use(performanceRouter);
 router.use(securityRouter);
 router.use(accessibilityRouter);
 router.use(compatibilityRouter);
+router.use(envManagerRouter);
+router.use(configWizardRouter);
+router.use(migrationsRouter);
+router.use(packageEditorRouter);
 
 export default router;
