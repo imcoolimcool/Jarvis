@@ -18,8 +18,6 @@ CRITICAL BUDGET CONSTRAINT:
 - EVERY SINGLE THING created, used, or suggested MUST be on a 0 euro budget.
 - STRICTLY ZERO FREE TRIALS allowed. Every service, API, hosting, or library must be permanently 100% free.
 
-!== PENDING FULL REDESIGN — AUTO-RESUME ACTIVE ==!
-I AM IN AUTONOMOUS MODE. DO NOT ASK QUESTIONS. DO NOT WAIT.
 
 WHEN USER SAYS "go" (OR ANY MESSAGE):
 1. Read .session_state.md IMMEDIATELY — it is my source of truth
