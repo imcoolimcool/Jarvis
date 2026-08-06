@@ -22,6 +22,8 @@ import groupsRouter from "./groups";
 import buildRouter from "./build";
 import hotReloadRouter from "./hot-reload";
 import packageManagerRouter from "./package-manager";
+import gitRouter from "./git";
+import searchRouter from "./search";
 
 const router = Router();
 
@@ -48,5 +50,7 @@ router.use(groupsRouter);
 router.use(buildRouter);
 router.use(hotReloadRouter);
 router.use(packageManagerRouter);
+router.use(gitRouter);
+router.use(searchRouter);
 
 export default router;
