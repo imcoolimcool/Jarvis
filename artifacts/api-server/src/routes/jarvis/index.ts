@@ -26,6 +26,9 @@ import gitRouter from "./git";
 import searchRouter from "./search";
 import debugRouter from "./debug";
 import testRouter from "./test";
+import collabRouter from "./collab";
+import templatesRouter from "./templates";
+import communityTemplatesRouter from "./community-templates";
 
 const router = Router();
 
@@ -56,5 +59,8 @@ router.use(gitRouter);
 router.use(searchRouter);
 router.use(debugRouter);
 router.use(testRouter);
+router.use(collabRouter);
+router.use(templatesRouter);
+router.use(communityTemplatesRouter);
 
 export default router;
