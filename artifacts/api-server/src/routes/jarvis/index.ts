@@ -29,6 +29,9 @@ import testRouter from "./test";
 import collabRouter from "./collab";
 import templatesRouter from "./templates";
 import communityTemplatesRouter from "./community-templates";
+import dockerRouter from "./docker";
+import databaseRouter from "./database";
+import apiExplorerRouter from "./api-explorer";
 
 const router = Router();
 
@@ -62,5 +65,8 @@ router.use(testRouter);
 router.use(collabRouter);
 router.use(templatesRouter);
 router.use(communityTemplatesRouter);
+router.use(dockerRouter);
+router.use(databaseRouter);
+router.use(apiExplorerRouter);
 
 export default router;
