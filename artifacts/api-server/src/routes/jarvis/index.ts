@@ -36,6 +36,11 @@ import shortcutsRouter from "./shortcuts";
 import exportRouter from "./export";
 import importRouter from "./import";
 import historyRouter from "./history";
+import e2eRouter from "./e2e";
+import performanceRouter from "./performance";
+import securityRouter from "./security";
+import accessibilityRouter from "./accessibility";
+import compatibilityRouter from "./compatibility";
 
 const router = Router();
 
@@ -76,5 +81,10 @@ router.use(shortcutsRouter);
 router.use(exportRouter);
 router.use(importRouter);
 router.use(historyRouter);
+router.use(e2eRouter);
+router.use(performanceRouter);
+router.use(securityRouter);
+router.use(accessibilityRouter);
+router.use(compatibilityRouter);
 
 export default router;
