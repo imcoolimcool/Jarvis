@@ -3,7 +3,7 @@ import { execSync, spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { cleanText } from "../../lib/text-utils";
-import { getWorkspaceRoot, listWorkspaceFiles, readWorkspaceFile } from "../../lib/workspace";
+import { getWorkspaceRoot, listWorkspaceFiles, readWorkspaceFileText } from "../../lib/workspace";
 
 const router = Router();
 
@@ -303,13 +303,13 @@ router.post("/test/run", async (req, res) => {
 
     result.total = result.passed + result.failed + result.skipped;
 
-    res.json({
+    return res.json({
       ok: true,
       result,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to run tests");
-    res.status(500).json({ error: "Failed to run tests", details: String(err) });
+    return res.status(500).json({ error: "Failed to run tests", details: String(err) });
   }
 });
 
@@ -347,7 +347,7 @@ router.post("/test/run-single", async (req, res) => {
 
     const duration = Date.now() - startTime;
 
-    res.json({
+    return res.json({
       ok: true,
       testFile,
       framework,
@@ -356,7 +356,7 @@ router.post("/test/run-single", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to run single test");
-    res.status(500).json({ error: "Failed to run single test" });
+    return res.status(500).json({ error: "Failed to run single test" });
   }
 });
 
@@ -373,7 +373,7 @@ router.get("/test/coverage", async (req, res) => {
 
     // Coverage.json (created by Jest, Vitest, etc.)
     try {
-      const coverageJson = await readWorkspaceFile("coverage/coverage-summary.json", "default");
+      const coverageJson = await readWorkspaceFileText("coverage/coverage-summary.json", "default");
       if (coverageJson) {
         const parsed = JSON.parse(coverageJson);
         const total = parsed.total;
@@ -400,13 +400,13 @@ router.get("/test/coverage", async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       ok: true,
       coverage,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get coverage");
-    res.status(500).json({ error: "Failed to get coverage report" });
+    return res.status(500).json({ error: "Failed to get coverage report" });
   }
 });
 
@@ -428,7 +428,7 @@ router.post("/test/watch", async (req, res) => {
 
   try {
     // Return immediately - actual watch mode would use WebSockets or SSE
-    res.json({
+    return res.json({
       ok: true,
       status: "watch-mode-started",
       framework,
@@ -437,7 +437,7 @@ router.post("/test/watch", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to start watch mode");
-    res.status(500).json({ error: "Failed to start watch mode" });
+    return res.status(500).json({ error: "Failed to start watch mode" });
   }
 });
 

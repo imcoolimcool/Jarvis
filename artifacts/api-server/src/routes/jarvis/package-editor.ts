@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { readWorkspaceFile, writeWorkspaceFile } from "../../lib/workspace";
+import { readWorkspaceFileText, writeWorkspaceFile } from "../../lib/workspace";
 import { cleanText } from "../../lib/text-utils";
 
 interface PackageJson {
@@ -22,7 +22,7 @@ const router = Router();
 // Parse package.json
 async function readPackageJson(workspaceId: string): Promise<PackageJson> {
   try {
-    const content = await readWorkspaceFile("package.json", workspaceId);
+    const content = await readWorkspaceFileText("package.json", workspaceId);
     return JSON.parse(content);
   } catch {
     return { name: "my-app", version: "0.0.1" };
@@ -130,14 +130,14 @@ router.post("/package/scripts/set", async (req, res) => {
     pkg.scripts[name] = command;
     await writePackageJson(workspaceId, pkg);
 
-    res.json({
+    return res.json({
       ok: true,
       message: `Script "${name}" set successfully`,
       script: { name, command },
     });
   } catch (err) {
     req.log.error({ err }, "Failed to set script");
-    res.status(500).json({ error: "Failed to set script" });
+    return res.status(500).json({ error: "Failed to set script" });
   }
 });
 
@@ -156,16 +156,16 @@ router.post("/package/scripts/delete", async (req, res) => {
       delete pkg.scripts[name];
       await writePackageJson(workspaceId, pkg);
 
-      res.json({
+      return res.json({
         ok: true,
         message: `Script "${name}" deleted`,
       });
     } else {
-      res.status(404).json({ error: "Script not found" });
+      return res.status(404).json({ error: "Script not found" });
     }
   } catch (err) {
     req.log.error({ err }, "Failed to delete script");
-    res.status(500).json({ error: "Failed to delete script" });
+    return res.status(500).json({ error: "Failed to delete script" });
   }
 });
 

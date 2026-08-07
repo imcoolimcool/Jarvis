@@ -22,7 +22,7 @@ const SESSIONS = new Map<string, string>();
 const RUNNING = new Map<string, InteractiveTerminal>();
 const MAX_COMMAND_LENGTH = 12_000;
 
-export interface WorkspaceEntry { path: string; type: "file" | "dir"; size: number; }
+export interface WorkspaceEntry { path: string; name: string; type: "file" | "dir"; size: number; }
 
 export interface TerminalRun {
   stdout: string;
@@ -225,11 +225,11 @@ export async function listWorkspaceFiles(workspaceId = "default"): Promise<Works
       const full = path.join(dir, entry.name);
       const nextRel = rel ? `${rel}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
-        out.push({ path: `${nextRel}/`, type: "dir", size: 0 });
+        out.push({ path: `${nextRel}/`, name: entry.name, type: "dir", size: 0 });
         await walk(full, nextRel);
       } else {
         const stat = await fs.stat(full);
-        out.push({ path: nextRel, type: "file", size: stat.size });
+        out.push({ path: nextRel, name: entry.name, type: "file", size: stat.size });
       }
       if (out.length >= 1_000) return;
     }
@@ -248,6 +248,12 @@ export async function readWorkspaceFile(relPath: string, maxChars = 100_000, wor
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Read failed." };
   }
+}
+
+/** Convenience wrapper: read a workspace file as text, returning "" when unreadable. */
+export async function readWorkspaceFileText(relPath: string, workspaceId = "default"): Promise<string> {
+  const result = await readWorkspaceFile(relPath, 100_000, workspaceId);
+  return result.ok ? result.content : "";
 }
 
 export async function writeWorkspaceFile(relPath: string, content: string, workspaceId = "default"):

@@ -252,7 +252,9 @@ router.post("/search/replace", async (req, res) => {
   const replacement = typeof req.body?.replacement === "string" ? req.body.replacement : "";
   const regex = req.body?.regex === true;
   const caseSensitive = req.body?.case === true;
-  const files = Array.isArray(req.body?.files) ? req.body.files.filter((f): f is string => typeof f === "string") : [];
+  const files: string[] = Array.isArray(req.body?.files)
+    ? req.body.files.filter((f: unknown): f is string => typeof f === "string")
+    : [];
 
   if (!query.trim()) {
     res.status(400).json({ error: "Search query is required" });

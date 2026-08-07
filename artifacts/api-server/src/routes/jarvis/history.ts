@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
-import { listWorkspaceFiles, readWorkspaceFile, writeWorkspaceFile } from "../../lib/workspace";
-import { cleanText } from "../../lib/text";
+import { listWorkspaceFiles, readWorkspaceFileText, writeWorkspaceFile } from "../../lib/workspace";
+import { cleanText } from "../../lib/text-utils";
 
 const router = Router();
 
@@ -42,13 +42,10 @@ async function createSnapshot(
 
   for (const entry of entries) {
     if (entry.type === "file") {
-      try {
-        const content = await readWorkspaceFile(entry.path, workspaceId);
-        files.set(entry.path, content);
-        totalSize += Buffer.byteLength(content, "utf8");
-      } catch {
-        // Skip files that can't be read
-      }
+      const content = await readWorkspaceFileText(entry.path, workspaceId);
+      if (!content) continue;
+      files.set(entry.path, content);
+      totalSize += Buffer.byteLength(content, "utf8");
     }
   }
 
@@ -136,10 +133,10 @@ router.get("/history/snapshots", (req: Request, res: Response) => {
       trigger: s.trigger,
     }));
 
-    res.json({ ok: true, snapshots: list });
+    return res.json({ ok: true, snapshots: list });
   } catch (err) {
     req.log.error({ err }, "Failed to list snapshots");
-    res.status(500).json({ error: "Failed to list snapshots" });
+    return res.status(500).json({ error: "Failed to list snapshots" });
   }
 });
 
@@ -158,7 +155,7 @@ router.get("/history/snapshots/:snapshotId", (req: Request, res: Response) => {
       return res.status(404).json({ error: "Snapshot not found" });
     }
 
-    res.json({
+    return res.json({
       ok: true,
       snapshot: {
         id: snapshot.id,
@@ -173,7 +170,7 @@ router.get("/history/snapshots/:snapshotId", (req: Request, res: Response) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get snapshot");
-    res.status(500).json({ error: "Failed to get snapshot" });
+    return res.status(500).json({ error: "Failed to get snapshot" });
   }
 });
 
@@ -222,7 +219,7 @@ router.post("/history/restore", async (req: Request, res: Response) => {
       affectedFiles: Array.from(snapshot.files.keys()),
     });
 
-    res.json({
+    return res.json({
       ok: true,
       message: `Restored ${restoredCount} files from snapshot`,
       restoredCount,
@@ -230,7 +227,7 @@ router.post("/history/restore", async (req: Request, res: Response) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to restore snapshot");
-    res.status(500).json({ error: "Failed to restore snapshot" });
+    return res.status(500).json({ error: "Failed to restore snapshot" });
   }
 });
 
@@ -251,10 +248,10 @@ router.delete("/history/snapshots/:snapshotId", (req: Request, res: Response) =>
 
     snapshots.splice(index, 1);
 
-    res.json({ ok: true, message: "Snapshot deleted" });
+    return res.json({ ok: true, message: "Snapshot deleted" });
   } catch (err) {
     req.log.error({ err }, "Failed to delete snapshot");
-    res.status(500).json({ error: "Failed to delete snapshot" });
+    return res.status(500).json({ error: "Failed to delete snapshot" });
   }
 });
 
@@ -268,10 +265,10 @@ router.get("/history/entries", (req: Request, res: Response) => {
 
     const entries = (workspaceHistory.get(workspaceId) || []).slice(-limit);
 
-    res.json({ ok: true, entries });
+    return res.json({ ok: true, entries });
   } catch (err) {
     req.log.error({ err }, "Failed to get history");
-    res.status(500).json({ error: "Failed to get history" });
+    return res.status(500).json({ error: "Failed to get history" });
   }
 });
 
@@ -309,10 +306,10 @@ router.post("/history/add-entry", (req: Request, res: Response) => {
       history.shift();
     }
 
-    res.json({ ok: true, entry });
+    return res.json({ ok: true, entry });
   } catch (err) {
     req.log.error({ err }, "Failed to add history entry");
-    res.status(500).json({ error: "Failed to add history entry" });
+    return res.status(500).json({ error: "Failed to add history entry" });
   }
 });
 
@@ -326,10 +323,10 @@ router.post("/history/auto-snapshot", async (req: Request, res: Response) => {
 
     const snapshot = await createSnapshot(workspaceId, `Auto snapshot (${trigger})`, "", trigger);
 
-    res.json({ ok: true, snapshotId: snapshot.id });
+    return res.json({ ok: true, snapshotId: snapshot.id });
   } catch (err) {
     req.log.error({ err }, "Failed to create auto snapshot");
-    res.status(500).json({ error: "Failed to create auto snapshot" });
+    return res.status(500).json({ error: "Failed to create auto snapshot" });
   }
 });
 

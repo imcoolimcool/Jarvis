@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { chromium } from "playwright";
-import { cleanText, parseJsonObject } from "../../lib/utils";
+import { cleanText, parseJsonObject } from "../../lib/text-utils";
 
 const router = Router();
 
@@ -174,12 +174,12 @@ router.post("/e2e/run", async (req: Request, res: Response) => {
     await context.close();
     await browser.close();
 
-    res.json({ ok: true, test });
+    return res.json({ ok: true, test });
   } catch (err) {
     test.error = (err as Error).message;
     test.passed = false;
     if (browser) await browser.close();
-    res.json({ ok: false, test });
+    return res.json({ ok: false, test });
   }
 });
 
@@ -205,7 +205,7 @@ router.get("/e2e/workflows/:id", (req: Request, res: Response) => {
     return res.status(404).json({ error: "Workflow not found" });
   }
 
-  res.json({ ok: true, workflow });
+  return res.json({ ok: true, workflow });
 });
 
 /**
@@ -279,12 +279,12 @@ router.post("/e2e/custom", async (req: Request, res: Response) => {
     await context.close();
     await browser.close();
 
-    res.json({ ok: true, test });
+    return res.json({ ok: true, test });
   } catch (err) {
     test.error = (err as Error).message;
     test.passed = false;
     if (browser) await browser.close();
-    res.json({ ok: false, test });
+    return res.json({ ok: false, test });
   }
 });
 

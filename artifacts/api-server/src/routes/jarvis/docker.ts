@@ -84,9 +84,9 @@ router.get("/docker/status", (req, res) => {
     }
 
     const version = execSync("docker --version", { encoding: "utf-8" }).trim();
-    res.json({ ok: true, available: true, version });
+    return res.json({ ok: true, available: true, version });
   } catch (err) {
-    res.status(500).json({ error: "Failed to check Docker status" });
+    return res.status(500).json({ error: "Failed to check Docker status" });
   }
 });
 
@@ -101,9 +101,9 @@ router.get("/docker/containers", (req, res) => {
       encoding: "utf-8",
     });
     const containers = parseContainers(output);
-    res.json({ ok: true, containers });
+    return res.json({ ok: true, containers });
   } catch (err) {
-    res.status(500).json({ error: "Failed to list containers" });
+    return res.status(500).json({ error: "Failed to list containers" });
   }
 });
 
@@ -118,9 +118,9 @@ router.get("/docker/images", (req, res) => {
       encoding: "utf-8",
     });
     const images = parseImages(output);
-    res.json({ ok: true, images });
+    return res.json({ ok: true, images });
   } catch (err) {
-    res.status(500).json({ error: "Failed to list images" });
+    return res.status(500).json({ error: "Failed to list images" });
   }
 });
 
@@ -166,8 +166,9 @@ router.post("/docker/build", async (req, res) => {
       );
       res.end();
     });
+    return;
   } catch (err) {
-    res.status(500).json({ error: "Failed to build Docker image" });
+    return res.status(500).json({ error: "Failed to build Docker image" });
   }
 });
 
@@ -175,7 +176,7 @@ router.post("/docker/build", async (req, res) => {
 router.post("/docker/run", (req, res) => {
   const imageName = String(req.body?.imageName || "").slice(0, 128);
   const containerName = String(req.body?.containerName || "").slice(0, 128);
-  const ports = Array.isArray(req.body?.ports) ? req.body.ports.map((p) => String(p).slice(0, 64)) : [];
+  const ports = Array.isArray(req.body?.ports) ? req.body.ports.map((p: unknown) => String(p).slice(0, 64)) : [];
   const env = req.body?.env && typeof req.body.env === "object" ? req.body.env : {};
 
   try {
@@ -204,9 +205,9 @@ router.post("/docker/run", (req, res) => {
     const output = execSync(`docker ${dockerArgs.join(" ")}`, { encoding: "utf-8" }).trim();
     const containerId = output.split("\n")[0];
 
-    res.json({ ok: true, containerId, message: "Container started" });
+    return res.json({ ok: true, containerId, message: "Container started" });
   } catch (err) {
-    res.status(500).json({ error: "Failed to run container" });
+    return res.status(500).json({ error: "Failed to run container" });
   }
 });
 
@@ -220,9 +221,9 @@ router.post("/docker/stop", (req, res) => {
     }
 
     execSync(`docker stop ${containerId}`, { encoding: "utf-8" });
-    res.json({ ok: true, message: "Container stopped" });
+    return res.json({ ok: true, message: "Container stopped" });
   } catch (err) {
-    res.status(500).json({ error: "Failed to stop container" });
+    return res.status(500).json({ error: "Failed to stop container" });
   }
 });
 
@@ -237,9 +238,9 @@ router.get("/docker/logs/:containerId", (req, res) => {
     }
 
     const output = execSync(`docker logs --tail ${lines} ${containerId}`, { encoding: "utf-8" });
-    res.json({ ok: true, logs: output });
+    return res.json({ ok: true, logs: output });
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch container logs" });
+    return res.status(500).json({ error: "Failed to fetch container logs" });
   }
 });
 
@@ -255,9 +256,9 @@ router.post("/docker/remove", (req, res) => {
 
     const args = force ? ["-f"] : [];
     execSync(`docker rm ${args.join(" ")} ${containerId}`, { encoding: "utf-8" });
-    res.json({ ok: true, message: "Container removed" });
+    return res.json({ ok: true, message: "Container removed" });
   } catch (err) {
-    res.status(500).json({ error: "Failed to remove container" });
+    return res.status(500).json({ error: "Failed to remove container" });
   }
 });
 
@@ -273,9 +274,9 @@ router.post("/docker/remove-image", (req, res) => {
 
     const args = force ? ["-f"] : [];
     execSync(`docker rmi ${args.join(" ")} ${imageId}`, { encoding: "utf-8" });
-    res.json({ ok: true, message: "Image removed" });
+    return res.json({ ok: true, message: "Image removed" });
   } catch (err) {
-    res.status(500).json({ error: "Failed to remove image" });
+    return res.status(500).json({ error: "Failed to remove image" });
   }
 });
 

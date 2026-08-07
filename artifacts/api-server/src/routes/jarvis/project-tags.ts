@@ -57,7 +57,7 @@ router.post("/resolve", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("Error resolving project tag:", err);
-    res.status(500).json({ error: "Failed to resolve project tag" });
+    return res.status(500).json({ error: "Failed to resolve project tag" });
   }
 });
 
@@ -67,7 +67,7 @@ router.post("/resolve", async (req: Request, res: Response) => {
  */
 router.get("/files/:projectId", async (req: Request, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = typeof req.params.projectId === "string" ? req.params.projectId : "";
     const accessLevel = (req.query.accessLevel as string) || "view";
 
     if (!projectId) {
@@ -97,7 +97,7 @@ router.get("/files/:projectId", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("Error fetching project files:", err);
-    res.status(500).json({ error: "Failed to fetch project files" });
+    return res.status(500).json({ error: "Failed to fetch project files" });
   }
 });
 
@@ -158,7 +158,7 @@ router.post("/escalate-access", async (req: Request, res: Response) => {
     return res.json({ success: true, accessLevel: "edit", entry: updated[0] });
   } catch (err) {
     console.error("Error escalating access:", err);
-    res.status(500).json({ error: "Failed to escalate access" });
+    return res.status(500).json({ error: "Failed to escalate access" });
   }
 });
 
@@ -179,7 +179,7 @@ router.get("/list", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("Error listing projects:", err);
-    res.status(500).json({ error: "Failed to list projects" });
+    return res.status(500).json({ error: "Failed to list projects" });
   }
 });
 

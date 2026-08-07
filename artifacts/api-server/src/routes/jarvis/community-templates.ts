@@ -163,14 +163,14 @@ router.get("/community-templates/trending", async (req: Request, res: Response) 
       filtered.sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime());
     }
 
-    res.json({
+    return res.json({
       ok: true,
       templates: filtered.slice(0, limit),
       total: filtered.length,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch trending templates");
-    res.status(500).json({ error: "Failed to fetch trending templates" });
+    return res.status(500).json({ error: "Failed to fetch trending templates" });
   }
 });
 
@@ -251,7 +251,7 @@ router.get("/community-templates/search", async (req: Request, res: Response) =>
       filtered.sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime());
     }
 
-    res.json({
+    return res.json({
       ok: true,
       query,
       results: filtered.slice(0, limit),
@@ -259,7 +259,7 @@ router.get("/community-templates/search", async (req: Request, res: Response) =>
     });
   } catch (err) {
     req.log.error({ err }, "Search failed");
-    res.status(500).json({ error: "Search failed" });
+    return res.status(500).json({ error: "Search failed" });
   }
 });
 
@@ -314,7 +314,7 @@ router.post("/community-templates/clone", async (req: Request, res: Response) =>
   try {
     // In production, this would clone the GitHub repository
     // For now, we simulate the process
-    res.json({
+    return res.json({
       ok: true,
       status: "cloning",
       projectName,
@@ -326,7 +326,7 @@ router.post("/community-templates/clone", async (req: Request, res: Response) =>
     });
   } catch (err) {
     req.log.error({ err }, "Clone failed");
-    res.status(500).json({ error: "Failed to clone template" });
+    return res.status(500).json({ error: "Failed to clone template" });
   }
 });
 

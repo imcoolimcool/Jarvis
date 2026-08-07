@@ -287,7 +287,7 @@ async function manualRetryPayload(key: LlmKeyEntry): Promise<{
   key: { id: string; name: string; model: string };
   nextKey: { id: string; name: string; model: string } | null;
 }> {
-  const all = await listKeys().catch(() => []);
+  const all: LlmKeyEntry[] = await listKeys().catch((): LlmKeyEntry[] => []);
   const idx = all.findIndex((k) => k.id === key.id);
   const next = idx >= 0 && idx < all.length - 1 ? all[idx + 1] : null;
   return {

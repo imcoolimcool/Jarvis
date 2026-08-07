@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { readWorkspaceFile, writeWorkspaceFile, listWorkspaceFiles } from "../../lib/workspace";
+import { readWorkspaceFileText, writeWorkspaceFile, listWorkspaceFiles } from "../../lib/workspace";
 import { cleanText } from "../../lib/text-utils";
 
 interface EnvVariable {
@@ -96,7 +96,7 @@ router.get("/env/:filename", async (req, res) => {
   }
   
   try {
-    const content = await readWorkspaceFile(filename, workspaceId);
+    const content = await readWorkspaceFileText(filename, workspaceId);
     const parsed = parseEnvContent(content);
     
     const variables: EnvVariable[] = Object.entries(parsed).map(([key, value]) => ({
@@ -106,14 +106,14 @@ router.get("/env/:filename", async (req, res) => {
       environment: filename === ".env" ? "default" : filename.replace(/^\.env\./, ""),
     }));
     
-    res.json({
+    return res.json({
       ok: true,
       filename,
       variables,
       count: variables.length,
     });
   } catch {
-    res.status(404).json({ error: "Env file not found" });
+    return res.status(404).json({ error: "Env file not found" });
   }
 });
 
@@ -131,7 +131,7 @@ router.post("/env/:filename/set", async (req, res) => {
   try {
     let content = "";
     try {
-      content = await readWorkspaceFile(filename, workspaceId);
+      content = await readWorkspaceFileText(filename, workspaceId);
     } catch {
       // File doesn't exist, create new
       content = "";
@@ -143,7 +143,7 @@ router.post("/env/:filename/set", async (req, res) => {
     const updated = stringifyEnvContent(env);
     await writeWorkspaceFile(filename, updated, workspaceId);
     
-    res.json({
+    return res.json({
       ok: true,
       message: `Variable ${key} set successfully`,
       key,
@@ -151,7 +151,7 @@ router.post("/env/:filename/set", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to set env variable");
-    res.status(500).json({ error: "Failed to set variable" });
+    return res.status(500).json({ error: "Failed to set variable" });
   }
 });
 
@@ -166,7 +166,7 @@ router.post("/env/:filename/delete", async (req, res) => {
   }
   
   try {
-    const content = await readWorkspaceFile(filename, workspaceId);
+    const content = await readWorkspaceFileText(filename, workspaceId);
     const env = parseEnvContent(content);
     
     if (!(key in env)) {
@@ -177,13 +177,13 @@ router.post("/env/:filename/delete", async (req, res) => {
     const updated = stringifyEnvContent(env);
     await writeWorkspaceFile(filename, updated, workspaceId);
     
-    res.json({
+    return res.json({
       ok: true,
       message: `Variable ${key} deleted`,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to delete env variable");
-    res.status(500).json({ error: "Failed to delete variable" });
+    return res.status(500).json({ error: "Failed to delete variable" });
   }
 });
 
@@ -199,7 +199,7 @@ router.get("/env/all", async (req, res) => {
     
     for (const file of envFiles) {
       try {
-        const content = await readWorkspaceFile(file.path, workspaceId);
+        const content = await readWorkspaceFileText(file.path, workspaceId);
         const parsed = parseEnvContent(content);
         allVariables[file.name] = Object.entries(parsed).map(([key, value]) => ({
           key,

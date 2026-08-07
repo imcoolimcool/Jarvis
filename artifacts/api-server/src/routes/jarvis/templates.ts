@@ -401,7 +401,7 @@ router.get("/templates/:id", (req: Request, res: Response) => {
     return res.status(404).json({ error: "Template not found" });
   }
 
-  res.json({
+  return res.json({
     ok: true,
     template,
   });
@@ -426,7 +426,7 @@ router.post("/templates/create", (req: Request, res: Response) => {
 
     // In a real implementation, this would write files to the workspace
     // For now, we return the template structure
-    res.json({
+    return res.json({
       ok: true,
       projectName,
       workspaceId,
@@ -444,7 +444,7 @@ router.post("/templates/create", (req: Request, res: Response) => {
     });
   } catch (err) {
     req.log.error({ err }, "Template creation failed");
-    res.status(500).json({ error: "Failed to create project from template" });
+    return res.status(500).json({ error: "Failed to create project from template" });
   }
 });
 

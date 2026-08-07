@@ -154,9 +154,9 @@ router.post("/database/connect", (req, res) => {
     };
 
     connections.set(connectionId, connection);
-    res.json({ ok: true, connectionId, connection });
+    return res.json({ ok: true, connectionId, connection });
   } catch (err) {
-    res.status(500).json({ error: "Failed to connect to database" });
+    return res.status(500).json({ error: "Failed to connect to database" });
   }
 });
 
@@ -172,12 +172,12 @@ router.get("/database/:connectionId/schema", (req, res) => {
   try {
     if (connection.type === "sqlite") {
       const schema = getSQLiteSchema(connection.database);
-      res.json({ ok: true, schema });
+      return res.json({ ok: true, schema });
     } else {
-      res.status(501).json({ error: `${connection.type} schema introspection not yet implemented` });
+      return res.status(501).json({ error: `${connection.type} schema introspection not yet implemented` });
     }
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch schema" });
+    return res.status(500).json({ error: "Failed to fetch schema" });
   }
 });
 
@@ -194,12 +194,12 @@ router.post("/database/:connectionId/query", (req, res) => {
   try {
     if (connection.type === "sqlite") {
       const results = executeQuery(connection.database, query);
-      res.json({ ok: true, results, rowCount: Array.isArray(results) ? results.length : 0 });
+      return res.json({ ok: true, results, rowCount: Array.isArray(results) ? results.length : 0 });
     } else {
-      res.status(501).json({ error: `${connection.type} queries not yet implemented` });
+      return res.status(501).json({ error: `${connection.type} queries not yet implemented` });
     }
   } catch (err) {
-    res.status(500).json({ error: "Failed to execute query" });
+    return res.status(500).json({ error: "Failed to execute query" });
   }
 });
 
@@ -222,16 +222,16 @@ router.get("/database/:connectionId/table/:tableName", (req, res) => {
       const countResult = executeQuery(connection.database, `SELECT COUNT(*) as count FROM ${tableName}`);
       const total = Array.isArray(countResult) && countResult.length > 0 ? (countResult[0] as any).count : 0;
 
-      res.json({
+      return res.json({
         ok: true,
         rows,
         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
       });
     } else {
-      res.status(501).json({ error: `${connection.type} table browsing not yet implemented` });
+      return res.status(501).json({ error: `${connection.type} table browsing not yet implemented` });
     }
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch table data" });
+    return res.status(500).json({ error: "Failed to fetch table data" });
   }
 });
 
@@ -269,12 +269,12 @@ router.get("/database/:connectionId/export/:tableName", (req, res) => {
 
       res.setHeader("Content-Type", "text/csv");
       res.setHeader("Content-Disposition", `attachment; filename="${tableName}.csv"`);
-      res.send(csvContent);
+      return res.send(csvContent);
     } else {
-      res.status(501).json({ error: `${connection.type} export not yet implemented` });
+      return res.status(501).json({ error: `${connection.type} export not yet implemented` });
     }
   } catch (err) {
-    res.status(500).json({ error: "Failed to export table" });
+    return res.status(500).json({ error: "Failed to export table" });
   }
 });
 
@@ -296,12 +296,12 @@ router.get("/database/:connectionId/dump", (req, res) => {
 
       res.setHeader("Content-Type", "text/plain");
       res.setHeader("Content-Disposition", "attachment; filename=database.sql");
-      res.send(dump);
+      return res.send(dump);
     } else {
-      res.status(501).json({ error: `${connection.type} dump not yet implemented` });
+      return res.status(501).json({ error: `${connection.type} dump not yet implemented` });
     }
   } catch (err) {
-    res.status(500).json({ error: "Failed to create database dump" });
+    return res.status(500).json({ error: "Failed to create database dump" });
   }
 });
 

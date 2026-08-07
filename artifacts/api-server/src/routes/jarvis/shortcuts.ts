@@ -83,10 +83,10 @@ router.post("/shortcuts/parse", (req: Request, res: Response) => {
 
     const action = parseKeyboardEvent(key, ctrlKey || false, metaKey || false, shiftKey || false, platform);
 
-    res.json({ ok: true, action, platform });
+    return res.json({ ok: true, action, platform });
   } catch (err) {
     req.log.error({ err }, "Failed to parse keyboard event");
-    res.status(500).json({ error: "Failed to parse keyboard event" });
+    return res.status(500).json({ error: "Failed to parse keyboard event" });
   }
 });
 
@@ -106,10 +106,10 @@ router.post("/shortcuts/custom", (req: Request, res: Response) => {
     const config = ensureConfig(configId, platform);
     updateCustomKeybinding(config, shortcut, action as Action);
 
-    res.json({ ok: true, message: "Custom keybinding updated", config: config.customBindings });
+    return res.json({ ok: true, message: "Custom keybinding updated", config: config.customBindings });
   } catch (err) {
     req.log.error({ err }, "Failed to set custom keybinding");
-    res.status(500).json({ error: "Failed to set custom keybinding" });
+    return res.status(500).json({ error: "Failed to set custom keybinding" });
   }
 });
 
@@ -194,10 +194,10 @@ router.post("/shortcuts/import", (req: Request, res: Response) => {
       updateCustomKeybinding(config, shortcut, action as Action);
     }
 
-    res.json({ ok: true, message: "Keybindings imported", customBindings: config.customBindings });
+    return res.json({ ok: true, message: "Keybindings imported", customBindings: config.customBindings });
   } catch (err) {
     req.log.error({ err }, "Failed to import keybindings");
-    res.status(500).json({ error: "Failed to import keybindings" });
+    return res.status(500).json({ error: "Failed to import keybindings" });
   }
 });
 

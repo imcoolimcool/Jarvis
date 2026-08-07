@@ -142,7 +142,7 @@ async function searchPackages(managerType: string, query: string): Promise<Packa
 
   try {
     const url = manager.searchUrl(query);
-    const response = await fetch(url, { timeout: 5000 });
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const data = await response.json() as unknown;
 
     // Handle different registry response formats

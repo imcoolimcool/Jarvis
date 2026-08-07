@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { execSync } from "node:child_process";
-import { cleanText } from "../../lib/utils";
+import { cleanText } from "../../lib/text-utils";
 
 const router = Router();
 
@@ -256,7 +256,7 @@ router.post("/security/code-injection", (req: Request, res: Response) => {
     });
   }
 
-  res.json({ ok: true, issues, codeLength: code.length });
+  return res.json({ ok: true, issues, codeLength: code.length });
 });
 
 export default router;

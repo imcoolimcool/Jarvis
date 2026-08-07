@@ -40,6 +40,8 @@ async function generateStarterFiles(
   answers: Record<string, string>,
   feedback: string | null,
   existingFiles: string[],
+  extraSystemPrompt = "",
+  plan: BuildPlan | null = null,
 ): Promise<Record<string, string>> {
   const userSummary = Object.entries(answers)
     .map(([question, answer]) => `${question}: ${answer}`)
@@ -63,18 +65,20 @@ async function generateStarterFiles(
       messages: [
         {
           role: "system",
-          content:
+          content: withExtraBuildInstructions(
             "You are the scaffolding engine inside a web-based IDE. The user wants a starter project built. " +
             "Return ONLY a valid JSON object where each key is a relative file path and each value is the complete file content. " +
             "No markdown fences, no explanation, no extra text before or after the JSON. " +
             "Build a single-page app with vanilla HTML, CSS and JavaScript (no external build step, it must run from a static server). " +
             "Make it visually polished, modern, and complete. Escape backslashes and quotes correctly inside the JSON string values. " +
             "Never use the em dash character anywhere in generated content.",
+            extraSystemPrompt,
+          ),
         },
         {
           role: "user",
           content:
-            `The user wants: ${prompt}\n\nAnswers to the clarifying questions:\n${userSummary || "(none provided)"}\n${feedbackLine}\n${existing}`,
+            `The user wants: ${prompt}\n\nAnswers to the clarifying questions:\n${userSummary || "(none provided)"}\n${feedbackLine}\n${existing}${plan ? `\nApproved implementation plan to follow:\n${JSON.stringify(plan)}` : ""}`,
         },
       ],
       temperature: 0.6,
@@ -95,6 +99,82 @@ async function generateStarterFiles(
     return Object.keys(files).length > 0 ? files : fallback();
   } catch {
     return fallback();
+  }
+}
+
+interface BuildPlan {
+  title: string;
+  summary: string;
+  steps: string[];
+  files: string[];
+  risks: string[];
+}
+
+function fallbackBuildPlan(prompt: string, existingFiles: string[]): BuildPlan {
+  const subject = cleanText(prompt, 120) || "the requested app";
+  return {
+    title: `Build plan: ${subject}`,
+    summary: `Jarvis will turn this request into a runnable local build, preserve the existing workspace, and verify the result in the preview.`,
+    steps: [
+      `Translate the request into a focused implementation for ${subject}.`,
+      "Inspect the current workspace and reuse existing files before creating new ones.",
+      "Implement the smallest complete version with responsive, accessible UI and working interactions.",
+      "Start the local preview, inspect the rendered result, and fix concrete runtime or completeness issues.",
+    ],
+    files: existingFiles.slice(0, 8),
+    risks: ["The exact runtime and file boundaries will be confirmed from the existing workspace before edits."],
+  };
+}
+
+function parseBuildPlan(raw: string, prompt: string, existingFiles: string[]): BuildPlan | null {
+  const parsed = parseJsonObject(raw);
+  if (!parsed) return null;
+  const strings = (value: unknown, max: number) => Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string").map((item) => item.trim().slice(0, max)).filter(Boolean).slice(0, 12)
+    : [];
+  const fallback = fallbackBuildPlan(prompt, existingFiles);
+  return {
+    title: cleanText(parsed.title, 160) || fallback.title,
+    summary: cleanText(parsed.summary, 1200) || fallback.summary,
+    steps: strings(parsed.steps, 500).length > 0 ? strings(parsed.steps, 500) : fallback.steps,
+    files: strings(parsed.files, 180).length > 0 ? strings(parsed.files, 180) : fallback.files,
+    risks: strings(parsed.risks, 300),
+  };
+}
+
+async function createBuildPlan(
+  prompt: string,
+  answers: Record<string, string>,
+  existingFiles: string[],
+  extraSystemPrompt = "",
+): Promise<BuildPlan> {
+  const fallback = fallbackBuildPlan(prompt, existingFiles);
+  try {
+    const completion = await pooledClient().chat.completions.create({
+      model: jarvisConfig.llmModel,
+      messages: [
+        {
+          role: "system",
+          content: withExtraBuildInstructions(
+            "You are the planning layer inside Jarvis Build Mode. Plan substantial implementation requests before any files are changed. " +
+            "Understand the user's requirements, inspect the listed workspace context, and produce a practical ordered plan for a local runnable app. " +
+            "Do not write code and do not claim that anything has been implemented. Return ONLY valid JSON with this shape: " +
+            "{title:string,summary:string,steps:string[],files:string[],risks:string[]}. " +
+            "Keep the plan concrete, honest, and concise. Reuse existing files when appropriate. Never use the em dash character.",
+            extraSystemPrompt,
+          ),
+        },
+        {
+          role: "user",
+          content: `Request:\n${prompt}\n\nClarifying answers:\n${JSON.stringify(answers)}\n\nExisting workspace files:\n${existingFiles.join("\\n") || "(empty workspace)"}`,
+        },
+      ],
+      temperature: 0.2,
+      max_tokens: 900,
+    });
+    return parseBuildPlan(completion.choices[0]?.message?.content?.trim() ?? "", prompt, existingFiles) ?? fallback;
+  } catch {
+    return fallback;
   }
 }
 
@@ -148,6 +228,8 @@ async function reviewAndFixWorkspace(
   workspaceId: string,
   previewOutput: string,
   passNumber: number,
+  extraSystemPrompt = "",
+  plan: BuildPlan | null = null,
 ): Promise<BuildReviewResult> {
   const entries = await listWorkspaceFiles(workspaceId);
   const files = entries
@@ -167,11 +249,14 @@ async function reviewAndFixWorkspace(
         {
           role: "system",
           content:
-            "You are the self-reviewer inside Jarvis Build Mode. Review a locally generated web app after it has been run. " +
-            "Return ONLY JSON with this shape: {done:boolean,summary:string,fixRequest:string|null,deferred:string[]}. " +
-            "Set done false only when a concrete runtime, structure, or obvious completeness issue can be fixed now. " +
-            "Keep fixRequest short and actionable. Do not claim that a screenshot, accessibility, security, or performance check passed unless evidence is provided. " +
-            "Never use the em dash character.",
+            withExtraBuildInstructions(
+              "You are the self-reviewer inside Jarvis Build Mode. Review a locally generated web app after it has been run. " +
+              "Return ONLY JSON with this shape: {done:boolean,summary:string,fixRequest:string|null,deferred:string[]}. " +
+              "Set done false only when a concrete runtime, structure, or obvious completeness issue can be fixed now. " +
+              "Keep fixRequest short and actionable. Do not claim that a screenshot, accessibility, security, or performance check passed unless evidence is provided. " +
+              "Never use the em dash character.",
+              extraSystemPrompt,
+            ),
         },
         {
           role: "user",
@@ -193,7 +278,7 @@ async function reviewAndFixWorkspace(
     if (done || !fixRequest) return { done: true, summary, fixRequest: null, deferred, filesChanged: [] };
 
     const existingFiles = entries.filter((entry) => entry.type === "file").map((entry) => entry.path);
-    const generated = await generateStarterFiles(prompt, answers, fixRequest, existingFiles);
+    const generated = await generateStarterFiles(prompt, answers, fixRequest, existingFiles, extraSystemPrompt, plan);
     const filesChanged: string[] = [];
     for (const [relativePath, content] of Object.entries(generated)) {
       if (!safeWorkspacePath(relativePath, workspaceId)) continue;
@@ -204,7 +289,7 @@ async function reviewAndFixWorkspace(
   } catch {
     if (fallback.done || !fallback.fixRequest) return fallback;
     const existingFiles = entries.filter((entry) => entry.type === "file").map((entry) => entry.path);
-    const generated = await generateStarterFiles(prompt, answers, fallback.fixRequest, existingFiles);
+    const generated = await generateStarterFiles(prompt, answers, fallback.fixRequest, existingFiles, extraSystemPrompt, plan);
     const filesChanged: string[] = [];
     for (const [relativePath, content] of Object.entries(generated)) {
       if (!safeWorkspacePath(relativePath, workspaceId)) continue;
@@ -238,13 +323,143 @@ async function getScreenshotBrowser(): Promise<Browser> {
   return screenshotBrowserPromise;
 }
 
+interface PreviewAgentElement {
+  id: number;
+  tag: string;
+  text: string;
+  ariaLabel: string;
+  placeholder: string;
+  inputType: string;
+  href: string;
+  disabled: boolean;
+}
+
+interface PreviewAgentAction {
+  action: "click" | "type" | "select" | "press" | "wait" | "done";
+  id?: number;
+  text?: string;
+  value?: string;
+  key?: string;
+  milliseconds?: number;
+}
+
+interface PreviewAgentDecision {
+  done: boolean;
+  message: string;
+  actions: PreviewAgentAction[];
+}
+
+function localPreviewUrl(url: string, port: number): boolean {
+  try {
+    const parsed = new URL(url);
+    return (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") && parsed.port === String(port);
+  } catch {
+    return false;
+  }
+}
+
+function parsePreviewAgentDecision(raw: string): PreviewAgentDecision | null {
+  const parsed = parseJsonObject(raw);
+  if (!parsed) return null;
+  const actions = Array.isArray(parsed.actions) ? parsed.actions : [];
+  const allowed = new Set<PreviewAgentAction["action"]>(["click", "type", "select", "press", "wait", "done"]);
+  return {
+    done: parsed.done === true,
+    message: cleanText(parsed.message, 500),
+    actions: actions
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+      .map((item) => ({
+        action: allowed.has(item.action as PreviewAgentAction["action"]) ? item.action as PreviewAgentAction["action"] : "done",
+        id: Number.isInteger(item.id) ? Number(item.id) : undefined,
+        text: cleanText(item.text, 1000),
+        value: cleanText(item.value, 300),
+        key: cleanText(item.key, 40),
+        milliseconds: Math.min(2000, Math.max(0, Number(item.milliseconds) || 0)),
+      }))
+      .slice(0, 5),
+  };
+}
+
+async function inspectPreviewPage(page: Page): Promise<PreviewAgentElement[]> {
+  return page.evaluate(() => {
+    const elements = Array.from(document.querySelectorAll(
+      "button, a, input, textarea, select, [role=button]",
+    )).slice(0, 80) as any[];
+    return elements.map((element, id) => {
+      const item = element as any;
+      item.setAttribute("data-jarvis-agent-id", String(id));
+      return {
+        id,
+        tag: item.tagName.toLowerCase(),
+        text: (item.innerText || item.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 180),
+        ariaLabel: item.getAttribute("aria-label") || "",
+        placeholder: item.getAttribute("placeholder") || "",
+        inputType: item.getAttribute("type") || "",
+        href: item.tagName.toLowerCase() === "a" ? item.getAttribute("href") || "" : "",
+        disabled: item.disabled === true,
+      };
+    });
+  });
+}
+
+async function runPreviewAgentAction(page: Page, action: PreviewAgentAction): Promise<string> {
+  if (action.action === "wait") {
+    await new Promise((resolve) => setTimeout(resolve, action.milliseconds ?? 300));
+    return `waited ${action.milliseconds ?? 300}ms`;
+  }
+  if (action.action === "done") return "finished";
+  if (!Number.isInteger(action.id) || (action.id ?? -1) < 0 || (action.id ?? -1) >= 80) {
+    throw new Error("The agent selected an invalid element");
+  }
+  const selector = `[data-jarvis-agent-id="${action.id}"]`;
+  if (action.action === "click") {
+    await page.$eval(selector, (element: any) => element.click());
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    return `clicked element ${action.id}`;
+  }
+  if (action.action === "type") {
+    const text = action.text ?? "";
+    await page.$eval(selector, (element: any, value) => {
+      const input = element as any;
+      const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")?.set;
+      setter?.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }, text);
+    return `typed into element ${action.id}`;
+  }
+  if (action.action === "select") {
+    await page.select(selector, action.value ?? "");
+    return `selected a value in element ${action.id}`;
+  }
+  if (action.action === "press") {
+    await page.focus(selector);
+    await page.keyboard.press((action.key || "Enter") as any);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    return `pressed ${action.key || "Enter"}`;
+  }
+  throw new Error(`Unsupported preview action: ${action.action}`);
+}
+
 /** Capture a PNG of the running preview and persist it to the Gallery store. */
-async function capturePreviewPng(url: string, workspaceId: string): Promise<{ url: string; dataUrl: string } | null> {
+type ScreenshotViewport = "desktop" | "mobile";
+
+const screenshotViewportSizes: Record<ScreenshotViewport, { width: number; height: number }> = {
+  desktop: { width: 1440, height: 900 },
+  mobile: { width: 390, height: 844 },
+};
+
+async function capturePreviewPng(
+  url: string,
+  workspaceId: string,
+  viewport: ScreenshotViewport = "desktop",
+): Promise<{ url: string; dataUrl: string } | null> {
   try {
     const browser = await getScreenshotBrowser();
     const page: Page = await browser.newPage();
     try {
-      await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+      const size = screenshotViewportSizes[viewport];
+      await page.setViewport({ ...size, deviceScaleFactor: 1 });
       await page.goto(url, { waitUntil: "networkidle0", timeout: 20_000 });
       await new Promise((resolve) => setTimeout(resolve, 700));
       const shot = await page.screenshot({ type: "png" });
@@ -252,7 +467,7 @@ async function capturePreviewPng(url: string, workspaceId: string): Promise<{ ur
       const stored = await persistFile({
         data: png,
         mimeType: "image/png",
-        name: `build-preview-${workspaceId}.png`,
+        name: `build-preview-${workspaceId}-${viewport}.png`,
         kind: "image",
         owner: "user",
       });
@@ -286,6 +501,12 @@ const MAX_ENV_VALUE = 4000;
 
 function cleanText(value: unknown, max: number): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+function withExtraBuildInstructions(basePrompt: string, extraPrompt: string): string {
+  const extra = cleanText(extraPrompt, 4000);
+  if (!extra) return basePrompt;
+  return `${basePrompt}\n\nAdditional Build Mode instructions from the user (additive only; preserve the original Build Mode requirements and safety rules):\n${extra}`;
 }
 
 function safeWorkspacePath(relPath: string, workspaceId = "default"): string | null {
@@ -439,6 +660,34 @@ router.post("/build/ask", async (req, res) => {
   });
 });
 
+router.post("/build/plan", async (req, res) => {
+  const workspaceId = cleanText(req.body?.workspaceId, 64) || "default";
+  const prompt = cleanText(req.body?.prompt, 300);
+  const extraSystemPrompt = cleanText(req.body?.extraSystemPrompt, 4000);
+  const rawAnswers = req.body?.answers && typeof req.body.answers === "object" && !Array.isArray(req.body.answers)
+    ? req.body.answers as Record<string, unknown>
+    : {};
+  const answers = Object.fromEntries(Object.entries(rawAnswers)
+    .map(([key, value]) => [key, cleanText(value, 200)])
+    .filter(([, value]) => value));
+  if (!prompt) {
+    res.status(400).json({ error: "A build request is required" });
+    return;
+  }
+  try {
+    await ensureWorkspace(workspaceId);
+    const existingFiles = (await listWorkspaceFiles(workspaceId))
+      .filter((entry) => entry.type === "file" && !/^\\.?env/i.test(entry.path))
+      .map((entry) => entry.path)
+      .slice(0, 120);
+    const plan = await createBuildPlan(prompt, answers, existingFiles, extraSystemPrompt);
+    res.json({ ok: true, plan });
+  } catch (err) {
+    req.log.error({ err }, "Failed to create Build Mode plan");
+    res.status(500).json({ error: "Could not create a Build Mode plan" });
+  }
+});
+
 router.post("/build/scaffold", async (req, res) => {
   const workspaceId = cleanText(req.body?.workspaceId, 64) || "default";
   const prompt = cleanText(req.body?.prompt, 300) || "a simple Jarvis starter app";
@@ -451,12 +700,17 @@ router.post("/build/scaffold", async (req, res) => {
     if (key.length <= 100 && cleaned) answers[key] = cleaned;
   }
   const feedback = cleanText(req.body?.feedback, 2000) || null;
+  const extraSystemPrompt = cleanText(req.body?.extraSystemPrompt, 4000);
+  const rawPlan = req.body?.plan;
+  const plan = rawPlan && typeof rawPlan === "object" && !Array.isArray(rawPlan)
+    ? parseBuildPlan(JSON.stringify(rawPlan), prompt, [])
+    : null;
   try {
     await ensureWorkspace(workspaceId);
     const existingFiles = (await listWorkspaceFiles(workspaceId))
       .filter((entry) => entry.type === "file")
       .map((entry) => entry.path);
-    const files = await generateStarterFiles(prompt, answers, feedback, existingFiles);
+    const files = await generateStarterFiles(prompt, answers, feedback, existingFiles, extraSystemPrompt, plan);
     for (const [relPath, content] of Object.entries(files)) {
       if (!safeWorkspacePath(relPath, workspaceId)) continue;
       await writeWorkspaceFile(relPath, content, workspaceId);
@@ -472,6 +726,11 @@ router.post("/build/iterate", async (req, res) => {
   const workspaceId = cleanText(req.body?.workspaceId, 64) || "default";
   const prompt = cleanText(req.body?.prompt, 300) || "a simple Jarvis starter app";
   const previewOutput = cleanText(req.body?.previewOutput, 6000);
+  const extraSystemPrompt = cleanText(req.body?.extraSystemPrompt, 4000);
+  const rawPlan = req.body?.plan;
+  const plan = rawPlan && typeof rawPlan === "object" && !Array.isArray(rawPlan)
+    ? parseBuildPlan(JSON.stringify(rawPlan), prompt, [])
+    : null;
   // Allow unlimited iterations (cap at 100 to prevent runaway loops, but this is a soft limit)
   const passNumber = Math.max(1, Number(req.body?.passNumber) || 1);
   const rawAnswers = req.body?.answers && typeof req.body.answers === "object" && !Array.isArray(req.body.answers)
@@ -486,11 +745,123 @@ router.post("/build/iterate", async (req, res) => {
     if (passNumber > 100) {
       req.log.warn({ workspaceId, passNumber }, "Iteration count is very high, possibly infinite loop");
     }
-    const result = await reviewAndFixWorkspace(prompt, answers, workspaceId, previewOutput, passNumber);
+    const result = await reviewAndFixWorkspace(prompt, answers, workspaceId, previewOutput, passNumber, extraSystemPrompt, plan);
     res.json({ ok: true, passNumber, ...result });
   } catch (err) {
     req.log.error({ err }, "Build self-review failed");
     res.status(500).json({ error: "Build self-review failed" });
+  }
+});
+
+router.post("/build/preview/agent", async (req, res) => {
+  const sessionId = cleanText(req.body?.sessionId, 100) || "studio-preview";
+  const workspaceId = cleanText(req.body?.workspaceId, 64) || "default";
+  const goal = cleanText(req.body?.goal, 1200);
+  const port = Number(req.body?.port);
+  const maxSteps = Math.min(10, Math.max(1, Number(req.body?.maxSteps) || 6));
+  const extraSystemPrompt = cleanText(req.body?.extraSystemPrompt, 4000);
+  const preview = findPreview(workspaceId, sessionId);
+  if (!goal) {
+    res.status(400).json({ error: "A goal is required" });
+    return;
+  }
+  if (!preview || preview.port !== port || !Number.isInteger(port) || port < 1024 || port > 65535) {
+    res.status(400).json({ error: "Start the local preview before asking Jarvis to interact with it" });
+    return;
+  }
+
+  const events: Array<{ type: "inspect" | "decision" | "action" | "error" | "complete"; message: string; step?: number }> = [];
+  const consoleErrors: string[] = [];
+  let page: Page | null = null;
+  try {
+    const browser = await getScreenshotBrowser();
+    page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      try {
+        const requestUrl = request.url();
+        const parsed = new URL(requestUrl);
+        if (request.isNavigationRequest() && request.frame() === page?.mainFrame() && !localPreviewUrl(requestUrl, port)) {
+          void request.abort();
+          return;
+        }
+      } catch {
+        void request.abort();
+        return;
+      }
+      void request.continue();
+    });
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text().slice(0, 500));
+    });
+    page.on("pageerror", (error: any) => consoleErrors.push(String(error?.message ?? error).slice(0, 500)));
+    const url = `http://127.0.0.1:${port}`;
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20_000 });
+    events.push({ type: "inspect", message: "Opened the local preview and inspected its interactive elements." });
+
+    let summary = "The agent stopped before completing the goal.";
+    let completed = false;
+    for (let step = 1; step <= maxSteps; step += 1) {
+      const elements = await inspectPreviewPage(page);
+      const decisionPrompt = [
+        `Goal: ${goal}`,
+        `Step: ${step} of ${maxSteps}`,
+        `Interactive elements (use the numeric id, never invent selectors): ${JSON.stringify(elements)}`,
+        `Recent browser console errors: ${JSON.stringify(consoleErrors.slice(-8))}`,
+        "Choose the next smallest useful action. Return JSON only: {done:boolean,message:string,actions:[{action:'click'|'type'|'select'|'press'|'wait'|'done',id?,text?,value?,key?,milliseconds?}]}",
+        "Use type only for visible text inputs, never password fields. Use click for buttons and submit controls. Stop with done true when the goal is satisfied or cannot be safely completed.",
+      ].join("\\n");
+      const completion = await pooledClient().chat.completions.create({
+        model: jarvisConfig.llmModel,
+        messages: [
+          {
+            role: "system",
+            content: withExtraBuildInstructions(
+              "You control a website preview inside a local IDE. You must reason from the supplied element inventory, act only on the local page, and never claim success without checking the resulting state. Return valid JSON only. Never use the em dash character.",
+              extraSystemPrompt,
+            ),
+          },
+          { role: "user", content: decisionPrompt },
+        ],
+        temperature: 0.1,
+        max_tokens: 700,
+      });
+      const decision = parsePreviewAgentDecision(completion.choices[0]?.message?.content?.trim() ?? "");
+      if (!decision) {
+        summary = "Jarvis could not produce a valid browser action plan.";
+        events.push({ type: "error", step, message: summary });
+        break;
+      }
+      summary = decision.message || summary;
+      events.push({ type: "decision", step, message: decision.message || `Planning step ${step}.` });
+      if (decision.done || decision.actions.length === 0) {
+        completed = decision.done;
+        break;
+      }
+      for (const action of decision.actions) {
+        if (action.action === "done") {
+          completed = true;
+          break;
+        }
+        try {
+          const message = await runPreviewAgentAction(page, action);
+          events.push({ type: "action", step, message });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Browser action failed";
+          events.push({ type: "error", step, message });
+        }
+      }
+      if (completed) break;
+    }
+    events.push({ type: "complete", message: completed ? "The browser goal was completed." : summary });
+    res.json({ ok: true, completed, summary, events, consoleErrors: [...new Set(consoleErrors)].slice(-12), elements: page ? await inspectPreviewPage(page) : [] });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Preview agent failed";
+    events.push({ type: "error", message });
+    res.status(500).json({ error: message, events, consoleErrors: [...new Set(consoleErrors)].slice(-12) });
+  } finally {
+    await page?.close().catch(() => undefined);
   }
 });
 
@@ -505,12 +876,25 @@ router.post("/build/screenshot", async (req, res) => {
     res.status(400).json({ error: "No preview is running for this workspace" });
     return;
   }
-  const shot = await capturePreviewPng(url, workspaceId);
-  if (!shot) {
-    res.status(500).json({ error: "Screenshot failed, the headless browser is unavailable" });
+  const requestedViewports: unknown[] = Array.isArray(req.body?.viewports) ? req.body.viewports : ["desktop"];
+  const viewports: ScreenshotViewport[] = [...new Set(
+    requestedViewports.filter((value): value is ScreenshotViewport => value === "desktop" || value === "mobile"),
+  )];
+  if (viewports.length === 0) {
+    res.status(400).json({ error: "At least one supported screenshot viewport is required" });
     return;
   }
-  res.json({ ok: true, url: shot.url, dataUrl: shot.dataUrl });
+  const screenshots: Partial<Record<ScreenshotViewport, { url: string; dataUrl: string }>> = {};
+  for (const viewport of viewports) {
+    const shot = await capturePreviewPng(url, workspaceId, viewport);
+    if (!shot) {
+      res.status(500).json({ error: `${viewport} screenshot failed, the headless browser is unavailable` });
+      return;
+    }
+    screenshots[viewport] = shot;
+  }
+  const desktop = screenshots.desktop;
+  res.json({ ok: true, url: desktop?.url ?? screenshots.mobile?.url ?? "", dataUrl: desktop?.dataUrl ?? screenshots.mobile?.dataUrl ?? "", screenshots });
 });
 
 router.post("/build/preview/start", async (req, res) => {

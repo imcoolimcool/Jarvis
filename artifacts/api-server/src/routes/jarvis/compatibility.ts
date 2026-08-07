@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { chromium, firefox, webkit } from "playwright";
-import { cleanText } from "../../lib/utils";
+import { cleanText } from "../../lib/text-utils";
 
 const router = Router();
 

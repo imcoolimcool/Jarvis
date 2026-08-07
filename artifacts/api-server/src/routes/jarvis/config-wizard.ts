@@ -203,7 +203,7 @@ router.get("/config/templates/:framework", async (req, res) => {
     return res.status(404).json({ error: `No templates for framework: ${framework}` });
   }
 
-  res.json({ ok: true, framework, templates: templates[framework] });
+  return res.json({ ok: true, framework, templates: templates[framework] });
 });
 
 // Generate and create config files
@@ -245,7 +245,7 @@ router.post("/config/generate", async (req, res) => {
       }
     }
 
-    res.json({
+    return res.json({
       ok: true,
       framework,
       created,
@@ -254,7 +254,7 @@ router.post("/config/generate", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to generate config files");
-    res.status(500).json({ error: "Failed to generate config files" });
+    return res.status(500).json({ error: "Failed to generate config files" });
   }
 });
 
@@ -272,10 +272,10 @@ router.get("/config/files", async (req, res) => {
         type: "config",
       }));
 
-    res.json({ ok: true, files: configFiles, count: configFiles.length });
+    return res.json({ ok: true, files: configFiles, count: configFiles.length });
   } catch (err) {
     req.log.error({ err }, "Failed to list config files");
-    res.status(500).json({ error: "Failed to list config files" });
+    return res.status(500).json({ error: "Failed to list config files" });
   }
 });
 

@@ -1,10 +1,14 @@
 import { Router, Request, Response } from "express";
+import { createRequire } from "node:module";
 import { createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import { createGzip } from "zlib";
-import archiver from "archiver";
-import { listWorkspaceFiles, readWorkspaceFile } from "../../lib/workspace";
-import { cleanText } from "../../lib/text";
+import type { Archiver } from "archiver";
+
+const require = createRequire(import.meta.url);
+const archiver = require("archiver") as (format: string, options?: object) => Archiver;
+import { listWorkspaceFiles, readWorkspaceFileText } from "../../lib/workspace";
+import { cleanText } from "../../lib/text-utils";
 
 const router = Router();
 
@@ -36,18 +40,15 @@ router.get("/export/info", async (req: Request, res: Response) => {
     const fileList = [];
 
     for (const file of files) {
-      try {
-        const content = await readWorkspaceFile(file.path, workspaceId);
-        const size = Buffer.byteLength(content, "utf8");
-        totalSize += size;
-        fileList.push({
-          path: file.path,
-          size,
-          type: "file" as const,
-        });
-      } catch {
-        // Skip files that can't be read
-      }
+      const content = await readWorkspaceFileText(file.path, workspaceId);
+      if (!content) continue;
+      const size = Buffer.byteLength(content, "utf8");
+      totalSize += size;
+      fileList.push({
+        path: file.path,
+        size,
+        type: "file" as const,
+      });
     }
 
     const manifest: ExportManifest = {
@@ -89,7 +90,7 @@ router.post("/export/zip", async (req: Request, res: Response) => {
 
     // Add files to archive
     for (const entry of entries) {
-      if (entry.type === "directory") continue;
+      if (entry.type === "dir") continue;
 
       // Skip node_modules unless explicitly included
       if (!includeNodeModules && entry.path.includes("node_modules")) continue;
@@ -100,12 +101,8 @@ router.post("/export/zip", async (req: Request, res: Response) => {
       // Skip common build artifacts
       if (entry.path.match(/\/(dist|build|\.next|__pycache__|target|\.bundle)\//)) continue;
 
-      try {
-        const content = await readWorkspaceFile(entry.path, workspaceId);
-        archive.append(content, { name: entry.path });
-      } catch {
-        // Skip files that can't be read
-      }
+      const content = await readWorkspaceFileText(entry.path, workspaceId);
+      if (content) archive.append(content, { name: entry.path });
     }
 
     // Add manifest
@@ -156,7 +153,7 @@ router.post("/export/tar-gz", async (req: Request, res: Response) => {
 
     // Add files to archive
     for (const entry of entries) {
-      if (entry.type === "directory") continue;
+      if (entry.type === "dir") continue;
 
       // Skip node_modules unless explicitly included
       if (!includeNodeModules && entry.path.includes("node_modules")) continue;
@@ -167,12 +164,8 @@ router.post("/export/tar-gz", async (req: Request, res: Response) => {
       // Skip common build artifacts
       if (entry.path.match(/\/(dist|build|\.next|__pycache__|target|\.bundle)\//)) continue;
 
-      try {
-        const content = await readWorkspaceFile(entry.path, workspaceId);
-        archive.append(content, { name: entry.path });
-      } catch {
-        // Skip files that can't be read
-      }
+      const content = await readWorkspaceFileText(entry.path, workspaceId);
+      if (content) archive.append(content, { name: entry.path });
     }
 
     // Add manifest
@@ -225,10 +218,10 @@ router.post("/export/github", async (req: Request, res: Response) => {
       note: "Automated GitHub push requires authentication. Use the commands above or push manually.",
     };
 
-    res.json({ ok: true, guide });
+    return res.json({ ok: true, guide });
   } catch (err) {
     req.log.error({ err }, "Failed to generate GitHub export guide");
-    res.status(500).json({ error: "Failed to generate GitHub export guide" });
+    return res.status(500).json({ error: "Failed to generate GitHub export guide" });
   }
 });
 
@@ -245,7 +238,7 @@ router.post("/export/list-files", async (req: Request, res: Response) => {
 
     const files = entries
       .filter((entry) => {
-        if (entry.type === "directory") return false;
+        if (entry.type === "dir") return false;
         if (!includeNodeModules && entry.path.includes("node_modules")) return false;
         if (!includeGit && entry.path.includes(".git")) return false;
         if (entry.path.match(/\/(dist|build|\.next|__pycache__|target|\.bundle)\//)) return false;

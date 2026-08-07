@@ -87,12 +87,12 @@ async function getGitStatus(workspaceId: string): Promise<GitStatus | null> {
 
         if (stageIndex === "U" || workingIndex === "U" || (stageIndex === "D" && workingIndex === "D")) {
           status.conflicted.push(filePath);
+        } else if (stageIndex === "?" && workingIndex === "?") {
+          status.untracked.push(filePath);
         } else if (stageIndex !== " ") {
           status.staged.push(filePath);
         } else if (workingIndex !== " ") {
           status.modified.push(filePath);
-        } else if (workingIndex === "?") {
-          status.untracked.push(filePath);
         }
       }
     }
@@ -201,7 +201,9 @@ router.get("/git/log", async (req, res) => {
  */
 router.post("/git/stage", async (req, res) => {
   const workspaceId = typeof req.body?.workspaceId === "string" ? req.body.workspaceId : "default";
-  const files = Array.isArray(req.body?.files) ? req.body.files.filter((f): f is string => typeof f === "string") : [];
+  const files: string[] = Array.isArray(req.body?.files)
+    ? req.body.files.filter((f: unknown): f is string => typeof f === "string")
+    : [];
   const stageAll = req.body?.all === true;
 
   try {
@@ -230,7 +232,9 @@ router.post("/git/stage", async (req, res) => {
  */
 router.post("/git/unstage", async (req, res) => {
   const workspaceId = typeof req.body?.workspaceId === "string" ? req.body.workspaceId : "default";
-  const files = Array.isArray(req.body?.files) ? req.body.files.filter((f): f is string => typeof f === "string") : [];
+  const files: string[] = Array.isArray(req.body?.files)
+    ? req.body.files.filter((f: unknown): f is string => typeof f === "string")
+    : [];
 
   try {
     const success = await unstageFiles(workspaceId, files);
@@ -286,7 +290,9 @@ router.post("/git/commit", async (req, res) => {
  */
 router.post("/git/discard", async (req, res) => {
   const workspaceId = typeof req.body?.workspaceId === "string" ? req.body.workspaceId : "default";
-  const files = Array.isArray(req.body?.files) ? req.body.files.filter((f): f is string => typeof f === "string") : [];
+  const files: string[] = Array.isArray(req.body?.files)
+    ? req.body.files.filter((f: unknown): f is string => typeof f === "string")
+    : [];
 
   if (!files.length) {
     res.status(400).json({ error: "No files specified" });

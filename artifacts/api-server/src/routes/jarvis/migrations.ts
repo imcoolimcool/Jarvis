@@ -171,7 +171,7 @@ router.post("/migrations/create", async (req, res) => {
 
     const output = execSync(command, { encoding: "utf-8", stdio: "pipe" });
 
-    res.json({
+    return res.json({
       ok: true,
       framework,
       name,
@@ -180,7 +180,7 @@ router.post("/migrations/create", async (req, res) => {
       message: `Migration "${name}" created successfully`,
     });
   } catch (err: any) {
-    res.status(500).json({
+    return res.status(500).json({
       ok: false,
       error: "Failed to create migration",
       details: err.stderr || err.message,
@@ -210,14 +210,14 @@ router.post("/migrations/seed", async (req, res) => {
 
     const output = execSync(command, { encoding: "utf-8", stdio: "pipe" });
 
-    res.json({
+    return res.json({
       ok: true,
       framework,
       output,
       message: "Seed data loaded successfully",
     });
   } catch (err: any) {
-    res.status(500).json({
+    return res.status(500).json({
       ok: false,
       error: "Seed failed",
       details: err.stderr || err.message,
@@ -247,7 +247,7 @@ router.post("/migrations/rollback", async (req, res) => {
 
     const output = execSync(command, { encoding: "utf-8", stdio: "pipe" });
 
-    res.json({
+    return res.json({
       ok: true,
       framework,
       steps,
@@ -255,7 +255,7 @@ router.post("/migrations/rollback", async (req, res) => {
       message: `Rolled back ${steps} migration(s)`,
     });
   } catch (err: any) {
-    res.status(500).json({
+    return res.status(500).json({
       ok: false,
       error: "Rollback failed",
       details: err.stderr || err.message,
@@ -284,13 +284,13 @@ router.get("/migrations/status", async (req, res) => {
 
     const output = execSync(command, { encoding: "utf-8", stdio: "pipe" });
 
-    res.json({
+    return res.json({
       ok: true,
       framework,
       status: output,
     });
   } catch (err: any) {
-    res.status(500).json({
+    return res.status(500).json({
       ok: false,
       error: "Failed to get status",
       details: err.stderr || err.message,

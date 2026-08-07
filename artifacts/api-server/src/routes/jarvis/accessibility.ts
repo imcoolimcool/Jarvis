@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { chromium } from "playwright";
 import * as axe from "axe-core";
-import { cleanText } from "../../lib/utils";
+import { cleanText } from "../../lib/text-utils";
 
 const router = Router();
 
@@ -84,7 +84,8 @@ router.post("/accessibility/audit", async (req: Request, res: Response) => {
         })),
       });
 
-      result.summary[violation.impact]++;
+      const impact = violation.impact as keyof typeof result.summary;
+      if (impact in result.summary) result.summary[impact]++;
     });
 
     // Process passes
@@ -129,7 +130,7 @@ router.post("/accessibility/color-contrast", async (req: Request, res: Response)
       const issues: any[] = [];
       const elements = document.querySelectorAll("*");
 
-      elements.forEach((el) => {
+      elements.forEach((el: any) => {
         const style = window.getComputedStyle(el);
         const bgColor = style.backgroundColor;
         const fgColor = style.color;
@@ -223,7 +224,7 @@ router.post("/accessibility/aria-check", (req: Request, res: Response) => {
     });
   }
 
-  res.json({ ok: true, issues, htmlSize: html.length });
+  return res.json({ ok: true, issues, htmlSize: html.length });
 });
 
 /**

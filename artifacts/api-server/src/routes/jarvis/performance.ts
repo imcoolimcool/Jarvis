@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { chromium } from "playwright";
-import { cleanText } from "../../lib/utils";
+import { cleanText } from "../../lib/text-utils";
 
 const router = Router();
 
@@ -109,7 +109,7 @@ router.post("/performance/lighthouse", async (req: Request, res: Response) => {
           cls += (entry as any).value;
         }
       });
-      observer.observe({ type: "layout-shift", buffered: true });
+      observer.observe({ type: "layout-shift" as any, buffered: true });
       return cls;
     });
 
@@ -183,7 +183,7 @@ router.post("/performance/api", async (req: Request, res: Response) => {
     const maxResponseTime = Math.max(...metrics.map((m) => m.responseTime));
     const minResponseTime = Math.min(...metrics.map((m) => m.responseTime));
 
-    res.json({
+    return res.json({
       ok: true,
       metrics,
       summary: {
@@ -194,7 +194,7 @@ router.post("/performance/api", async (req: Request, res: Response) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    return res.status(500).json({ error: (err as Error).message });
   }
 });
 
@@ -235,7 +235,7 @@ router.post("/performance/bundle", async (req: Request, res: Response) => {
     const fs = require("fs");
     const stats = fs.statSync(bundlePath);
 
-    res.json({
+    return res.json({
       ok: true,
       bundle: {
         path: bundlePath,
@@ -246,7 +246,7 @@ router.post("/performance/bundle", async (req: Request, res: Response) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    return res.status(500).json({ error: (err as Error).message });
   }
 });
 

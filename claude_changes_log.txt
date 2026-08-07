@@ -162,3 +162,27 @@
 - User pasted the full key set (Neon, OpenRouter, NVIDIA llama/Whisper/Flux, ElevenLabs, Tavily, Figma, Spotify, Google/Gmail) for the plain-file workflow (CLAUDE.md routine, docs/API_KEYS.md Option 2) — no Freebuff Keys tab.
 - Mapped every value to the env names the code reads (verified in source): DATABASE_URL, OPENROUTER_API_KEY/MODEL, OPENAI_LLM_API_KEY (+BASE_URL/MODEL), OPENAI_WHISPER_API_KEY, NVIDIA_IMAGE_API_KEY, ELEVENLABS_API_KEY, TAVILY_API_KEY, FIGMA_ACCESS_TOKEN, SPOTIFY_CLIENT_ID/SECRET, GOOGLE_CLIENT_ID/SECRET, GMAIL_CLIENT_ID/SECRET.
 - Attempted to write repo-root .env.local via the Vly file tool: blocked ("Sensitive files cannot be changed with write_file"). Terminal env access and the freebuff-env CLI are also unavailable in this sandbox (guard blocks even `ls` of env files). Conclusion: this Freebuff sandbox can only receive secrets via its Keys tab; the user's own Chromebook env files already contain these values, and the --env-file-if-exists start-script fix (previous entry) makes them load before the DB pool, so the user's real setup needs nothing from me.
+
+## 2026-08-06 - API-server TypeScript cleanup resumed
+- Repaired the malformed community-templates search response left by the previous automated edit.
+- Fixed the remaining API-server type errors: explicit async-route returns, manual key list inference, archiver's ESM/CommonJS interop, typed Git/search file filters, AbortSignal timeout usage, and project ID narrowing.
+- API-server typecheck now passes with zero TypeScript errors.
+
+## 2026-08-06 - Build Mode local browser agent
+- Added `POST /api/jarvis/build/preview/agent`, which opens the running Build Studio preview in Puppeteer, restricts top-level navigation to the preview's localhost port, captures interactive controls and console errors, asks the configured LLM for bounded JSON actions, and executes click, type, select, keypress, and wait operations for up to 10 steps.
+- Added a Build Studio browser-agent panel in the Preview tab with a natural-language goal field, run button, action/event log, and console-error count. It only runs against the active local preview and does not expose arbitrary external browsing.
+- API and Jarvis typechecks pass. No unrelated files were changed by this feature; existing worktree changes were preserved.
+
+## 2026-08-06 - Build Mode screenshots and additive extra instructions
+- Extended the Build Mode screenshot API to capture and persist both 1440x900 desktop and 390x844 mobile screenshots in one request; the UI now displays both previews and sends both through the automatic review loop.
+- Added an optional extra Build Mode instructions textarea. Its text is capped server-side and appended to the existing scaffold, self-review, and browser-agent system prompts with an explicit additive-only boundary, so it cannot replace the built-in Build Mode requirements.
+- Passed the extra instructions through scaffold, review/fix, and browser-agent requests. Existing default behavior is unchanged when the field is empty.
+- Validation: Jarvis typecheck passes; API typecheck initially found an unknown viewport narrowing issue, then the request validation was corrected. `git diff --check` passes.
+
+## 2026-08-06 - Build Mode Plan Mode
+- Added `POST /api/jarvis/build/plan`, which creates an honest structured plan from the user's request, clarifying answers, and current workspace file list, with a deterministic fallback when the LLM is unavailable.
+- Build Studio now routes substantial requests through Plan Mode while allowing short typography, copy, color, spacing, and similar edits to proceed directly.
+- Added a v0-style plan review card with requirements summary, ordered steps, workspace context, notes, and explicit `Accept plan` / `Change plan` actions.
+- Accepting a plan passes the approved plan into scaffolding and self-review; changing a plan clears it and focuses the original request field so the user can revise the request before planning again.
+- Plan Mode uses the existing Build Mode prompt and additive extra-instructions boundary; it does not replace the original Build Mode requirements.
+- Validation: Jarvis typecheck, API-server typecheck, and `git diff --check` pass.

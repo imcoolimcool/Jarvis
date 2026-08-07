@@ -187,13 +187,13 @@ router.post("/collab/terminal", (req: Request, res: Response) => {
 
     broadcastTerminalEvent(workspaceId, { type: type as any, data, timestamp: Date.now() });
 
-    res.json({
+    return res.json({
       ok: true,
       event: { type, data, timestamp: Date.now() },
     });
   } catch (err) {
     req.log.error({ err }, "Terminal broadcast failed");
-    res.status(500).json({ error: "Failed to broadcast terminal event" });
+    return res.status(500).json({ error: "Failed to broadcast terminal event" });
   }
 });
 
@@ -238,7 +238,7 @@ router.get("/collab/file", (req: Request, res: Response) => {
 
     const content = getFileState(workspaceId, filePath);
 
-    res.json({
+    return res.json({
       ok: true,
       workspaceId,
       filePath,
@@ -246,7 +246,7 @@ router.get("/collab/file", (req: Request, res: Response) => {
     });
   } catch (err) {
     req.log.error({ err }, "File fetch failed");
-    res.status(500).json({ error: "Failed to fetch file" });
+    return res.status(500).json({ error: "Failed to fetch file" });
   }
 });
 

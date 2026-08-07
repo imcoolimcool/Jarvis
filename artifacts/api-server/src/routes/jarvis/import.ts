@@ -5,7 +5,7 @@ import { pipeline } from "stream/promises";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { writeWorkspaceFile, listWorkspaceFiles, ensureWorkspace } from "../../lib/workspace";
-import { cleanText } from "../../lib/text";
+import { cleanText } from "../../lib/text-utils";
 
 const router = Router();
 const execAsync = promisify(exec);
@@ -55,7 +55,7 @@ router.post("/import/upload", async (req: Request, res: Response) => {
 
       await pipeline(
         stream,
-        Extract({ path: req.file.destination || "/tmp" }).on("entry", async (entry) => {
+        Extract({ path: req.file.destination || "/tmp" }).on("entry", async (entry: any) => {
           if (entry.type === "File") {
             try {
               let filePath = entry.path;
@@ -109,7 +109,7 @@ router.post("/import/upload", async (req: Request, res: Response) => {
       }
     }
 
-    res.json({
+    return res.json({
       ok: true,
       message: `Imported ${importedFiles} files`,
       importedFiles,
@@ -117,7 +117,7 @@ router.post("/import/upload", async (req: Request, res: Response) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to import workspace");
-    res.status(500).json({ error: "Failed to import workspace" });
+    return res.status(500).json({ error: "Failed to import workspace" });
   }
 });
 
@@ -170,18 +170,18 @@ router.post("/import/github", async (req: Request, res: Response) => {
       // Cleanup
       await execAsync(`rm -rf "${tmpDir}"`);
 
-      res.json({
+      return res.json({
         ok: true,
         message: `Imported ${importedFiles} files from ${repoUrl}`,
         importedFiles,
         errors: errors.length > 0 ? errors : undefined,
       });
     } catch (err) {
-      res.status(500).json({ error: `Failed to clone repository: ${(err as Error).message}` });
+      return res.status(500).json({ error: `Failed to clone repository: ${(err as Error).message}` });
     }
   } catch (err) {
     req.log.error({ err }, "Failed to import from GitHub");
-    res.status(500).json({ error: "Failed to import from GitHub" });
+    return res.status(500).json({ error: "Failed to import from GitHub" });
   }
 });
 
@@ -228,14 +228,14 @@ router.post("/import/template", async (req: Request, res: Response) => {
       }
     }
 
-    res.json({
+    return res.json({
       ok: true,
       message: `Imported ${importedFiles} files from template`,
       importedFiles,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to import template");
-    res.status(500).json({ error: "Failed to import template" });
+    return res.status(500).json({ error: "Failed to import template" });
   }
 });
 

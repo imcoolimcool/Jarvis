@@ -203,7 +203,7 @@ router.post("/debug/parse", (req, res) => {
     return res.status(400).json({ error: "Could not parse error from output" });
   }
 
-  res.json({
+  return res.json({
     ok: true,
     error: parsed,
   });
@@ -301,13 +301,13 @@ Never explain your reasoning outside the JSON. Return ONLY the JSON object.`;
       confidence: Math.min(100, Math.max(0, Number(fix.confidence) || 50)),
     }));
 
-    res.json({
+    return res.json({
       ok: true,
       fixes,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to suggest fixes");
-    res.status(500).json({ error: "Failed to generate fix suggestions" });
+    return res.status(500).json({ error: "Failed to generate fix suggestions" });
   }
 });
 
@@ -327,7 +327,7 @@ router.post("/debug/apply-fix", async (req, res) => {
   try {
     // Note: Actual file modification would use workspace API
     // For now, return a dry-run showing what would be changed
-    res.json({
+    return res.json({
       ok: true,
       action: "apply-fix",
       file: targetFile,
@@ -336,7 +336,7 @@ router.post("/debug/apply-fix", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to apply fix");
-    res.status(500).json({ error: "Failed to apply fix" });
+    return res.status(500).json({ error: "Failed to apply fix" });
   }
 });
 
@@ -384,13 +384,13 @@ Keep it concise and beginner-friendly.`;
 
     const explanation = cleanText(completion.choices[0]?.message?.content?.trim() ?? "", 1200);
 
-    res.json({
+    return res.json({
       ok: true,
       explanation,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to explain error");
-    res.status(500).json({ error: "Failed to generate explanation" });
+    return res.status(500).json({ error: "Failed to generate explanation" });
   }
 });
 
