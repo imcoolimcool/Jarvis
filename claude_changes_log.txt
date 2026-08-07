@@ -186,3 +186,16 @@
 - Accepting a plan passes the approved plan into scaffolding and self-review; changing a plan clears it and focuses the original request field so the user can revise the request before planning again.
 - Plan Mode uses the existing Build Mode prompt and additive extra-instructions boundary; it does not replace the original Build Mode requirements.
 - Validation: Jarvis typecheck, API-server typecheck, and `git diff --check` pass.
+
+## 2026-08-07 — Build Studio: wire the orphaned Build Mode backends into real UI
+
+- Repaired the interrupted wiring turn: build-studio.tsx had literal backslash-n sequences embedded in the interfaces block, the whole package/git/search/quality handler block, and the auto-pipeline loop, which broke compilation (TS1127/TS1434). All blocks were rewritten with proper newlines and now compile.
+- Added all missing state for the wired features (packages, git, search, tests, debug, history, templates, docker, database, API explorer, stop-iteration ref).
+- Packages tab is now a real package manager UI: manager select (npm/pip/cargo/go), registry search (npm/PyPI/crates.io), install buttons, installed list, wired to /api/jarvis/packages*.
+- Git tab is now a real git UI: status (staged/modified/untracked/conflicted), stage/unstage, commit with message, file diff viewer, branch list + create/switch, discard, init — wired to /api/jarvis/git*.
+- Added a Search & replace tab wired to /api/jarvis/search + /search/replace with open-file-on-match and replace-all across matched files.
+- Quality tab now runs the test runner (framework detection + run + results) via /api/jarvis/test* and AI debugging (analyze preview errors + LLM fix suggestions) via /api/jarvis/debug*.
+- Added History (snapshots + restore, /api/jarvis/history*), Templates (built-in starters + community list, /api/jarvis/templates* + /community-templates*), Docker (status/containers/images, /api/jarvis/docker*), Database (SQLite detect/connect/schema/query/table browse, /api/jarvis/database*), and API Explorer (endpoint detection + request sender, /api/jarvis/api-explorer*) tabs.
+- Fixed the iteration pass-counter bug: pass now increments each review loop (was stuck at 1), the 2-pass max note is removed, stopPipelineRef is reset per run, and a Stop iterating button appears while the auto-pipeline runs.
+- Tabs now lazy-load their backend data when opened. Tab bar grew from 7 to 13 tabs (horizontal scroll).
+- Validation: Jarvis typecheck, API-server typecheck, and git diff --check pass.

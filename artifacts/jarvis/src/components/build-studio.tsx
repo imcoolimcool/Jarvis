@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bug, Camera, Check, ChevronDown, ChevronRight, Code2, FilePlus2, Folder, FolderPlus, GitBranch, Hammer, Loader2, Package, Play, Plus, RefreshCw, Save, Search, Sparkles, Square, Terminal, TestTube2, Trash2, Upload, X } from 'lucide-react';
+import { Bug, Camera, Check, ChevronDown, ChevronRight, Code2, Container, Database, FilePlus2, Folder, FolderPlus, GitBranch, GitCommit, Globe, Hammer, History, LayoutTemplate, Loader2, Package, Play, Plus, RefreshCw, Save, Search, Send, Sparkles, Square, Terminal, TestTube2, Trash2, Upload, X } from 'lucide-react';
 import type { TerminalResult } from '@/types/widget';
 import { useI18n } from '@/lib/i18n';
 
 interface WorkspaceFile { path: string; type: 'file' | 'dir'; size: number; }
 interface SavedApp { id: string; name: string; description: string; metadata?: { fileCount?: number; envKeys?: string[]; previewPort?: number | null }; }
-type StudioTab = 'editor' | 'terminal' | 'preview' | 'packages' | 'env' | 'git' | 'quality';
+type StudioTab = 'editor' | 'terminal' | 'preview' | 'packages' | 'env' | 'git' | 'search' | 'quality' | 'history' | 'templates' | 'docker' | 'database' | 'api';
 interface WizardQuestion { key: string; label: string; options?: string[]; }
 interface FeatureInventoryItem { key: string; label: string; selected: boolean; }
 interface ActivityBlock { id: string; icon: 'sparkles' | 'terminal' | 'camera' | 'check'; message: string; actionCount?: number; }
@@ -14,7 +14,22 @@ interface IterateResponse { ok?: boolean; done?: boolean; summary?: string; fixR
 interface PreviewAgentEvent { type: 'inspect' | 'decision' | 'action' | 'error' | 'complete'; message: string; step?: number; }
 interface PreviewAgentResponse { completed?: boolean; summary?: string; events?: PreviewAgentEvent[]; consoleErrors?: string[]; error?: string; }
 interface PreviewScreenshots { desktop?: string; mobile?: string; }
-interface BuildPlan { title: string; summary: string; steps: string[]; files: string[]; risks: string[]; }\ninterface PackageItem { name: string; version: string; description?: string; downloads?: number; url?: string; }\ninterface GitStatus { branch: string; ahead: number; behind: number; modified: string[]; staged: string[]; untracked: string[]; conflicted: string[]; }\ninterface TestFramework { key: string; name: string; language: string; runCommand: string; }\ninterface TestResult { framework: string; passed: number; failed: number; skipped: number; total: number; duration: number; output: string; }\ninterface SearchMatch { file: string; line: number; column: number; match: string; context: string; }
+interface BuildPlan { title: string; summary: string; steps: string[]; files: string[]; risks: string[]; }
+interface PackageItem { name: string; version: string; description?: string; downloads?: number; url?: string; }
+interface GitStatus { branch: string; ahead: number; behind: number; modified: string[]; staged: string[]; untracked: string[]; conflicted: string[]; }
+interface TestFramework { key: string; name: string; language: string; runCommand: string; }
+interface TestResult { framework: string; passed: number; failed: number; skipped: number; total: number; duration: number; output: string; }
+interface SearchMatch { file: string; line: number; column: number; preview: string; match: string; }
+interface ParsedDebugError { type: string; language: string; message: string; file?: string; line?: number; column?: number; stackTrace: string[]; context?: string; }
+interface ErrorFix { title: string; description: string; code: string; confidence: number; }
+interface HistorySnapshot { id: string; timestamp: string; label: string; description: string; fileCount: number; totalSize: number; trigger: string; }
+interface TemplateItem { id: string; name: string; description: string; category: string; language: string; framework?: string; tags?: string[]; }
+interface CommunityTemplate { id: string; name: string; description: string; owner: string; repository: string; url: string; stars: number; language: string; tags?: string[]; }
+interface DockerContainer { id: string; image: string; name: string; status: string; ports?: string[]; }
+interface DockerImage { id: string; repository: string; tag: string; size: string; }
+interface DbColumn { name: string; type: string; nullable: boolean; primaryKey: boolean; }
+interface DbTable { name: string; columns: DbColumn[]; rowCount: number; }
+interface ApiEndpoint { method: string; path: string; description?: string; }
 
 const waitMs = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -83,6 +98,52 @@ export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFi
   const [agentEvents, setAgentEvents] = useState<PreviewAgentEvent[]>([]);
   const [agentConsoleErrors, setAgentConsoleErrors] = useState<string[]>([]);
   const [extraSystemPrompt, setExtraSystemPrompt] = useState('');
+  const [packageManager, setPackageManager] = useState<string | null>(null);
+  const [installedPackages, setInstalledPackages] = useState<PackageItem[]>([]);
+  const [packageQuery, setPackageQuery] = useState('');
+  const [packageResults, setPackageResults] = useState<PackageItem[]>([]);
+  const [packageBusy, setPackageBusy] = useState(false);
+  const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
+  const [gitBusy, setGitBusy] = useState(false);
+  const [commitMessage, setCommitMessage] = useState('');
+  const [gitDiff, setGitDiff] = useState('');
+  const [gitBranches, setGitBranches] = useState<string[]>([]);
+  const [gitCurrentBranch, setGitCurrentBranch] = useState<string | null>(null);
+  const [newBranchName, setNewBranchName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [replaceText, setReplaceText] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchMatch[]>([]);
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [frameworks, setFrameworks] = useState<TestFramework[]>([]);
+  const [selectedFramework, setSelectedFramework] = useState('');
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [qualityBusy, setQualityBusy] = useState(false);
+  const [debugError, setDebugError] = useState<ParsedDebugError | null>(null);
+  const [debugFixes, setDebugFixes] = useState<ErrorFix[]>([]);
+  const [debugBusy, setDebugBusy] = useState(false);
+  const [debugOutput, setDebugOutput] = useState('');
+  const [snapshots, setSnapshots] = useState<HistorySnapshot[]>([]);
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const [templates, setTemplates] = useState<TemplateItem[]>([]);
+  const [communityTemplates, setCommunityTemplates] = useState<CommunityTemplate[]>([]);
+  const [templateBusy, setTemplateBusy] = useState(false);
+  const [dockerStatus, setDockerStatus] = useState<{ available: boolean; version?: string } | null>(null);
+  const [containers, setContainers] = useState<DockerContainer[]>([]);
+  const [dockerImages, setDockerImages] = useState<DockerImage[]>([]);
+  const [dbConnectionId, setDbConnectionId] = useState<string | null>(null);
+  const [dbTables, setDbTables] = useState<DbTable[]>([]);
+  const [dbRows, setDbRows] = useState<Record<string, unknown>[]>([]);
+  const [dbQuery, setDbQuery] = useState('');
+  const [dbBusy, setDbBusy] = useState(false);
+  const [apiFramework, setApiFramework] = useState<string | null>(null);
+  const [apiEndpoints, setApiEndpoints] = useState<ApiEndpoint[]>([]);
+  const [apiBaseUrl, setApiBaseUrl] = useState('http://localhost:4173');
+  const [apiMethod, setApiMethod] = useState('GET');
+  const [apiEndpointPath, setApiEndpointPath] = useState('/');
+  const [apiBody, setApiBody] = useState('');
+  const [apiBusy, setApiBusy] = useState(false);
+  const [apiResponse, setApiResponse] = useState('');
+  const stopPipelineRef = useRef(false);
 
   const filePaths = useMemo(() => files.filter((file) => file.type === 'file'), [files]);
   const addActivity = useCallback((message: string, icon: ActivityBlock['icon'] = 'sparkles', actionCount = 1) => {
@@ -120,7 +181,224 @@ export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFi
     return () => { streamRef.current?.close(); streamRef.current = null; };
   }, [loadEnvironment, loadFiles, loadSavedApps, open]);
 
-  const loadPackages = useCallback(async () => {\n    const { response, data } = await apiJson<{ packages?: PackageItem[]; manager?: string | null }>(`/api/jarvis/packages?workspaceId=${encodeURIComponent(workspaceId)}`);\n    if (response.ok) { setInstalledPackages(data.packages ?? []); setPackageManager(data.manager ?? null); }\n  }, [workspaceId]);\n\n  const searchPackages = async () => {\n    if (!packageQuery.trim()) return;\n    setPackageBusy(true);\n    const manager = packageManager ?? 'npm';\n    const { response, data } = await apiJson<{ results?: PackageItem[]; error?: string }>(`/api/jarvis/packages/search?q=${encodeURIComponent(packageQuery.trim())}&manager=${encodeURIComponent(manager)}`);\n    setPackageBusy(false);\n    if (response.ok) setPackageResults(data.results ?? []); else setNotice(data.error ?? 'Package search failed');\n  };\n\n  const installPackage = async (pkg: PackageItem) => {\n    setPackageBusy(true);\n    const { response, data } = await apiJson<{ error?: string }>('/api/jarvis/packages/install', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, package: pkg.name, version: pkg.version || undefined, manager: packageManager ?? 'npm' }) });\n    setPackageBusy(false);\n    setNotice(response.ok ? `${pkg.name} installed` : (data.error ?? 'Package installation failed'));\n    if (response.ok) { await loadPackages(); setPackageResults((current) => current.filter((item) => item.name !== pkg.name)); }\n  };\n\n  const refreshGit = useCallback(async () => {\n    const { response, data } = await apiJson<GitStatus | { error?: string }>(`/api/jarvis/git/status?workspaceId=${encodeURIComponent(workspaceId)}`);\n    if (response.ok && 'branch' in data) setGitStatus(data);\n  }, [workspaceId]);\n\n  const gitAction = async (url: string, body: Record<string, unknown>) => {\n    setGitBusy(true);\n    const { response, data } = await apiJson<{ status?: GitStatus; error?: string }>(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, ...body }) });\n    setGitBusy(false);\n    setNotice(response.ok ? 'Git workspace updated' : (data.error ?? 'Git action failed'));\n    if (response.ok && data.status) setGitStatus(data.status); else await refreshGit();\n  };\n\n  const runWorkspaceSearch = async () => {\n    if (!searchQuery.trim()) return;\n    setSearchBusy(true);\n    const { response, data } = await apiJson<{ matches?: SearchMatch[]; error?: string }>(`/api/jarvis/search?workspaceId=${encodeURIComponent(workspaceId)}&q=${encodeURIComponent(searchQuery.trim())}&max=500`);\n    setSearchBusy(false);\n    if (response.ok) setSearchResults(data.matches ?? []); else setNotice(data.error ?? 'Search failed');\n  };\n\n  const replaceWorkspaceText = async () => {\n    if (!searchQuery.trim()) return;\n    setSearchBusy(true);\n    const { response, data } = await apiJson<{ replaced?: number; error?: string }>('/api/jarvis/search/replace', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, query: searchQuery, replacement: replaceText, files: [...new Set(searchResults.map((match) => match.file))] }) });\n    setSearchBusy(false);\n    setNotice(response.ok ? `Replaced ${data.replaced ?? 0} matches` : (data.error ?? 'Replace failed'));\n    if (response.ok) { await loadFiles(); await runWorkspaceSearch(); }\n  };\n\n  const loadQuality = useCallback(async () => {\n    const { response, data } = await apiJson<{ frameworks?: TestFramework[] }>(`/api/jarvis/test/frameworks?workspaceId=${encodeURIComponent(workspaceId)}`);\n    if (response.ok) { setFrameworks(data.frameworks ?? []); setSelectedFramework((current) => current || data.frameworks?.[0]?.key || ''); }\n  }, [workspaceId]);\n\n  const runTests = async () => {\n    if (!selectedFramework) return;\n    setQualityBusy(true);\n    const { response, data } = await apiJson<{ result?: TestResult; error?: string }>('/api/jarvis/test/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, framework: selectedFramework }) });\n    setQualityBusy(false);\n    if (response.ok) setTestResult(data.result ?? null); else setNotice(data.error ?? 'Tests failed to run');\n  };\n\n  const analyzePreviewErrors = async () => {\n    if (!previewOutput.trim()) return;\n    const { response, data } = await apiJson<{ error?: { message?: string; file?: string; line?: number }; errorText?: string }>('/api/jarvis/debug/parse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ output: previewOutput }) });\n    setDebugOutput(response.ok ? (data.error ? `${data.error.message ?? 'Error'}${data.error.file ? ` in ${data.error.file}` : ''}${data.error.line ? `:${data.error.line}` : ''}` : 'No structured error found') : (data.errorText ?? 'No structured error found'));\n  };\n\n  const openFile = async (path: string) => {
+  useEffect(() => {
+    if (!open) return;
+    if (tab === 'packages') void loadPackages();
+    if (tab === 'git') { void refreshGit(); void loadGitBranches(); }
+    if (tab === 'quality') void loadQuality();
+    if (tab === 'history') void loadSnapshots();
+    if (tab === 'templates') { void loadTemplates(); void loadCommunityTemplates(); }
+    if (tab === 'docker') void refreshDocker();
+    if (tab === 'database') void detectDatabases();
+    if (tab === 'api') void loadApiExplorer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, open]);
+
+  const loadPackages = useCallback(async () => {
+    const { response, data } = await apiJson<{ packages?: PackageItem[]; manager?: string | null }>(`/api/jarvis/packages?workspaceId=${encodeURIComponent(workspaceId)}`);
+    if (response.ok) { setInstalledPackages(data.packages ?? []); setPackageManager(data.manager ?? null); }
+  }, [workspaceId]);
+
+  const searchPackages = async () => {
+    if (!packageQuery.trim()) return;
+    setPackageBusy(true);
+    const manager = packageManager ?? 'npm';
+    const { response, data } = await apiJson<{ results?: PackageItem[]; error?: string }>(`/api/jarvis/packages/search?q=${encodeURIComponent(packageQuery.trim())}&manager=${encodeURIComponent(manager)}`);
+    setPackageBusy(false);
+    if (response.ok) setPackageResults(data.results ?? []); else setNotice(data.error ?? 'Package search failed');
+  };
+
+  const installPackage = async (pkg: PackageItem) => {
+    setPackageBusy(true);
+    const { response, data } = await apiJson<{ error?: string }>('/api/jarvis/packages/install', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, package: pkg.name, version: pkg.version || undefined, manager: packageManager ?? 'npm' }) });
+    setPackageBusy(false);
+    setNotice(response.ok ? `${pkg.name} installed` : (data.error ?? 'Package installation failed'));
+    if (response.ok) { await loadPackages(); setPackageResults((current) => current.filter((item) => item.name !== pkg.name)); }
+  };
+
+  const refreshGit = useCallback(async () => {
+    const { response, data } = await apiJson<GitStatus | { error?: string }>(`/api/jarvis/git/status?workspaceId=${encodeURIComponent(workspaceId)}`);
+    if (response.ok && 'branch' in data) setGitStatus(data);
+  }, [workspaceId]);
+
+  const gitAction = async (url: string, body: Record<string, unknown>) => {
+    setGitBusy(true);
+    const { response, data } = await apiJson<{ status?: GitStatus; error?: string }>(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, ...body }) });
+    setGitBusy(false);
+    setNotice(response.ok ? 'Git workspace updated' : (data.error ?? 'Git action failed'));
+    if (response.ok && data.status) setGitStatus(data.status); else await refreshGit();
+  };
+
+  const loadGitDiff = async (file: string) => {
+    const { response, data } = await apiJson<{ diff?: string; error?: string }>(`/api/jarvis/git/diff?workspaceId=${encodeURIComponent(workspaceId)}&file=${encodeURIComponent(file)}`);
+    setGitDiff(response.ok ? (data.diff ?? '') : (data.error ?? 'No diff available'));
+  };
+
+  const commitChanges = async () => {
+    if (!commitMessage.trim()) return;
+    setGitBusy(true);
+    const { response, data } = await apiJson<{ error?: string }>('/api/jarvis/git/commit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, message: commitMessage }) });
+    setGitBusy(false);
+    if (response.ok) { setCommitMessage(''); setNotice('Committed'); await refreshGit(); } else setNotice(data.error ?? 'Commit failed');
+  };
+
+  const loadGitBranches = async () => {
+    const { response, data } = await apiJson<{ branches?: string[]; current?: string | null }>(`/api/jarvis/git/branches?workspaceId=${encodeURIComponent(workspaceId)}`);
+    if (response.ok) { setGitBranches(data.branches ?? []); setGitCurrentBranch(data.current ?? null); }
+  };
+
+  const createBranch = async () => {
+    if (!newBranchName.trim()) return;
+    await gitAction('/api/jarvis/git/branch', { branch: newBranchName.trim(), action: 'create' });
+    setNewBranchName(''); await loadGitBranches();
+  };
+
+  const switchBranch = async (branch: string) => { await gitAction('/api/jarvis/git/branch', { branch, action: 'switch' }); await loadGitBranches(); };
+  const initGit = async () => { await runCommand('git init && git config user.email jarvis@local && git config user.name Jarvis'); await refreshGit(); await loadGitBranches(); };
+
+  const runWorkspaceSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearchBusy(true);
+    const { response, data } = await apiJson<{ matches?: SearchMatch[]; error?: string }>(`/api/jarvis/search?workspaceId=${encodeURIComponent(workspaceId)}&q=${encodeURIComponent(searchQuery.trim())}&max=500`);
+    setSearchBusy(false);
+    if (response.ok) setSearchResults(data.matches ?? []); else setNotice(data.error ?? 'Search failed');
+  };
+
+  const replaceWorkspaceText = async () => {
+    if (!searchQuery.trim()) return;
+    setSearchBusy(true);
+    const { response, data } = await apiJson<{ totalReplaced?: number; error?: string }>('/api/jarvis/search/replace', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, query: searchQuery, replacement: replaceText, files: [...new Set(searchResults.map((match) => match.file))] }) });
+    setSearchBusy(false);
+    setNotice(response.ok ? `Replaced ${data.totalReplaced ?? 0} matches` : (data.error ?? 'Replace failed'));
+    if (response.ok) { await loadFiles(); await runWorkspaceSearch(); }
+  };
+
+  const loadQuality = useCallback(async () => {
+    const { response, data } = await apiJson<{ frameworks?: TestFramework[] }>(`/api/jarvis/test/frameworks?workspaceId=${encodeURIComponent(workspaceId)}`);
+    if (response.ok) { setFrameworks(data.frameworks ?? []); setSelectedFramework((current) => current || data.frameworks?.[0]?.key || ''); }
+  }, [workspaceId]);
+
+  const runTests = async () => {
+    if (!selectedFramework) return;
+    setQualityBusy(true);
+    const { response, data } = await apiJson<{ result?: TestResult; error?: string }>('/api/jarvis/test/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, framework: selectedFramework }) });
+    setQualityBusy(false);
+    if (response.ok) setTestResult(data.result ?? null); else setNotice(data.error ?? 'Tests failed to run');
+  };
+
+  const analyzePreviewErrors = async () => {
+    if (!previewOutput.trim()) return;
+    const { response, data } = await apiJson<{ error?: ParsedDebugError | string }>('/api/jarvis/debug/parse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ output: previewOutput }) });
+    setDebugFixes([]);
+    if (response.ok && data.error && typeof data.error === 'object') {
+      setDebugError(data.error);
+      setDebugOutput(`${data.error.message}${data.error.file ? `\nFile: ${data.error.file}` : ''}${data.error.line ? `:${data.error.line}` : ''}${data.error.language ? `\nLanguage: ${data.error.language}` : ''}`);
+    } else if (response.ok) {
+      setDebugError(null);
+      setDebugOutput('No structured error found — check the terminal output below.');
+    } else {
+      setDebugError(null);
+      setDebugOutput(typeof data.error === 'string' ? data.error : 'No structured error found');
+    }
+  };
+
+  const suggestFixes = async () => {
+    if (!debugError || debugBusy) return;
+    setDebugBusy(true);
+    const { response, data } = await apiJson<{ fixes?: ErrorFix[]; error?: string }>('/api/jarvis/debug/suggest-fixes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: debugError }) });
+    setDebugBusy(false);
+    if (response.ok) setDebugFixes(data.fixes ?? []);
+    else setNotice(data.error ?? 'Could not generate fix suggestions');
+  };
+
+  const loadSnapshots = useCallback(async () => {
+    const { response, data } = await apiJson<{ snapshots?: HistorySnapshot[] }>(`/api/jarvis/history/snapshots?workspaceId=${encodeURIComponent(workspaceId)}`);
+    if (response.ok) setSnapshots(data.snapshots ?? []);
+  }, [workspaceId]);
+
+  const createSnapshot = async () => {
+    setHistoryBusy(true);
+    const label = window.prompt('Snapshot label') ?? `Snapshot ${new Date().toLocaleTimeString()}`;
+    const { response } = await apiJson('/api/jarvis/history/snapshot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, label, description: 'Manual snapshot from Build Studio' }) });
+    setHistoryBusy(false);
+    if (response.ok) { await loadSnapshots(); setNotice('Snapshot created'); }
+  };
+
+  const restoreSnapshot = async (id: string) => {
+    if (!window.confirm('Restore the workspace from this snapshot? The current state is kept as a backup snapshot first.')) return;
+    const { response, data } = await apiJson<{ message?: string; error?: string }>('/api/jarvis/history/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, snapshotId: id }) });
+    if (response.ok) { await loadFiles(); setNotice(data.message ?? 'Workspace restored'); } else setNotice(data.error ?? 'Restore failed');
+  };
+
+  const loadTemplates = useCallback(async () => {
+    const { response, data } = await apiJson<{ templates?: TemplateItem[] }>('/api/jarvis/templates/list');
+    if (response.ok) setTemplates(data.templates ?? []);
+  }, []);
+
+  const loadCommunityTemplates = useCallback(async () => {
+    const { response, data } = await apiJson<{ templates?: CommunityTemplate[] }>('/api/jarvis/community-templates/trending?limit=12');
+    if (response.ok) setCommunityTemplates(data.templates ?? []);
+  }, []);
+
+  const applyTemplate = async (id: string) => {
+    setTemplateBusy(true);
+    const { response } = await apiJson('/api/jarvis/templates/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templateId: id, workspaceId, projectName: 'app' }) });
+    setTemplateBusy(false);
+    if (response.ok) { setNotice('Template applied — files written to the workspace'); await loadFiles(); }
+  };
+
+  const refreshDocker = useCallback(async () => {
+    const { response, data } = await apiJson<{ available?: boolean; version?: string }>('/api/jarvis/docker/status');
+    if (response.ok) setDockerStatus({ available: Boolean(data.available), version: data.version });
+    if (response.ok && data.available) {
+      const containersRes = await apiJson<{ containers?: DockerContainer[] }>('/api/jarvis/docker/containers');
+      if (containersRes.response.ok) setContainers(containersRes.data.containers ?? []);
+      const imagesRes = await apiJson<{ images?: DockerImage[] }>('/api/jarvis/docker/images');
+      if (imagesRes.response.ok) setDockerImages(imagesRes.data.images ?? []);
+    }
+  }, []);
+
+  const stopContainer = async (id: string) => { await fetch('/api/jarvis/docker/stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ containerId: id }) }); await refreshDocker(); };
+
+  const detectDatabases = useCallback(async () => {
+    const { response, data } = await apiJson<{ databases?: string[] }>(`/api/jarvis/database/detect?workspaceId=${encodeURIComponent(workspaceId)}`);
+    if (!response.ok || !data.databases?.length) { setDbTables([]); setDbRows([]); setDbConnectionId(null); setNotice('No SQLite databases found in the workspace'); return; }
+    const conn = await apiJson<{ connectionId?: string; error?: string }>('/api/jarvis/database/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'sqlite', path: data.databases[0] }) });
+    if (!conn.response.ok || !conn.data.connectionId) { setNotice(conn.data.error ?? 'Could not connect to database'); return; }
+    setDbConnectionId(conn.data.connectionId);
+    const schema = await apiJson<{ schema?: DbTable[] }>(`/api/jarvis/database/${conn.data.connectionId}/schema`);
+    if (schema.response.ok) setDbTables(schema.data.schema ?? []);
+  }, [workspaceId]);
+
+  const browseTable = async (name: string) => {
+    if (!dbConnectionId) return;
+    const { response, data } = await apiJson<{ rows?: Record<string, unknown>[] }>(`/api/jarvis/database/${dbConnectionId}/table/${encodeURIComponent(name)}`);
+    if (response.ok) setDbRows(data.rows ?? []);
+  };
+
+  const runDbQuery = async () => {
+    if (!dbConnectionId || !dbQuery.trim()) return;
+    setDbBusy(true);
+    const { response, data } = await apiJson<{ results?: Record<string, unknown>[]; error?: string }>(`/api/jarvis/database/${dbConnectionId}/query`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: dbQuery }) });
+    setDbBusy(false);
+    if (response.ok) setDbRows(data.results ?? []); else setNotice(data.error ?? 'Query failed');
+  };
+
+  const loadApiExplorer = useCallback(async () => {
+    const { response, data } = await apiJson<{ framework?: string | null; endpoints?: ApiEndpoint[] }>(`/api/jarvis/api-explorer/endpoints?workspaceId=${encodeURIComponent(workspaceId)}`);
+    if (response.ok) { setApiFramework(data.framework ?? null); setApiEndpoints(data.endpoints ?? []); }
+  }, [workspaceId]);
+
+  const sendApiRequest = async () => {
+    setApiBusy(true);
+    let body: unknown;
+    try { body = apiBody.trim() ? JSON.parse(apiBody) : undefined; } catch { setApiBusy(false); setApiResponse('Invalid JSON body'); return; }
+    const { response, data } = await apiJson<{ response?: unknown; error?: string }>('/api/jarvis/api-explorer/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ baseUrl: apiBaseUrl, method: apiMethod, endpoint: apiEndpointPath, headers: {}, body }) });
+    setApiBusy(false);
+    setApiResponse(response.ok ? JSON.stringify(data.response ?? '', null, 2) : (data.error ?? 'Request failed'));
+  };
+
+  const openFile = async (path: string) => {
     const { response, data } = await apiJson<{ content?: string }>(`/api/jarvis/workspace?workspaceId=${encodeURIComponent(workspaceId)}&path=${encodeURIComponent(path)}`);
     if (!response.ok) return;
     setSelectedPath(path); setContent(data.content ?? ''); setDirty(false); setTab('editor');
@@ -330,7 +608,9 @@ export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFi
     let summary = captured ? t('studio.build.activityReviewing') : t('studio.build.previewNeedsReview');
     let deferred: string[] = [];
     let allFiles = [...createdFiles];
-    let pass = 1;\n    while (!stopPipelineRef.current) {
+    stopPipelineRef.current = false;
+    let pass = 1;
+    while (!stopPipelineRef.current) {
       setAutoFixPass(pass);
       addActivity(t('studio.build.activityReviewPass', { n: pass }), 'sparkles', 2);
       const status = await apiJson<{ output?: string }>(`/api/jarvis/build/preview/status?workspaceId=${encodeURIComponent(workspaceId)}&sessionId=studio-preview`);
@@ -347,7 +627,7 @@ export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFi
         if (!stopPipelineRef.current) { await launchPreview(); await waitMs(1200); captured = await captureScreenshot(); if (captured) addActivity(t('studio.build.activityScreenshot'), 'camera', 1); }
       }
       if (data.done || !data.fixRequest) break;
-      if (pass === 2) summary = t('studio.build.maxPasses', { summary });
+      pass += 1;
     }
     addActivity(t('studio.build.activityComplete'), 'check', 1);
     setCompletion({ summary, deferred, files: [...new Set(allFiles)] });
@@ -358,16 +638,120 @@ export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFi
   const restoreApp = async (id: string) => { setBusy(true); const { response } = await apiJson(`/api/jarvis/build/apps/${id}/restore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId }) }); setBusy(false); if (response.ok) { setNotice('Build restored'); await loadFiles(); await loadEnvironment(); } };
 
   if (!open) return null;
-  const tabs: [StudioTab, string, typeof Code2][] = [['editor', t('studio.build.editor'), Code2], ['terminal', t('studio.build.terminal'), Terminal], ['preview', t('studio.build.preview'), Play], ['packages', t('studio.build.packages'), Package], ['env', t('studio.build.env'), Upload], ['git', t('studio.build.git'), GitBranch], ['quality', 'Quality', TestTube2]];
+  const tabs: [StudioTab, string, typeof Code2][] = [['editor', t('studio.build.editor'), Code2], ['terminal', t('studio.build.terminal'), Terminal], ['preview', t('studio.build.preview'), Play], ['packages', t('studio.build.packages'), Package], ['env', t('studio.build.env'), Upload], ['git', t('studio.build.git'), GitBranch], ['search', 'Search', Search], ['quality', 'Quality', TestTube2], ['history', 'History', History], ['templates', 'Templates', LayoutTemplate], ['docker', 'Docker', Container], ['database', 'Database', Database], ['api', 'API', Globe]];
   return <AnimatePresence><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}><motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex h-[94vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-t-3xl border border-border/60 bg-background shadow-apple-xl sm:rounded-3xl" onClick={(event) => event.stopPropagation()}>
     <header className="flex flex-wrap items-center gap-3 border-b border-border/40 px-4 py-3"><Hammer className="h-4 w-4 text-primary" /><div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{title}</h2><p className="text-[10px] text-muted-foreground">{t('studio.build.subtitle')} · project {workspaceId}</p></div><input value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder={t('studio.build.appName')} className="hidden w-32 rounded-lg border border-border/50 bg-secondary/40 px-2 py-1.5 text-xs outline-none sm:block" /><button type="button" onClick={() => void saveApp()} disabled={busy} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"><Save className="h-3.5 w-3.5" />{t('studio.build.saveApp')}</button><button type="button" onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-secondary/70" aria-label={t('studio.build.close')}><X className="h-4 w-4" /></button></header>
     <div className="flex min-h-0 flex-1 flex-col md:flex-row"><aside className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-border/40 bg-secondary/10 p-2 md:w-56 md:flex-col md:border-b-0 md:border-r"><div className="mb-1 flex items-center justify-between px-2"><span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Explorer</span><div className="flex gap-1"><button type="button" onClick={() => void createFile()} title="New file" className="rounded p-1 hover:bg-secondary"><FilePlus2 className="h-3.5 w-3.5" /></button><button type="button" onClick={() => void createFolder()} title="New folder" className="rounded p-1 hover:bg-secondary"><FolderPlus className="h-3.5 w-3.5" /></button><button type="button" onClick={() => void loadFiles()} title="Refresh" className="rounded p-1 hover:bg-secondary"><RefreshCw className="h-3.5 w-3.5" /></button></div></div><div className="min-h-0 flex-1 overflow-auto">{visibleFiles.map((file) => { const clean = file.path.replace(/\/$/, ''); const depth = clean.split('/').length - 1; const isDir = file.type === 'dir'; return <div key={file.path} className="group flex items-center gap-1 rounded-lg px-2 py-1 text-xs hover:bg-secondary/70" style={{ paddingLeft: `${8 + depth * 12}px` }}><button type="button" className="flex min-w-0 flex-1 items-center gap-1 text-left" onClick={() => isDir ? setExpanded((current) => { const next = new Set(current); next.has(clean) ? next.delete(clean) : next.add(clean); return next; }) : void openFile(file.path)}>{isDir ? (expanded.has(clean) ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />) : <span className="w-3" />}{isDir ? <Folder className="h-3.5 w-3.5 text-amber-400" /> : <Code2 className="h-3.5 w-3.5 text-primary" />}<span className="truncate">{clean.split('/').pop()}</span></button><button type="button" onClick={() => void renamePath(file.path)} className="hidden rounded p-1 text-muted-foreground hover:text-foreground group-hover:block" title="Rename">···</button><button type="button" onClick={() => void deletePath(file.path)} className="hidden rounded p-1 text-muted-foreground hover:text-rose-400 group-hover:block" title="Delete"><Trash2 className="h-3 w-3" /></button></div>; })}</div><div className="hidden border-t border-border/30 pt-3 md:block"><p className="mb-2 text-[9px] uppercase tracking-widest text-muted-foreground/60">{t('studio.build.savedApps')}</p>{savedApps.slice(0, 5).map((app) => <button type="button" key={app.id} onClick={() => void restoreApp(app.id)} className="mb-1 flex w-full items-center gap-1 rounded-lg px-2 py-1.5 text-left text-[10px] text-muted-foreground hover:bg-secondary/70 hover:text-foreground"><ChevronRight className="h-3 w-3" />{app.name}</button>)}</div></aside>
-      <main className="min-h-0 flex-1 overflow-hidden"><div className="max-h-44 shrink-0 overflow-auto border-b border-border/30 bg-secondary/5 px-3 py-2">{activities.map((activity) => <div key={activity.id} className="flex items-start gap-2 py-1.5 text-[11px]"><span className="mt-0.5 rounded-md border border-border/40 bg-background/70 p-1 text-primary">{activity.icon === 'camera' ? <Camera className="h-3 w-3" /> : activity.icon === 'terminal' ? <Terminal className="h-3 w-3" /> : activity.icon === 'check' ? <Check className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}</span><span className="min-w-0 flex-1 text-muted-foreground">{activity.message}</span>{activity.actionCount ? <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[9px] text-muted-foreground">{activity.actionCount} {t('studio.build.actions')}</span> : null}</div>)}{completion && <div className="mt-2 rounded-xl border border-emerald-400/30 bg-emerald-400/5 p-3 text-xs"><p className="font-semibold text-emerald-400">{t('studio.build.completionTitle')}</p><p className="mt-1 text-muted-foreground">{completion.summary}</p>{completion.files.length > 0 && <p className="mt-1 text-[10px] text-muted-foreground">{completion.files.length} {t('studio.build.filesChanged')}</p>}{completion.deferred.length > 0 && <p className="mt-2 text-[10px] text-amber-300">{completion.deferred.join(' ')}</p>}</div>}</div><div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border/30 bg-secondary/10 px-3 py-2">{tabs.map(([value, label, Icon]) => <button type="button" key={value} onClick={() => setTab(value)} className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs transition ${tab === value ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground'}`}><Icon className="h-3.5 w-3.5" />{label}</button>)}</div>
+      <main className="min-h-0 flex-1 overflow-hidden"><div className="max-h-44 shrink-0 overflow-auto border-b border-border/30 bg-secondary/5 px-3 py-2">{activities.map((activity) => <div key={activity.id} className="flex items-start gap-2 py-1.5 text-[11px]"><span className="mt-0.5 rounded-md border border-border/40 bg-background/70 p-1 text-primary">{activity.icon === 'camera' ? <Camera className="h-3 w-3" /> : activity.icon === 'terminal' ? <Terminal className="h-3 w-3" /> : activity.icon === 'check' ? <Check className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}</span><span className="min-w-0 flex-1 text-muted-foreground">{activity.message}</span>{activity.actionCount ? <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[9px] text-muted-foreground">{activity.actionCount} {t('studio.build.actions')}</span> : null}</div>)}{completion && <div className="mt-2 rounded-xl border border-emerald-400/30 bg-emerald-400/5 p-3 text-xs"><p className="font-semibold text-emerald-400">{t('studio.build.completionTitle')}</p><p className="mt-1 text-muted-foreground">{completion.summary}</p>{completion.files.length > 0 && <p className="mt-1 text-[10px] text-muted-foreground">{completion.files.length} {t('studio.build.filesChanged')}</p>}{completion.deferred.length > 0 && <p className="mt-2 text-[10px] text-amber-300">{completion.deferred.join(' ')}</p>}</div>}{autoFixPass > 0 && <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs"><span className="text-primary">Iteration {autoFixPass} running…</span><button type="button" onClick={() => { stopPipelineRef.current = true; }} className="flex items-center gap-1 rounded-lg bg-rose-500 px-2.5 py-1.5 text-[11px] font-medium text-white"><Square className="h-3 w-3" />Stop iterating</button></div>}</div><div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border/30 bg-secondary/10 px-3 py-2">{tabs.map(([value, label, Icon]) => <button type="button" key={value} onClick={() => setTab(value)} className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs transition ${tab === value ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground'}`}><Icon className="h-3.5 w-3.5" />{label}</button>)}</div>
         {tab === 'editor' && <div className="flex h-[calc(100%-49px)] min-h-0 flex-col"><div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border/30 px-3 py-2">{openPaths.map((path) => <button type="button" key={path} onClick={() => void openFile(path)} className={`shrink-0 rounded-lg px-2.5 py-1.5 text-[11px] ${selectedPath === path ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>{path}{selectedPath === path && dirty ? ' ·' : ''}</button>)}<button type="button" onClick={() => void createFile()} className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary"><Plus className="h-3.5 w-3.5" /></button></div>{selectedPath ? <><div className="flex items-center justify-between border-b border-border/30 px-3 py-2 text-[10px] text-muted-foreground"><span>{selectedPath} <span className="text-muted-foreground/50">{languageFor(selectedPath)}{dirty ? ' · unsaved' : ''}</span></span><button type="button" disabled={!dirty || busy} onClick={() => void saveFile()} className="flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-primary disabled:opacity-40"><Save className="h-3 w-3" />Save</button></div><textarea value={content} onChange={(event) => { setContent(event.target.value); setDirty(true); }} spellCheck={false} className="min-h-0 flex-1 resize-none bg-[#0d1117] p-4 font-mono text-xs leading-6 text-[#d6deeb] outline-none" /></> : <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center"><Code2 className="h-10 w-10 text-primary/50" /><div><p className="text-sm font-semibold">{t('studio.build.openFile')}</p><p className="mt-1 max-w-md text-xs text-muted-foreground">{t('studio.build.openFileDesc')}</p></div><div className="w-full max-w-md space-y-2"><input ref={scaffoldInputRef} value={scaffoldPrompt} onChange={(event) => setScaffoldPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void beginScaffold(); }} placeholder={t('studio.build.scaffoldPlaceholder')} className="min-w-0 w-full rounded-xl border border-border/50 bg-secondary/40 px-3 py-2.5 text-xs outline-none" /><textarea value={extraSystemPrompt} onChange={(event) => setExtraSystemPrompt(event.target.value)} placeholder="Optional extra instructions for Build Mode. These are added to, not a replacement for, the built-in Build Mode rules." rows={3} className="w-full resize-y rounded-xl border border-border/50 bg-secondary/30 px-3 py-2.5 text-xs outline-none" /><button type="button" onClick={() => void beginScaffold()} disabled={wizardBusy || !scaffoldPrompt.trim()} className="rounded-xl bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50">{t('studio.build.scaffold')}</button></div></div>}</div>}
         {tab === 'terminal' && <div className="flex h-[calc(100%-49px)] flex-col bg-[#0d1117] p-4"><div className="mb-3 flex items-center gap-2 text-xs text-[#91a4c1]"><Terminal className="h-4 w-4" />{t('studio.build.terminalHint')} · {workspaceId}</div><div className="min-h-0 flex-1 space-y-2 overflow-auto font-mono text-xs">{terminalLines.map((line, index) => <div key={index} className="rounded-lg border border-white/10 bg-white/[0.03] p-2"><div className="text-[#8fb3ff]">$ {line.command}</div><pre className="mt-1 whitespace-pre-wrap text-[#b9c5df]">{line.output || '(no output)'}</pre><div className={line.exitCode === 0 ? 'text-emerald-400' : line.exitCode == null ? 'text-amber-300' : 'text-rose-400'}>{line.exitCode == null ? 'running…' : `exit ${line.exitCode}`}</div></div>)}</div><form onSubmit={(event) => { event.preventDefault(); void runCommand(); }} className="mt-3 flex gap-2"><span className="py-2 font-mono text-[#8fb3ff]">$</span><input value={terminalInput} onChange={(event) => setTerminalInput(event.target.value)} placeholder={t('studio.build.commandPlaceholder')} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-mono text-xs text-white outline-none focus:border-[#8fb3ff]" /><button type="button" disabled={terminalRunning} onClick={() => void startStreamingCommand()} className="rounded-lg border border-[#8fb3ff] px-3 py-2 text-xs text-[#8fb3ff] disabled:opacity-50">{terminalRunning ? 'Running' : 'Stream'}</button>{terminalRunning ? <button type="button" onClick={() => void stopTerminal()} className="rounded-lg bg-rose-500 px-3 py-2 text-xs font-medium text-white"><Square className="h-3 w-3" /></button> : <button type="submit" className="rounded-lg bg-[#8fb3ff] px-3 py-2 text-xs font-medium text-[#0d1117]">{t('studio.build.run')}</button>}</form></div>}
         {tab === 'preview' && <div className="flex h-[calc(100%-49px)] flex-col p-4"><div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border/40 bg-secondary/20 p-3"><label className="flex-1 text-[10px] text-muted-foreground">{t('studio.build.runCommand')}<input value={previewCommand} onChange={(event) => setPreviewCommand(event.target.value)} className="mt-1 w-full rounded-lg border border-border/50 bg-background/50 px-2.5 py-2 font-mono text-xs outline-none" /></label><label className="w-24 text-[10px] text-muted-foreground">{t('studio.build.port')}<input type="number" min={1024} max={65535} value={previewPort} onChange={(event) => setPreviewPort(Number(event.target.value))} className="mt-1 w-full rounded-lg border border-border/50 bg-background/50 px-2.5 py-2 font-mono text-xs outline-none" /></label><button type="button" disabled={screenshotBusy} onClick={() => void captureScreenshot()} title={t('studio.build.screenshotHint')} className="flex items-center gap-1.5 rounded-lg border border-border/50 px-3 py-2 text-xs disabled:opacity-50">{screenshotBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}{t('studio.build.screenshot')}</button>{previewRunning ? <button type="button" onClick={() => void stopPreview()} className="flex items-center gap-1.5 rounded-lg border border-rose-400/40 px-3 py-2 text-xs text-rose-400"><Square className="h-3 w-3" />Stop</button> : <button type="button" disabled={busy} onClick={() => void startPreview()} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"><Play className="h-3 w-3" />{t('studio.build.runPreview')}</button>}</div><div className="mt-2 rounded-2xl border border-primary/20 bg-primary/5 p-3"><div className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5 text-primary" /><p className="text-[11px] font-semibold">Jarvis browser agent</p><span className="text-[10px] text-muted-foreground">local preview only</span></div><div className="mt-2 flex gap-2"><input value={agentGoal} onChange={(event) => setAgentGoal(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void runPreviewAgent(); }} placeholder="Tell Jarvis what to do in the website, for example: submit the signup form" className="min-w-0 flex-1 rounded-lg border border-border/50 bg-background/60 px-2.5 py-2 text-xs outline-none" /><button type="button" disabled={!previewRunning || agentBusy || !agentGoal.trim()} onClick={() => void runPreviewAgent()} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[11px] font-medium text-primary-foreground disabled:opacity-40">{agentBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}Run goal</button></div>{agentEvents.length > 0 && <div className="mt-2 max-h-24 space-y-1 overflow-auto text-[10px] text-muted-foreground">{agentEvents.map((event, index) => <p key={`${event.type}-${index}`} className={event.type === 'error' ? 'text-rose-400' : event.type === 'complete' ? 'text-emerald-400' : ''}>{event.step ? `Step ${event.step}: ` : ''}{event.message}</p>)}</div>}{agentConsoleErrors.length > 0 && <p className="mt-2 text-[10px] text-amber-300">{agentConsoleErrors.length} browser console error{agentConsoleErrors.length === 1 ? '' : 's'} observed</p>}</div>{previewUrl ? <iframe title="Build preview" src={`${previewUrl}?workspace=${encodeURIComponent(workspaceId)}`} className="mt-3 min-h-0 flex-1 rounded-2xl border border-border/40 bg-white" /> : <div className="flex flex-1 items-center justify-center text-center text-xs text-muted-foreground">{t('studio.build.previewEmpty')}</div>}{(screenshot || mobileScreenshot) && <div className="mt-2 flex shrink-0 items-stretch gap-3 rounded-2xl border border-border/40 bg-secondary/20 p-3"><div className="flex shrink-0 gap-2">{screenshot && <div><p className="mb-1 text-[9px] uppercase tracking-widest text-muted-foreground">Desktop</p><img src={screenshot} alt="Desktop preview screenshot" className="h-28 w-44 rounded-xl border border-border/40 object-cover object-top" /></div>}{mobileScreenshot && <div><p className="mb-1 text-[9px] uppercase tracking-widest text-muted-foreground">Mobile</p><img src={mobileScreenshot} alt="Mobile preview screenshot" className="h-28 w-16 rounded-xl border border-border/40 object-cover object-top" /></div>}</div><div className="flex min-w-0 flex-1 flex-col gap-2"><p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{t('studio.build.screenshot')}</p><input value={feedback} onChange={(event) => setFeedback(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void applyFeedback(); }} placeholder={t('studio.build.feedbackPlaceholder')} className="min-w-0 flex-1 rounded-lg border border-border/50 bg-background/50 px-2.5 py-2 text-xs outline-none" /><div className="flex items-center gap-2"><button type="button" disabled={busy || !feedback.trim()} onClick={() => void applyFeedback()} className="flex items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1.5 text-[11px] font-medium text-primary-foreground disabled:opacity-50">{busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}{t('studio.build.applyChanges')}</button><button type="button" onClick={() => { setScreenshot(null); setMobileScreenshot(null); }} className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button></div></div></div>}<pre className="mt-2 max-h-24 overflow-auto rounded-xl bg-secondary/30 p-2 font-mono text-[10px] text-muted-foreground">{previewOutput}</pre></div>}
-        {tab === 'packages' && <div className="space-y-4 p-5"><Package className="h-7 w-7 text-primary" /><div><h3 className="text-sm font-semibold">{t('studio.build.packagesTitle')}</h3><p className="mt-1 text-xs text-muted-foreground">{t('studio.build.packagesDesc')}</p></div><button type="button" onClick={() => { setTab('terminal'); setTerminalInput('npm install '); }} className="rounded-xl bg-primary px-3 py-2 text-xs font-medium text-primary-foreground">{t('studio.build.prepareNpm')}</button><button type="button" onClick={() => { setTab('terminal'); setTerminalInput('python3 -m pip install '); }} className="ml-2 rounded-xl border border-border/50 px-3 py-2 text-xs font-medium">{t('studio.build.preparePip')}</button></div>}
+        {tab === 'packages' && <div className="h-[calc(100%-49px)] space-y-4 overflow-auto p-5">
+          <div className="flex items-center gap-3"><Package className="h-6 w-6 text-primary" /><div><h3 className="text-sm font-semibold">{t('studio.build.packagesTitle')}</h3><p className="mt-0.5 text-xs text-muted-foreground">{t('studio.build.packagesDesc')}</p></div></div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select value={packageManager ?? 'npm'} onChange={(event) => setPackageManager(event.target.value)} className="rounded-lg border border-border/50 bg-secondary/40 px-2 py-2 text-xs outline-none">{['npm', 'pip', 'cargo', 'go'].map((manager) => <option key={manager} value={manager}>{manager}</option>)}</select>
+            <input value={packageQuery} onChange={(event) => setPackageQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void searchPackages(); }} placeholder="Search npm / PyPI / crates.io…" className="min-w-0 flex-1 rounded-lg border border-border/50 bg-secondary/40 px-2.5 py-2 text-xs outline-none" />
+            <button type="button" disabled={packageBusy || !packageQuery.trim()} onClick={() => void searchPackages()} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50">{packageBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}Search</button>
+            <button type="button" onClick={() => void loadPackages()} className="rounded-lg border border-border/50 px-3 py-2 text-xs">Refresh</button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-border/40 bg-secondary/20 p-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Installed ({installedPackages.length})</p>
+              {installedPackages.length === 0 ? <p className="text-xs text-muted-foreground">No packages detected. Add a package.json, requirements.txt or Cargo.toml, then refresh.</p> : <ul className="space-y-1">{installedPackages.map((pkg) => <li key={pkg.name} className="flex items-center justify-between rounded-lg bg-background/50 px-2.5 py-1.5 text-xs"><span className="min-w-0 truncate font-mono">{pkg.name}</span><span className="ml-2 shrink-0 text-[10px] text-muted-foreground">{pkg.version}</span></li>)}</ul>}
+            </div>
+            <div className="rounded-2xl border border-border/40 bg-secondary/20 p-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Search results</p>
+              {packageResults.length === 0 ? <p className="text-xs text-muted-foreground">Search a registry to find packages to install.</p> : <ul className="space-y-1.5">{packageResults.map((pkg) => <li key={pkg.name + '-' + pkg.version} className="flex items-start justify-between gap-2 rounded-lg bg-background/50 px-2.5 py-1.5 text-xs"><span className="min-w-0 flex-1"><span className="block truncate font-mono">{pkg.name}</span>{pkg.description && <span className="mt-0.5 line-clamp-2 block text-[10px] text-muted-foreground">{pkg.description}</span>}</span><button type="button" disabled={packageBusy} onClick={() => void installPackage(pkg)} className="shrink-0 rounded-lg bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary disabled:opacity-40">Add</button></li>)}</ul>}
+            </div>
+          </div>
+        </div>}
         {tab === 'env' && <div className="space-y-4 p-5"><Upload className="h-7 w-7 text-primary" /><div><h3 className="text-sm font-semibold">{t('studio.build.environmentTitle')}</h3><p className="mt-1 text-xs text-muted-foreground">{t('studio.build.environmentDesc')}</p></div><textarea value={envDraft} onChange={(event) => setEnvDraft(event.target.value)} placeholder={t('studio.build.environmentPlaceholder')} spellCheck={false} className="min-h-48 w-full rounded-2xl border border-border/50 bg-secondary/30 p-3 font-mono text-xs outline-none" /><button type="button" onClick={() => void saveEnv()} className="rounded-xl bg-primary px-3 py-2 text-xs font-medium text-primary-foreground">{t('studio.build.saveEnvironment')}</button><p className="text-[10px] text-muted-foreground">{Object.keys(env).length} {t('studio.build.savedVariables')}</p></div>}
-        {tab === 'git' && <div className="space-y-4 p-5"><GitBranch className="h-7 w-7 text-primary" /><div><h3 className="text-sm font-semibold">{t('studio.build.gitTitle')}</h3><p className="mt-1 text-xs text-muted-foreground">{t('studio.build.gitDesc')}</p></div><div className="flex flex-wrap gap-2">{['git status', 'git init', 'git add .', 'git log --oneline -5'].map((command) => <button type="button" key={command} onClick={() => { setTab('terminal'); void runCommand(command); }} className="rounded-xl border border-border/50 px-3 py-2 font-mono text-[11px] hover:bg-secondary/70">{command}</button>)}</div><p className="text-[10px] text-muted-foreground">Git credentials are not injected by Build Studio. Review every remote and push command before running it.</p></div>}
+        {tab === 'git' && <div className="h-[calc(100%-49px)] space-y-4 overflow-auto p-5">
+          <div className="flex items-center gap-3"><GitBranch className="h-6 w-6 text-primary" /><div><h3 className="text-sm font-semibold">{t('studio.build.gitTitle')}</h3><p className="mt-0.5 text-xs text-muted-foreground">{t('studio.build.gitDesc')}</p></div><button type="button" disabled={gitBusy} onClick={() => void refreshGit()} className="ml-auto flex items-center gap-1 rounded-lg border border-border/50 px-2.5 py-1.5 text-xs disabled:opacity-50"><RefreshCw className="h-3 w-3" />Refresh</button></div>
+          {gitStatus ? <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-border/40 bg-secondary/20 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Branch · {gitStatus.branch || 'none'}{gitStatus.ahead > 0 || gitStatus.behind > 0 ? ' · ' + gitStatus.ahead + ' ahead ' + gitStatus.behind + ' behind' : ''}</p>
+              {gitStatus.staged.length > 0 && <div className="mt-2"><p className="text-[10px] text-emerald-400">Staged</p><ul className="mt-1 space-y-1">{gitStatus.staged.map((file) => <li key={file} className="flex items-center justify-between rounded-lg bg-background/50 px-2.5 py-1 font-mono text-[11px]"><span className="min-w-0 truncate">{file}</span><button type="button" onClick={() => void gitAction('/api/jarvis/git/unstage', { files: [file] })} className="shrink-0 text-[10px] text-muted-foreground hover:text-foreground">unstage</button></li>)}</ul></div>}
+              {gitStatus.modified.length > 0 && <div className="mt-2"><p className="text-[10px] text-amber-300">Modified</p><ul className="mt-1 space-y-1">{gitStatus.modified.map((file) => <li key={file} className="flex items-center justify-between gap-2 rounded-lg bg-background/50 px-2.5 py-1 font-mono text-[11px]"><span className="min-w-0 truncate">{file}</span><div className="flex shrink-0 gap-1.5"><button type="button" onClick={() => void gitAction('/api/jarvis/git/stage', { files: [file] })} className="text-[10px] text-primary">stage</button><button type="button" onClick={() => void loadGitDiff(file)} className="text-[10px] text-muted-foreground hover:text-foreground">diff</button></div></li>)}</ul></div>}
+              {gitStatus.untracked.length > 0 && <div className="mt-2"><p className="text-[10px] text-sky-400">Untracked</p><ul className="mt-1 space-y-1">{gitStatus.untracked.map((file) => <li key={file} className="flex items-center justify-between rounded-lg bg-background/50 px-2.5 py-1 font-mono text-[11px]"><span className="min-w-0 truncate">{file}</span><button type="button" onClick={() => void gitAction('/api/jarvis/git/stage', { files: [file] })} className="shrink-0 text-[10px] text-primary">stage</button></li>)}</ul></div>}
+              {gitStatus.modified.length + gitStatus.staged.length + gitStatus.untracked.length === 0 && <p className="mt-2 text-xs text-muted-foreground">Working tree clean.</p>}
+              <div className="mt-3 flex gap-2">
+                <button type="button" disabled={gitBusy || (gitStatus.modified.length === 0 && gitStatus.untracked.length === 0)} onClick={() => void gitAction('/api/jarvis/git/stage', { all: true })} className="rounded-lg bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary disabled:opacity-40">Stage all</button>
+                <button type="button" disabled={gitBusy || gitStatus.modified.length === 0} onClick={() => void gitAction('/api/jarvis/git/discard', { files: gitStatus.modified })} className="rounded-lg border border-rose-400/30 px-2.5 py-1.5 text-[11px] text-rose-400 disabled:opacity-40">Discard</button>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-border/40 bg-secondary/20 p-3">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Commit</p>
+                <div className="flex gap-2"><input value={commitMessage} onChange={(event) => setCommitMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void commitChanges(); }} placeholder="Commit message" className="min-w-0 flex-1 rounded-lg border border-border/50 bg-background/50 px-2.5 py-2 text-xs outline-none" /><button type="button" disabled={gitBusy || !commitMessage.trim()} onClick={() => void commitChanges()} className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-[11px] font-medium text-primary-foreground disabled:opacity-50"><GitCommit className="h-3 w-3" />Commit</button></div>
+              </div>
+              {gitDiff && <div className="rounded-2xl border border-border/40 bg-secondary/20 p-3"><p className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"><span>Diff</span><button type="button" onClick={() => setGitDiff('')} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button></p><pre className="max-h-40 overflow-auto rounded-lg bg-[#0d1117] p-2 font-mono text-[10px] text-[#b9c5df]">{gitDiff}</pre></div>}
+              {gitBranches.length > 0 && <div className="rounded-2xl border border-border/40 bg-secondary/20 p-3"><p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Branches</p><div className="flex flex-wrap gap-1.5">{gitBranches.map((branch) => <button key={branch} type="button" onClick={() => void switchBranch(branch)} className={'rounded-lg px-2 py-1 text-[10px] font-mono ' + (branch === gitCurrentBranch ? 'bg-primary/15 text-primary' : 'bg-background/50 text-muted-foreground hover:text-foreground')}>{branch}</button>)}</div><div className="mt-2 flex gap-2"><input value={newBranchName} onChange={(event) => setNewBranchName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void createBranch(); }} placeholder="New branch name" className="min-w-0 flex-1 rounded-lg border border-border/50 bg-background/50 px-2.5 py-1.5 text-xs outline-none" /><button type="button" disabled={!newBranchName.trim()} onClick={() => void createBranch()} className="shrink-0 rounded-lg bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary">Create</button></div></div>}
+            </div>
+          </div> : <div className="rounded-2xl border border-border/40 bg-secondary/20 p-4 text-xs text-muted-foreground">No git repository yet. <button type="button" onClick={() => void initGit()} className="font-medium text-primary">Initialize one</button> — commits stay local to the workspace.</div>}
+        </div>}
+        {tab === 'search' && <div className="h-[calc(100%-49px)] space-y-4 overflow-auto p-5">
+          <div className="flex items-center gap-3"><Search className="h-6 w-6 text-primary" /><div><h3 className="text-sm font-semibold">Search & replace</h3><p className="mt-0.5 text-xs text-muted-foreground">Search every file in the workspace, then replace across matching files.</p></div></div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void runWorkspaceSearch(); }} placeholder="Search query (supports regex)" className="min-w-0 flex-1 rounded-lg border border-border/50 bg-secondary/40 px-2.5 py-2 text-xs outline-none" />
+            <input value={replaceText} onChange={(event) => setReplaceText(event.target.value)} placeholder="Replace with…" className="w-44 rounded-lg border border-border/50 bg-secondary/40 px-2.5 py-2 text-xs outline-none" />
+            <button type="button" disabled={searchBusy || !searchQuery.trim()} onClick={() => void runWorkspaceSearch()} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50">{searchBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}Search</button>
+            <button type="button" disabled={searchBusy || searchResults.length === 0 || !replaceText} onClick={() => void replaceWorkspaceText()} className="rounded-lg border border-amber-400/40 px-3 py-2 text-xs text-amber-300 disabled:opacity-40">Replace all</button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">{searchResults.length} match{searchResults.length === 1 ? '' : 'es'}{searchResults.length > 0 && ' across ' + new Set(searchResults.map((m) => m.file)).size + ' file' + (new Set(searchResults.map((m) => m.file)).size === 1 ? '' : 's')}</p>
+          <ul className="space-y-2">{searchResults.map((match, index) => <li key={match.file + ':' + match.line + ':' + index} className="rounded-xl border border-border/40 bg-secondary/20 p-3">
+            <div className="flex items-center justify-between gap-2"><button type="button" onClick={() => void openFile(match.file)} className="min-w-0 truncate font-mono text-[11px] text-primary hover:underline">{match.file}:{match.line}:{match.column}</button><span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[9px] text-primary">{match.match}</span></div>
+            <pre className="mt-1 overflow-auto rounded-lg bg-[#0d1117] p-2 font-mono text-[10px] text-[#b9c5df]">{match.preview}</pre>
+          </li>)}</ul>
+        </div>}
+        {tab === 'quality' && <div className="h-[calc(100%-49px)] space-y-4 overflow-auto p-5">
+          <div className="flex items-center gap-3"><TestTube2 className="h-6 w-6 text-primary" /><div><h3 className="text-sm font-semibold">Quality: tests & debugging</h3><p className="mt-0.5 text-xs text-muted-foreground">Run detected test frameworks and analyze preview errors with Jarvis.</p></div></div>
+          <div className="rounded-2xl border border-border/40 bg-secondary/20 p-4">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Test runner</p>
+            {frameworks.length === 0 ? <p className="text-xs text-muted-foreground">No test frameworks detected (looks for Jest, Vitest, pytest, cargo test, go test…).</p> : <div className="flex flex-wrap items-center gap-2">
+              <select value={selectedFramework} onChange={(event) => setSelectedFramework(event.target.value)} className="rounded-lg border border-border/50 bg-secondary/40 px-2 py-2 text-xs outline-none">{frameworks.map((fw) => <option key={fw.key} value={fw.key}>{fw.name}</option>)}</select>
+              <button type="button" disabled={qualityBusy} onClick={() => void runTests()} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50">{qualityBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}Run tests</button>
+              <button type="button" onClick={() => void loadQuality()} className="rounded-lg border border-border/50 px-2.5 py-2 text-xs">Detect</button>
+            </div>}
+            {testResult && <div className="mt-3 rounded-xl border border-border/40 bg-background/50 p-3">
+              <div className="flex flex-wrap gap-3 text-xs"><span className="text-emerald-400">{testResult.passed} passed</span><span className="text-rose-400">{testResult.failed} failed</span>{testResult.skipped > 0 && <span className="text-muted-foreground">{testResult.skipped} skipped</span>}<span className="text-muted-foreground">{testResult.total} total · {(testResult.duration / 1000).toFixed(2)}s</span></div>
+              <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-[#0d1117] p-2 font-mono text-[10px] text-[#b9c5df]">{testResult.output || '(no output)'}</pre>
+            </div>}
+          </div>
+          <div className="rounded-2xl border border-border/40 bg-secondary/20 p-4">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">AI debugging</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" disabled={!previewOutput.trim()} onClick={() => void analyzePreviewErrors()} className="flex items-center gap-1.5 rounded-lg border border-border/50 px-3 py-2 text-xs disabled:opacity-40"><Bug className="h-3 w-3" />Analyze preview errors</button>
+              <button type="button" disabled={!debugError || debugBusy} onClick={() => void suggestFixes()} className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-2 text-xs font-medium text-primary disabled:opacity-40">{debugBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}Suggest fixes</button>
+            </div>
+            {debugOutput && <pre className="mt-2 max-h-32 overflow-auto rounded-lg bg-[#0d1117] p-2 font-mono text-[10px] text-[#b9c5df]">{debugOutput}</pre>}
+            {debugFixes.length > 0 && <div className="mt-3 space-y-2">{debugFixes.map((fix, index) => <div key={fix.title + '-' + index} className="rounded-xl border border-border/40 bg-background/50 p-3"><div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold">{fix.title}</p><span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[9px] text-primary">{fix.confidence}%</span></div><p className="mt-1 text-[11px] leading-5 text-muted-foreground">{fix.description}</p><pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-[#0d1117] p-2 font-mono text-[10px] text-[#b9c5df]">{fix.code}</pre></div>)}</div>}
+          </div>
+        </div>}
+        {tab === 'history' && <div className="h-[calc(100%-49px)] space-y-4 overflow-auto p-5">
+          <div className="flex items-center gap-3"><History className="h-6 w-6 text-primary" /><div><h3 className="text-sm font-semibold">Snapshots & history</h3><p className="mt-0.5 text-xs text-muted-foreground">Snapshot the workspace and restore any point in time. Snapshots live in the current server session.</p></div><button type="button" disabled={historyBusy} onClick={() => void createSnapshot()} className="ml-auto flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50">{historyBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}Snapshot now</button></div>
+          {snapshots.length === 0 ? <p className="rounded-2xl border border-border/40 bg-secondary/20 p-4 text-xs text-muted-foreground">No snapshots yet. Take one before big changes so you can roll back.</p> : <ul className="space-y-2">{snapshots.slice().reverse().map((snap) => <li key={snap.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/40 bg-secondary/20 p-3"><div className="min-w-0"><p className="truncate text-xs font-semibold">{snap.label}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{new Date(snap.timestamp).toLocaleString()} · {snap.fileCount} files · {Math.round(snap.totalSize / 1024)} KB · {snap.trigger}</p></div><button type="button" onClick={() => void restoreSnapshot(snap.id)} className="shrink-0 rounded-lg bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary">Restore</button></li>)}</ul>}
+        </div>}
+        {tab === 'templates' && <div className="h-[calc(100%-49px)] space-y-4 overflow-auto p-5">
+          <div className="flex items-center gap-3"><LayoutTemplate className="h-6 w-6 text-primary" /><div><h3 className="text-sm font-semibold">Project templates</h3><p className="mt-0.5 text-xs text-muted-foreground">Start from a production-grade starter instead of a blank workspace.</p></div><button type="button" onClick={() => { void loadTemplates(); void loadCommunityTemplates(); }} className="ml-auto rounded-lg border border-border/50 px-2.5 py-1.5 text-xs">Refresh</button></div>
+          <div><p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Built-in starters</p><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{templates.map((tmpl) => <div key={tmpl.id} className="rounded-2xl border border-border/40 bg-secondary/20 p-3"><p className="text-xs font-semibold">{tmpl.name}</p><p className="mt-1 line-clamp-2 text-[10px] text-muted-foreground">{tmpl.description}</p><div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] text-primary">{tmpl.language}</span><button type="button" disabled={templateBusy} onClick={() => void applyTemplate(tmpl.id)} className="rounded-lg bg-primary px-2.5 py-1 text-[10px] font-medium text-primary-foreground disabled:opacity-40">Use template</button></div></div>)}</div></div>
+          <div><p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Community (GitHub)</p><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{communityTemplates.map((tmpl) => <div key={tmpl.id} className="rounded-2xl border border-border/40 bg-secondary/20 p-3"><p className="text-xs font-semibold">{tmpl.name}</p><p className="mt-1 line-clamp-2 text-[10px] text-muted-foreground">{tmpl.description}</p><div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="text-[9px] text-muted-foreground">★ {tmpl.stars.toLocaleString()} · {tmpl.language}</span><a href={tmpl.url} target="_blank" rel="noreferrer" className="rounded-lg border border-border/50 px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground">View</a></div></div>)}</div></div>
+        </div>}
+        {tab === 'docker' && <div className="h-[calc(100%-49px)] space-y-4 overflow-auto p-5">
+          <div className="flex items-center gap-3"><Container className="h-6 w-6 text-primary" /><div><h3 className="text-sm font-semibold">Docker</h3><p className="mt-0.5 text-xs text-muted-foreground">{dockerStatus ? (dockerStatus.available ? 'Docker available' + (dockerStatus.version ? ' · ' + dockerStatus.version : '') : 'Docker is not installed or not running in this sandbox.') : 'Checking Docker…'}</p></div><button type="button" onClick={() => void refreshDocker()} className="ml-auto rounded-lg border border-border/50 px-2.5 py-1.5 text-xs">Refresh</button></div>
+          {dockerStatus && dockerStatus.available && <div className="grid gap-3 md:grid-cols-2"><div className="rounded-2xl border border-border/40 bg-secondary/20 p-3"><p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Containers ({containers.length})</p>{containers.length === 0 ? <p className="text-xs text-muted-foreground">No running containers.</p> : <ul className="space-y-1.5">{containers.map((container) => <li key={container.id} className="flex items-center justify-between gap-2 rounded-lg bg-background/50 px-2.5 py-1.5 text-xs"><span className="min-w-0 truncate font-mono">{container.name}</span><span className="shrink-0 text-[10px] text-muted-foreground">{container.status}</span><button type="button" onClick={() => void stopContainer(container.id)} className="shrink-0 rounded-lg border border-rose-400/30 px-2 py-1 text-[10px] text-rose-400">Stop</button></li>)}</ul>}</div><div className="rounded-2xl border border-border/40 bg-secondary/20 p-3"><p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Images ({dockerImages.length})</p>{dockerImages.length === 0 ? <p className="text-xs text-muted-foreground">No images found.</p> : <ul className="space-y-1.5">{dockerImages.map((image) => <li key={image.id} className="flex items-center justify-between gap-2 rounded-lg bg-background/50 px-2.5 py-1.5 text-xs"><span className="min-w-0 truncate font-mono">{image.repository}:{image.tag}</span><span className="shrink-0 text-[10px] text-muted-foreground">{image.size}</span></li>)}</ul>}</div></div>}
+        </div>}
+        {tab === 'database' && <div className="h-[calc(100%-49px)] space-y-4 overflow-auto p-5">
+          <div className="flex items-center gap-3"><Database className="h-6 w-6 text-primary" /><div><h3 className="text-sm font-semibold">Database browser</h3><p className="mt-0.5 text-xs text-muted-foreground">Detects SQLite files in the workspace. Browse tables or run raw SQL.</p></div><button type="button" onClick={() => void detectDatabases()} className="ml-auto rounded-lg border border-border/50 px-2.5 py-1.5 text-xs">Detect</button></div>
+          {dbTables.length > 0 && <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{dbTables.map((table) => <div key={table.name} className="rounded-2xl border border-border/40 bg-secondary/20 p-3"><p className="flex items-center justify-between text-xs font-semibold"><span className="truncate font-mono">{table.name}</span><span className="text-[10px] text-muted-foreground">{table.rowCount} rows</span></p><ul className="mt-2 space-y-0.5">{table.columns.slice(0, 8).map((column) => <li key={column.name} className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><span className="rounded bg-background/60 px-1 py-0.5 font-mono">{column.name}</span><span className="text-muted-foreground/60">{column.type}</span>{column.primaryKey && <span className="text-amber-300">PK</span>}</li>)}</ul><button type="button" onClick={() => void browseTable(table.name)} className="mt-2 rounded-lg bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary">Browse</button></div>)}</div>}
+          <div className="rounded-2xl border border-border/40 bg-secondary/20 p-3"><p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">SQL</p><div className="flex gap-2"><input value={dbQuery} onChange={(event) => setDbQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void runDbQuery(); }} placeholder="SELECT * FROM table LIMIT 50" className="min-w-0 flex-1 rounded-lg border border-border/50 bg-background/50 px-2.5 py-2 font-mono text-xs outline-none" /><button type="button" disabled={dbBusy || !dbQuery.trim()} onClick={() => void runDbQuery()} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50">{dbBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}Run</button></div></div>
+          {dbRows.length > 0 && <div className="overflow-auto rounded-2xl border border-border/40 bg-secondary/20 p-3"><table className="w-full text-left text-[10px]"><thead><tr className="text-muted-foreground">{Object.keys(dbRows[0] ?? {}).map((key) => <th key={key} className="whitespace-nowrap px-2 py-1 font-mono">{key}</th>)}</tr></thead><tbody>{dbRows.map((row, index) => <tr key={index} className="border-t border-border/30">{Object.values(row).map((value, i) => <td key={i} className="whitespace-nowrap px-2 py-1 font-mono text-foreground/80">{typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value ?? '')}</td>)}</tr>)}</tbody></table></div>}
+        </div>}
+        {tab === 'api' && <div className="h-[calc(100%-49px)] space-y-4 overflow-auto p-5">
+          <div className="flex items-center gap-3"><Globe className="h-6 w-6 text-primary" /><div><h3 className="text-sm font-semibold">API explorer</h3><p className="mt-0.5 text-xs text-muted-foreground">{apiFramework ? 'Detected framework: ' + apiFramework : 'No API framework detected in the workspace.'}</p></div><button type="button" onClick={() => void loadApiExplorer()} className="ml-auto rounded-lg border border-border/50 px-2.5 py-1.5 text-xs">Refresh</button></div>
+          {apiEndpoints.length > 0 && <div className="rounded-2xl border border-border/40 bg-secondary/20 p-3"><p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Endpoints ({apiEndpoints.length})</p><ul className="space-y-1">{apiEndpoints.map((endpoint, index) => <li key={endpoint.method + '-' + endpoint.path + '-' + index} className="flex items-center gap-2 rounded-lg bg-background/50 px-2.5 py-1.5 text-xs"><span className={'w-14 shrink-0 rounded px-1.5 py-0.5 text-center text-[9px] font-semibold ' + (endpoint.method === 'GET' ? 'bg-emerald-400/15 text-emerald-400' : 'bg-amber-400/15 text-amber-300')}>{endpoint.method}</span><span className="min-w-0 truncate font-mono">{endpoint.path}</span><button type="button" onClick={() => { setApiEndpointPath(endpoint.path); setApiMethod(endpoint.method); }} className="ml-auto shrink-0 text-[10px] text-primary">Use</button></li>)}</ul></div>}
+          <div className="rounded-2xl border border-border/40 bg-secondary/20 p-3"><p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Request</p><div className="flex flex-wrap gap-2"><select value={apiMethod} onChange={(event) => setApiMethod(event.target.value)} className="rounded-lg border border-border/50 bg-secondary/40 px-2 py-2 text-xs outline-none">{['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => <option key={m}>{m}</option>)}</select><input value={apiBaseUrl} onChange={(event) => setApiBaseUrl(event.target.value)} placeholder="Base URL (http://localhost:PORT)" className="w-52 rounded-lg border border-border/50 bg-secondary/40 px-2.5 py-2 text-xs outline-none" /><input value={apiEndpointPath} onChange={(event) => setApiEndpointPath(event.target.value)} placeholder="/api/items" className="min-w-0 flex-1 rounded-lg border border-border/50 bg-secondary/40 px-2.5 py-2 font-mono text-xs outline-none" /><button type="button" disabled={apiBusy} onClick={() => void sendApiRequest()} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50">{apiBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}Send</button></div><textarea value={apiBody} onChange={(event) => setApiBody(event.target.value)} placeholder="JSON body (for POST / PUT / PATCH)" rows={2} className="mt-2 w-full resize-y rounded-lg border border-border/50 bg-secondary/30 p-2 font-mono text-xs outline-none" /></div>
+          {apiResponse && <div className="rounded-2xl border border-border/40 bg-secondary/20 p-3"><p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Response</p><pre className="max-h-64 overflow-auto rounded-lg bg-[#0d1117] p-2 font-mono text-[10px] text-[#b9c5df]">{apiResponse}</pre></div>}
+        </div>}
       </main></div>{plan && <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"><div className="max-h-[85vh] w-full max-w-2xl overflow-auto rounded-3xl border border-primary/30 bg-background p-6 shadow-apple-xl"><div className="flex items-start gap-3"><div className="rounded-2xl bg-primary/10 p-2.5 text-primary"><Sparkles className="h-5 w-5" /></div><div className="min-w-0 flex-1"><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Plan Mode</p><h3 className="mt-1 text-lg font-semibold">{plan.title}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{plan.summary}</p></div></div><div className="mt-5 grid gap-4 md:grid-cols-[1fr_0.8fr]"><section className="rounded-2xl border border-border/40 bg-secondary/20 p-4"><p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Requirements understood</p><ol className="mt-3 space-y-3">{plan.steps.map((step, index) => <li key={`${step}-${index}`} className="flex gap-2 text-xs leading-5"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">{index + 1}</span><span>{step}</span></li>)}</ol></section><section className="space-y-3"><div className="rounded-2xl border border-border/40 bg-secondary/20 p-4"><p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Workspace context</p>{plan.files.length > 0 ? <ul className="mt-3 space-y-1 text-[11px] text-muted-foreground">{plan.files.map((file) => <li key={file} className="truncate">{file}</li>)}</ul> : <p className="mt-3 text-xs text-muted-foreground">No existing files selected. Jarvis will scaffold the workspace.</p>}</div>{plan.risks.length > 0 && <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4"><p className="text-[10px] font-semibold uppercase tracking-widest text-amber-300">Notes</p><ul className="mt-2 space-y-1 text-[11px] text-amber-200/80">{plan.risks.map((risk) => <li key={risk}>{risk}</li>)}</ul></div>}</section></div><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={changePlan} className="rounded-xl border border-border/50 px-4 py-2.5 text-xs font-medium hover:bg-secondary/60">Change plan</button><button type="button" disabled={busy || planBusy} onClick={() => void acceptPlan()} className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50">{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}Accept plan</button></div></div></div>}{wizardOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setWizardOpen(false)}><div className="max-h-[85vh] w-full max-w-md overflow-auto rounded-3xl border border-border/60 bg-background p-5 shadow-apple-xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /><h3 className="text-sm font-semibold">{t('studio.build.askTitle')}</h3></div><p className="mt-1 text-xs text-muted-foreground">{t('studio.build.askDesc')}</p><div className="mt-4 space-y-4">{featureInventory.length > 0 && <div className="rounded-2xl border border-border/40 bg-secondary/20 p-3"><p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{t('studio.build.inventoryTitle')}</p><div className="flex flex-wrap gap-1.5">{featureInventory.map((item) => <span key={item.key} className={`rounded-full border px-2 py-1 text-[10px] ${item.selected ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border/40 text-muted-foreground/50 line-through'}`}>{item.label}</span>)}</div></div>}{wizardQuestions.map((question) => <div key={question.key}><p className="mb-1.5 text-xs font-medium">{question.label}</p><div className="flex flex-wrap gap-1.5">{question.options?.map((option) => { const selected = wizardAnswers[question.key] === option; return <button type="button" key={option} onClick={() => setWizardAnswers((current) => ({ ...current, [question.key]: option }))} className={`rounded-full border px-2.5 py-1 text-[11px] transition ${selected ? 'border-primary bg-primary/10 text-primary' : 'border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground'}`}>{option}</button>; })}<button type="button" onClick={() => setWizardAnswers((current) => { const next = { ...current }; delete next[question.key]; return next; })} className="rounded-full px-2 py-1 text-[11px] text-muted-foreground/60 hover:text-foreground">{t('studio.build.skip')}</button></div></div>)}</div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setWizardOpen(false); void continueBuild(wizardPrompt, {}, null); }} className="rounded-xl border border-border/50 px-3 py-2 text-xs">{t('studio.build.skipAll')}</button><button type="button" disabled={wizardBusy || planBusy} onClick={() => { setWizardOpen(false); void continueBuild(wizardPrompt, wizardAnswers, null); }} className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"><Hammer className="h-3.5 w-3.5" />{t('studio.build.buildIt')}</button></div></div></div>}{notice && <button type="button" onClick={() => setNotice(null)} className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full border border-border/50 bg-background/95 px-4 py-2 text-xs shadow-lg">{notice} <Check className="ml-1 inline h-3 w-3 text-emerald-400" /></button>}{busy && <Loader2 className="absolute bottom-5 right-5 h-4 w-4 animate-spin text-primary" />}</motion.div></motion.div></AnimatePresence>;
 }
