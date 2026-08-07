@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bug, Camera, Check, ChevronDown, ChevronRight, Code2, Container, Database, FilePlus2, Folder, FolderPlus, GitBranch, GitCommit, Globe, Hammer, History, LayoutTemplate, Loader2, Package, Play, Plus, RefreshCw, Save, Search, Send, Sparkles, Square, Terminal, TestTube2, Trash2, Upload, X } from 'lucide-react';
+import { Bug, Camera, Check, ChevronDown, ChevronRight, Code2, Container, Database, Download, FilePlus2, Folder, FolderPlus, GitBranch, GitCommit, Globe, Hammer, History, LayoutTemplate, Loader2, Moon, Package, Play, Plus, RefreshCw, Save, Search, Send, Sparkles, Square, Sun, Terminal, TestTube2, Trash2, Upload, X, Zap } from 'lucide-react';
 import type { TerminalResult } from '@/types/widget';
 import { useI18n } from '@/lib/i18n';
 import CodeEditor from '@/components/code-editor';
+import { ParticleSpherePreview } from '@/components/particle-sphere-preview';
 
 interface WorkspaceFile { path: string; type: 'file' | 'dir'; size: number; }
 interface SavedApp { id: string; name: string; description: string; metadata?: { fileCount?: number; envKeys?: string[]; previewPort?: number | null }; }
@@ -15,7 +16,8 @@ interface ActivityBlock { id: string; icon: 'sparkles' | 'terminal' | 'camera' |
 interface IterateResponse { ok?: boolean; done?: boolean; summary?: string; fixRequest?: string | null; deferred?: string[]; filesChanged?: string[]; passNumber?: number; error?: string; }
 interface PreviewAgentEvent { type: 'inspect' | 'decision' | 'action' | 'error' | 'complete'; message: string; step?: number; }
 interface PreviewAgentResponse { completed?: boolean; summary?: string; events?: PreviewAgentEvent[]; consoleErrors?: string[]; error?: string; }
-interface PreviewScreenshots { desktop?: string; mobile?: string; }
+interface PreviewScreenshot { url: string; dataUrl: string; }
+interface PreviewScreenshots { desktop?: PreviewScreenshot; mobile?: PreviewScreenshot; }
 interface BuildPlan { title: string; summary: string; steps: string[]; files: string[]; risks: string[]; }
 interface PackageItem { name: string; version: string; description?: string; downloads?: number; url?: string; }
 interface GitStatus { branch: string; ahead: number; behind: number; modified: string[]; staged: string[]; untracked: string[]; conflicted: string[]; }
@@ -34,6 +36,17 @@ interface DbTable { name: string; columns: DbColumn[]; rowCount: number; }
 interface ApiEndpoint { method: string; path: string; description?: string; }
 
 const waitMs = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+
+const downloadTextFile = (path: string, content: string) => {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = path.split('/').pop() || 'jarvis-file.txt';
+  anchor.click();
+  URL.revokeObjectURL(url);
+};
 
 interface BuildStudioProps {
   open: boolean;
@@ -168,6 +181,18 @@ export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFi
   const [cursorPos, setCursorPos] = useState<{ line: number; col: number } | null>(null);
   const [hotReload, setHotReload] = useState(false);
   const hotReloadRef = useRef<EventSource | null>(null);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [historyFiles, setHistoryFiles] = useState<string[]>([]);
+  const [selectedHistoryFile, setSelectedHistoryFile] = useState<string | null>(null);
+  const [historyFileContent, setHistoryFileContent] = useState('');
+  const [walkthroughBusy, setWalkthroughBusy] = useState(false);
+  const [walkthroughErrors, setWalkthroughErrors] = useState<string[]>([]);
+  const [walkthroughReportPath, setWalkthroughReportPath] = useState<string | null>(null);
+  const [deepSleep, setDeepSleep] = useState(false);
+  const [afkMode, setAfkMode] = useState(false);
+  const [wakeSensitivity, setWakeSensitivity] = useState<'any' | 'keypress'>('any');
+  const [sleepSummary, setSleepSummary] = useState<string | null>(null);
+  const [walkthroughVisible, setWalkthroughVisible] = useState(false);
 
   const filePaths = useMemo(() => files.filter((file) => file.type === 'file'), [files]);
   const addActivity = useCallback((message: string, icon: ActivityBlock['icon'] = 'sparkles', actionCount = 1) => {
@@ -346,6 +371,22 @@ export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFi
     const { response } = await apiJson('/api/jarvis/history/snapshot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, label, description: 'Manual snapshot from Build Studio' }) });
     setHistoryBusy(false);
     if (response.ok) { await loadSnapshots(); setNotice('Snapshot created'); }
+  };
+
+  const selectSnapshot = async (snapshot: HistorySnapshot) => {
+    setSelectedHistoryId(snapshot.id);
+    setSelectedHistoryFile(null);
+    setHistoryFileContent('');
+    const { response, data } = await apiJson<{ snapshot?: { files?: string[] }; error?: string }>(`/api/jarvis/history/snapshots/${encodeURIComponent(snapshot.id)}?workspaceId=${encodeURIComponent(workspaceId)}`);
+    if (response.ok) setHistoryFiles(data.snapshot?.files ?? []);
+    else setNotice(data.error ?? 'Could not load snapshot details');
+  };
+
+  const previewSnapshotFile = async (filePath: string) => {
+    if (!selectedHistoryId) return;
+    const { response, data } = await apiJson<{ content?: string; error?: string }>(`/api/jarvis/history/snapshots/${encodeURIComponent(selectedHistoryId)}/file?workspaceId=${encodeURIComponent(workspaceId)}&path=${encodeURIComponent(filePath)}`);
+    if (response.ok) { setSelectedHistoryFile(filePath); setHistoryFileContent(data.content ?? ''); }
+    else setNotice(data.error ?? 'Could not read snapshot file');
   };
 
   const restoreSnapshot = async (id: string) => {
@@ -571,8 +612,8 @@ export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFi
     const { response, data } = await apiJson<{ dataUrl?: string; error?: string; screenshots?: PreviewScreenshots }>('/api/jarvis/build/screenshot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, sessionId: 'studio-preview', port: previewPort, viewports: ['desktop', 'mobile'] }) });
     setScreenshotBusy(false);
     if (response.ok && (data.screenshots?.desktop || data.screenshots?.mobile || data.dataUrl)) {
-      setScreenshot(data.screenshots?.desktop ?? data.dataUrl ?? null);
-      setMobileScreenshot(data.screenshots?.mobile ?? null);
+      setScreenshot(data.screenshots?.desktop?.dataUrl ?? data.dataUrl ?? null);
+      setMobileScreenshot(data.screenshots?.mobile?.dataUrl ?? null);
       return true;
     }
     setNotice(data.error ?? t('studio.build.screenshotFailed'));
@@ -658,8 +699,62 @@ export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFi
     setAutoFixPass(0);
   };
 
+
+
   const saveApp = async () => { setBusy(true); const { response } = await apiJson('/api/jarvis/build/apps', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, name: saveName.trim() || 'Untitled build', runCommand: previewCommand, previewPort }) }); setBusy(false); if (response.ok) { setSaveName(''); setNotice('Build app saved to Gallery'); await loadSavedApps(); } };
   const restoreApp = async (id: string) => { setBusy(true); const { response } = await apiJson(`/api/jarvis/build/apps/${id}/restore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId }) }); setBusy(false); if (response.ok) { setNotice('Build restored'); await loadFiles(); await loadEnvironment(); } };
+
+  const runWalkthrough = async () => {
+    if (!previewRunning || walkthroughBusy) return;
+    setWalkthroughBusy(true);
+    setWalkthroughErrors([]);
+    const { response, data } = await apiJson<{ errors?: string[]; reportPath?: string; error?: string }>('/api/jarvis/build/walkthrough', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, sessionId: 'studio-preview', port: previewPort }) });
+    setWalkthroughBusy(false);
+    if (response.ok) {
+      setWalkthroughErrors(data.errors ?? []);
+      setWalkthroughReportPath(data.reportPath ?? 'full-walktrough.md');
+      setNotice(data.errors?.length ? `${data.errors.length} issue(s) appended to full-walktrough.md` : 'Walkthrough complete: no unexpected errors found');
+    } else setNotice(data.error ?? 'Walkthrough could not run');
+  };
+
+  const createCheckpoint = async () => {
+    setHistoryBusy(true);
+    const { response } = await apiJson('/api/jarvis/history/snapshot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workspaceId, label: 'AFK checkpoint', description: 'Safety checkpoint created before autonomous work' }) });
+    setHistoryBusy(false);
+    if (response.ok) { await loadSnapshots(); setNotice('Checkpoint created'); }
+  };
+
+  const toggleAfkMode = async () => {
+    const enabling = !afkMode;
+    if (enabling) await createCheckpoint();
+    setAfkMode(enabling);
+    setNotice(enabling
+      ? (previewRunning && lastPrompt ? 'AFK mode enabled. Jarvis is continuing the local build review.' : 'AFK mode enabled. Start a preview to let Jarvis continue autonomously.')
+      : 'AFK mode disabled');
+    if (enabling && previewRunning && lastPrompt) {
+      void runAutoPipeline(lastPrompt, lastAnswers, [], plan);
+    }
+  };
+
+  useEffect(() => {
+    if (!deepSleep) return;
+    const wake = (event: Event) => {
+      if (wakeSensitivity === 'keypress' && event.type !== 'keydown') return;
+      setDeepSleep(false);
+      setSleepSummary(afkMode ? 'Jarvis woke from AFK mode. Review the activity feed and checkpoint before continuing.' : 'Sleep screen dismissed.');
+    };
+    const options = { once: true } as AddEventListenerOptions;
+    window.addEventListener('mousemove', wake, options);
+    window.addEventListener('click', wake, options);
+    window.addEventListener('scroll', wake, { ...options, passive: true });
+    window.addEventListener('keydown', wake, options);
+    return () => {
+      window.removeEventListener('mousemove', wake);
+      window.removeEventListener('click', wake);
+      window.removeEventListener('scroll', wake);
+      window.removeEventListener('keydown', wake);
+    };
+  }, [afkMode, deepSleep, wakeSensitivity]);
 
   const toggleHotReload = async () => {
     if (hotReload) {
@@ -700,6 +795,9 @@ export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFi
   }, [open, selectedPath, content, busy, workspaceId]);
 
   if (!open) return null;
+  const renderSleepControlsLegacy = () => <div data-build-sleep-controls="true" aria-label="AFK and sleep controls" className="flex items-center gap-1.5"><button type="button" onClick={() => void toggleAfkMode()} disabled={historyBusy} className={`rounded-lg border px-2.5 py-2 text-[11px] ${afkMode ? 'border-amber-300/50 bg-amber-300/10 text-amber-200' : 'border-border/50 text-muted-foreground hover:bg-secondary/60'}`} title="Let Jarvis continue the local build loop"><Zap className="mr-1 inline h-3.5 w-3.5" />{afkMode ? 'AFK on' : 'AFK mode'}</button><select value={wakeSensitivity} onChange={(event) => setWakeSensitivity(event.target.value as 'any' | 'keypress')} className="hidden rounded-lg border border-border/50 bg-secondary/40 px-2 py-2 text-[11px] outline-none sm:block" aria-label="Sleep wake sensitivity"><option value="any">Wake: any input</option><option value="keypress">Wake: keypress</option></select><button type="button" onClick={() => setDeepSleep(true)} className="rounded-lg border border-border/50 px-2.5 py-2 text-[11px] text-muted-foreground hover:bg-secondary/60" title="Dim the interface while Jarvis works"><Moon className="mr-1 inline h-3.5 w-3.5" />Sleep</button></div>;
+  const renderDeepSleepOverlay = deepSleep ? <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black text-white" role="dialog" aria-label="Jarvis sleep screen"><Moon className="h-8 w-8 text-white/30" /><p className="mt-4 text-xs tracking-[0.25em] text-white/40">JARVIS SLEEP SCREEN</p>{afkMode && <p className="mt-3 text-[11px] text-white/25">⚡ Agent working · {autoFixPass > 0 ? `iteration ${autoFixPass}` : 'checkpoint saved'}</p>}</div> : null;
+  const renderSleepControls = () => <div data-build-sleep-controls="true" className="flex items-center gap-1.5"><button type="button" onClick={() => void toggleAfkMode()} disabled={historyBusy} className="rounded-lg border border-border/50 px-2 py-2 text-[11px]"><Zap className="mr-1 inline h-3.5 w-3.5" />{afkMode ? 'AFK on' : 'AFK mode'}</button><button type="button" onClick={() => setDeepSleep(true)} className="rounded-lg border border-border/50 px-2 py-2 text-[11px]"><Moon className="mr-1 inline h-3.5 w-3.5" />Sleep</button></div>;
   const tabs: [StudioTab, string, typeof Code2][] = [['editor', t('studio.build.editor'), Code2], ['terminal', t('studio.build.terminal'), Terminal], ['preview', t('studio.build.preview'), Play], ['packages', t('studio.build.packages'), Package], ['env', t('studio.build.env'), Upload], ['git', t('studio.build.git'), GitBranch], ['search', 'Search', Search], ['quality', 'Quality', TestTube2], ['history', 'History', History], ['templates', 'Templates', LayoutTemplate], ['docker', 'Docker', Container], ['database', 'Database', Database], ['api', 'API', Globe]];
   return <AnimatePresence><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}><motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex h-[94vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-t-3xl border border-border/60 bg-background shadow-apple-xl sm:rounded-3xl" onClick={(event) => event.stopPropagation()}>
     <header className="flex flex-wrap items-center gap-3 border-b border-border/40 px-4 py-3"><Hammer className="h-4 w-4 text-primary" /><div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{title}</h2><p className="text-[10px] text-muted-foreground">{t('studio.build.subtitle')} · project {workspaceId}</p></div><input value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder={t('studio.build.appName')} className="hidden w-32 rounded-lg border border-border/50 bg-secondary/40 px-2 py-1.5 text-xs outline-none sm:block" /><button type="button" onClick={() => void saveApp()} disabled={busy} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"><Save className="h-3.5 w-3.5" />{t('studio.build.saveApp')}</button><button type="button" onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-secondary/70" aria-label={t('studio.build.close')}><X className="h-4 w-4" /></button></header>

@@ -16,10 +16,17 @@ loadEnv({ path: path.join(repoRoot, ".env.local") });
 loadEnv({ path: path.join(repoRoot, ".env") });
 loadEnv({ path: path.join(__dirname, "..", ".env") });
 
-import app from "./app";
-import { logger } from "./lib/logger";
-import { ensureTables, ensureFilesTables } from "./lib/auto-migrate";
-import { injectDbSecretsIntoEnv } from "./routes/jarvis/secrets";
+// These modules import @workspace/db. Load environment files first, then
+// import them dynamically. Static ESM imports are evaluated before this file's
+// body, which previously let the DB pool capture an empty DATABASE_URL before
+// dotenv had a chance to load the Keys-tab values.
+const [{ default: app }, { logger }, { ensureTables, ensureFilesTables }, { injectDbSecretsIntoEnv }] =
+  await Promise.all([
+    import("./app"),
+    import("./lib/logger"),
+    import("./lib/auto-migrate"),
+    import("./routes/jarvis/secrets"),
+  ]);
 
 const rawPort = process.env["PORT"];
 const port = rawPort ? Number(rawPort) : 8080;

@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Download } from 'lucide-react';
+
+const downloadFile = (path: string, content: string) => {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = path.split('/').pop() || 'jarvis-file.txt';
+  anchor.click();
+  URL.revokeObjectURL(url);
+};
 import type { FileEdit } from '@/types/widget';
 
 export function FileEditCard({ edit }: { edit: FileEdit }) {
@@ -26,6 +36,9 @@ export function FileEditCard({ edit }: { edit: FileEdit }) {
         <span className="text-[10px] font-mono text-muted-foreground/60 flex-shrink-0">
           {isNew ? `+${addedLines} lines` : `+${addedLines} −${removedLines}`}
         </span>
+        <button type="button" onClick={(event) => { event.stopPropagation(); downloadFile(edit.path, edit.newContent); }} title="Download file" className="rounded-md p-1 text-muted-foreground/70 hover:bg-emerald-500/10 hover:text-emerald-400">
+          <Download className="h-3.5 w-3.5" />
+        </button>
         {expanded ? (
           <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/50" />
         ) : (

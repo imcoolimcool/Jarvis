@@ -865,6 +865,101 @@ router.post("/build/preview/agent", async (req, res) => {
   }
 });
 
+router.post("/build/walkthrough", async (req, res) => {
+  const workspaceId = cleanText(req.body?.workspaceId, 64) || "default";
+  const sessionId = cleanText(req.body?.sessionId, 100) || "studio-preview";
+  const port = Number(req.body?.port);
+  const preview = findPreview(workspaceId, sessionId);
+  if (!preview || preview.port !== port || !Number.isInteger(port) || port < 1024 || port > 65535) {
+    res.status(400).json({ error: "Start the local preview before running a walkthrough" });
+    return;
+  }
+
+  const errors: string[] = [];
+  const screenshotKeys: string[] = [];
+  let page: Page | null = null;
+  try {
+    const browser = await getScreenshotBrowser();
+    page = await browser.newPage();
+    await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      try {
+        const requestUrl = request.url();
+        if (request.isNavigationRequest() && request.frame() === page?.mainFrame() && !localPreviewUrl(requestUrl, port)) {
+          void request.abort();
+          return;
+        }
+      } catch {
+        void request.abort();
+        return;
+      }
+      void request.continue();
+    });
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(`Console error: ${message.text().slice(0, 500)}`);
+    });
+    page.on("pageerror", (error: Error) => errors.push(`Page error: ${error.message.slice(0, 500)}`));
+    page.on("requestfailed", (request) => errors.push(`Request failed: ${request.method()} ${request.url().slice(0, 300)} (${request.failure()?.errorText ?? "unknown"})`));
+    await page.goto(`http://127.0.0.1:${port}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+
+    const screenshot = await page.screenshot({ type: "png" });
+    const stored = await persistFile({ data: Buffer.from(screenshot), mimeType: "image/png", name: `walkthrough-${workspaceId}-${Date.now()}.png`, kind: "image", owner: "user" });
+    if (stored?.url) screenshotKeys.push(stored.url);
+
+    const elements: Array<{ index: number; tag: string; text: string; disabled: boolean; href: string }> = await page.evaluate(() => {
+      const nodes = Array.from(document.querySelectorAll("button, a, input, textarea, select, [role=button]")) as Array<any>;
+      return nodes.map((element, index) => {
+        element.setAttribute("data-jarvis-walkthrough-id", String(index));
+        return {
+          index,
+          tag: String(element.tagName).toLowerCase(),
+          text: String(element.textContent ?? "").replace(/\\s+/g, " ").trim().slice(0, 160),
+          disabled: element.disabled === true,
+          href: String(element.tagName).toLowerCase() === "a" ? String(element.getAttribute("href") ?? "") : "",
+        };
+      }).slice(0, 120);
+    });
+
+    for (const element of elements) {
+      if (element.disabled || element.href && !element.href.startsWith("#")) continue;
+      try {
+        await page.$eval(`[data-jarvis-walkthrough-id="${element.index}"]`, (node) => {
+          const tag = node.tagName.toLowerCase();
+          if (tag === "input" || tag === "textarea" || tag === "select") return;
+          (node as any).click();
+        });
+        await new Promise((resolve) => setTimeout(resolve, 140));
+      } catch (error) {
+        errors.push(`Interactive element ${element.index} (${element.tag} ${element.text || "untitled"}) failed: ${error instanceof Error ? error.message : "click failed"}`);
+      }
+    }
+
+    const reportPath = path.join(WORKSPACE_ROOT, "full-walktrough.md");
+    const timestamp = new Date().toISOString().replace("T", " ").replace("Z", " UTC");
+    const uniqueErrors = [...new Set(errors)];
+    const lines = [
+      "",
+      "--------------------------------------------------",
+      `WALKTHROUGH SESSION START: ${timestamp}`,
+      "--------------------------------------------------",
+      ...uniqueErrors.map((error) => `- [ERROR] ${error}`),
+      ...(uniqueErrors.length === 0 ? ["- No unexpected interactive errors observed."] : []),
+      ...(screenshotKeys.length > 0 ? [`- Screenshot evidence: ${screenshotKeys.join(", ")}`] : []),
+      "==================================================",
+      "",
+    ];
+    await ensureWorkspace(workspaceId);
+    await fs.appendFile(reportPath, lines.join("\\n"), "utf8");
+    res.json({ ok: true, errors: uniqueErrors, reportPath: "full-walktrough.md", screenshotUrls: screenshotKeys, testedElements: elements.length });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Walkthrough failed";
+    res.status(500).json({ error: message, errors });
+  } finally {
+    await page?.close().catch(() => undefined);
+  }
+});
+
 router.post("/build/screenshot", async (req, res) => {
   const sessionId = cleanText(req.body?.sessionId, 100) || "studio-preview";
   const workspaceId = cleanText(req.body?.workspaceId, 64) || "default";

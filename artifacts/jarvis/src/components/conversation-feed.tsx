@@ -541,9 +541,9 @@ export function ConversationFeed({
               )}
 
               {/* Terminal command cards the AI ran, clean minimal boxes */}
-              {!isUser && msg.terminalResults && msg.terminalResults.length > 0 && (
+              {!isUser && ((msg.terminalResults && msg.terminalResults.length > 0) || (msg.fileEdits && msg.fileEdits.length > 0) || msg.figma) && (
                 <div className="w-full max-w-xl">
-                  {msg.terminalResults.map((tr, i) => <CommandCard key={i} result={tr} />)}
+                  {msg.terminalResults?.map((tr, i) => <CommandCard key={i} result={tr} />)}
                   {msg.fileEdits?.map((ed, i) => (
                     <FileEditCard key={`fe-${ed.path}-${i}`} edit={ed} />
                   ))}

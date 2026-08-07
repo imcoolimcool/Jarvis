@@ -174,6 +174,22 @@ router.get("/history/snapshots/:snapshotId", (req: Request, res: Response) => {
   }
 });
 
+router.get("/history/snapshots/:snapshotId/file", (req: Request, res: Response) => {
+  try {
+    const workspaceId = cleanText(req.query.workspaceId as string, 64) || "default";
+    const snapshotId = cleanText(req.params.snapshotId as string, 64);
+    const filePath = cleanText(req.query.path as string, 500);
+    const snapshot = (workspaceSnapshots.get(workspaceId) || []).find((item) => item.id === snapshotId);
+    if (!snapshot || !filePath) return res.status(404).json({ error: "Snapshot file not found" });
+    const content = snapshot.files.get(filePath);
+    if (content === undefined) return res.status(404).json({ error: "Snapshot file not found" });
+    return res.json({ ok: true, path: filePath, content });
+  } catch (err) {
+    req.log.error({ err }, "Failed to read snapshot file");
+    return res.status(500).json({ error: "Failed to read snapshot file" });
+  }
+});
+
 /**
  * POST /history/restore - Restore from snapshot
  */

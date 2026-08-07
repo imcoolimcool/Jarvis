@@ -89,7 +89,6 @@ export function PlusMenu({ open, onClose, onAction, coords, labels, query = '' }
   const activeQuery = query || autoQuery || '';
   const effectiveOpen = isPluginAutocomplete || open;
   const effectiveCoords = isPluginAutocomplete ? autoCoords ?? coords : coords;
-  if (!effectiveCoords) return null;
 
   const normalizedQuery = activeQuery.trim().toLowerCase();
   const matches = (label: string) => !normalizedQuery || label.toLowerCase().includes(normalizedQuery);
@@ -157,6 +156,11 @@ export function PlusMenu({ open, onClose, onAction, coords, labels, query = '' }
     textarea.addEventListener('keydown', onKeyDown);
     return () => textarea.removeEventListener('keydown', onKeyDown);
   }, [autoQuery, labels, toolLabels]);
+
+  // Hooks must run on every render, including while the menu has no anchor
+  // coordinates. Keep the null render below all hooks to avoid changing the
+  // hook count when @ autocomplete opens or closes.
+  if (!effectiveCoords) return null;
 
   return createPortal(
     <AnimatePresence>
