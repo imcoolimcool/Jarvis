@@ -199,3 +199,17 @@
 - Fixed the iteration pass-counter bug: pass now increments each review loop (was stuck at 1), the 2-pass max note is removed, stopPipelineRef is reset per run, and a Stop iterating button appears while the auto-pipeline runs.
 - Tabs now lazy-load their backend data when opened. Tab bar grew from 7 to 13 tabs (horizontal scroll).
 - Validation: Jarvis typecheck, API-server typecheck, and git diff --check pass.
+
+## 2026-08-07 — Build Studio Phase 8 polish: CodeMirror editor, status bar, shortcuts, search toggles, hot-reload UI
+
+- Replaced the plain <textarea> editor with a real CodeMirror 6 editor (new artifacts/jarvis/src/components/code-editor.tsx):
+  - Syntax highlighting for 15+ bundled languages (html/vue/svelte, ts/tsx, js/jsx, css/scss/less, json, markdown, py, go, rs, java, c/c++, php, sql, xml/svg) via @codemirror/lang-* packages.
+  - Async fallback for everything else (shell, yaml, toml, dockerfile, etc.) via @codemirror/language-data matchFilename/matchExtension.
+  - Line numbers, fold gutter, bracket matching, autocompletion, close brackets, active-line highlight, vscodeDark theme (matches the #0d1117 palette).
+  - Cursor position callback + in-editor Ctrl/Cmd+S save keymap.
+- Added a status bar under the editor: language badge, Ln/Col, file size in bytes, unsaved/saved state, shortcut hints.
+- Added keyboard shortcuts: Ctrl/Cmd+S save, Ctrl/Cmd+J terminal toggle, Ctrl/Cmd+1-9 switch tabs (TAB_ORDER constant).
+- Search tab: added Regex / Aa (case-sensitive) / Hidden (include hidden files) toggle buttons, wired to the backend's existing regex/case/hidden params (GET /api/jarvis/search and POST /api/jarvis/search/replace).
+- Preview tab: added an Auto-reload toggle wired to the existing backend hot-reload routes (POST /enable, /disable, SSE /events). Toggling on opens an EventSource that surfaces file-change notices; stream is torn down on studio close or disable.
+- New direct deps in artifacts/jarvis: @uiw/react-codemirror, @uiw/codemirror-theme-vscode, 14 @codemirror/lang-* packages, @codemirror/language-data, @codemirror/language, @codemirror/state, @codemirror/view.
+- Verified: pnpm --filter jarvis typecheck passes, git diff --check clean.
