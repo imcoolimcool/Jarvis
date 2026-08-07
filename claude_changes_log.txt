@@ -213,3 +213,13 @@
 - Preview tab: added an Auto-reload toggle wired to the existing backend hot-reload routes (POST /enable, /disable, SSE /events). Toggling on opens an EventSource that surfaces file-change notices; stream is torn down on studio close or disable.
 - New direct deps in artifacts/jarvis: @uiw/react-codemirror, @uiw/codemirror-theme-vscode, 14 @codemirror/lang-* packages, @codemirror/language-data, @codemirror/language, @codemirror/state, @codemirror/view.
 - Verified: pnpm --filter jarvis typecheck passes, git diff --check clean.
+
+## 2026-08-07 — Full systematic walkthrough & testing (full-walktrough-by-freebuff.txt)
+
+- Built a reusable Puppeteer walkthrough harness (walkthrough/run-walkthrough.mjs, phases A-E) that clicks every interactive element, performs functional end-to-end verification, screenshots every state change, and logs PASS/FAIL/ERROR + evidence into full-walktrough-by-freebuff.txt (484 lines, 54 screenshots in walkthrough-screenshots/). Test-only: no app code was changed or fixed.
+- Ran the full pass on desktop (1440x900) and mobile (390x844): 61 steps, 49 PASS / 2 FAIL / 4 ERROR / 6 INFO.
+- CRITICAL finding: the + menu (Attach, camera, or search) crashes the whole app with React "Rendered more hooks than during the previous render" — plus-menu.tsx declares a useEffect after an early return (if (!effectiveCoords) return null). Desktop + mobile, and also triggered by typing "@" in the composer (autocomplete path). Studios hub / Build Mode are only reachable via that menu, so they're unreachable through the UI while this bug exists. (Walkthrough reached them via the documented jarvis-plugin-action event pathway after logging the crash.)
+- REQUIREMENT FAILED: @Build auto-switch is NOT implemented (zero @Build references in the source); typing "@Build Make a 3D game" crashes on the "@" keystroke.
+- HIGH: chat LLM requests return HTTP 500 ("Chat request failed. Please try again." card) — likely API-key/backend availability in this sandbox; Build Mode terminal/preview/search/git/env work (filesystem-based).
+- LOW: duplicate React key warning in mobile sidebar.
+- Dictation not verifiable headless (SpeechRecognition present, no audio capture) — environment limitation.
