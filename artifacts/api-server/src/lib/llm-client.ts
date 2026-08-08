@@ -9,9 +9,9 @@
  *                   model). Health/stats persist across restarts.
  *
  * Behaviour:
- *   - Each key is tried 10 times with a 10s cooldown between attempts before
- *     the next key is used. Every error class is retried the full 10 times;
- *     a key is only quarantined after all 10 attempts have failed.
+ *   - Each key is tried 4 times with a 5s cooldown between attempts before
+ *     the next key is used. Every error class is retried the full 4 times;
+ *     a key is only quarantined after all 4 attempts have failed.
  *   - `runWithLLM` retries across keys automatically; a quota error on key A
  *     silently tries key B. The user only ever sees an error when EVERY key
  *     has genuinely failed, and a push notification is sent saying so.
@@ -51,9 +51,9 @@ export interface LlmKeyEntry {
 }
 
 /** How many times each API key is tried before moving to the next key. */
-export const LLM_KEY_ATTEMPTS = 10;
+export const LLM_KEY_ATTEMPTS = 4;
 /** Cooldown in milliseconds between attempts on the same key. */
-export const LLM_KEY_ATTEMPT_COOLDOWN_MS = 10_000;
+export const LLM_KEY_ATTEMPT_COOLDOWN_MS = 5_000;
 
 /** Throttle the all-keys-failed push notification to one per minute. */
 let lastAllFailedNotifiedAt = 0;
