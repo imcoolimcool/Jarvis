@@ -140,6 +140,10 @@ export function PlusMenu({ open, onClose, onAction, coords, labels, query = '' }
     if (!textarea) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (autoQuery === null) return;
+      // Don't intercept @Build <message> shortcut - let handleChatSubmit handle it
+      const textareaValue = textarea.value.trim();
+      const buildMatch = textareaValue.match(/^@build\b\s+(.+)$/i);
+      if (buildMatch) return; // Allow default Enter handling for @Build shortcut
       if (event.key === 'Escape') {
         event.preventDefault();
         closeMenu();
