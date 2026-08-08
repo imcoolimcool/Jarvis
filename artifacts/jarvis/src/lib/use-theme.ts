@@ -19,6 +19,27 @@ export function useTheme() {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
+  // Listen for external theme changes (cross-tab via storage, same-tab via custom event)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'jarvis-theme' && e.newValue) {
+        setTheme(e.newValue as Theme);
+      }
+    };
+    const onCustom = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && typeof detail === 'string') {
+        setTheme(detail as Theme);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('jarvis-theme-change', onCustom);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('jarvis-theme-change', onCustom);
+    };
+  }, []);
+
   const resolved: 'dark' | 'light' = theme === 'auto' ? (systemDark ? 'dark' : 'light') : theme;
 
   useEffect(() => {

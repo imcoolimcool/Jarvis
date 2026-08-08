@@ -39,3 +39,12 @@
 - Installed Chrome system libs (libatk1.0-0, libgbm1, libnss3, etc.)
 - Verified end-to-end: 6/6 puppeteer checks passed — build opens, task prefilled, wizard shows, Scaffold button works
 - Both typechecks (frontend + api-server) pass clean
+
+## 2026-08-08 — Build Mode theme-aware + Puppeteer verification
+- build-studio.tsx: imported useTheme, derived isDark, added conditional `dark` class on outer container
+- Replaced 93+ hardcoded hex colors in build-studio.tsx with theme-aware Tailwind classes (bg-background, bg-card, bg-secondary, text-foreground, text-muted-foreground, border-border)
+- Container background: inline `style={{ background: isDark ? '#1e1e1e' : undefined }}` (dark) vs bg-card (light)
+- use-theme.ts: added custom event listener for `jarvis-theme-change` + storage event for cross-tab sync (Puppeteer can't change React state via localStorage alone)
+- Puppeteer script build-mode-dual.mjs rewritten: dismisses Plan Mode modal via "Change plan" button + wizard backdrop (z-[70]), then toggles theme via CustomEvent, screenshots at 1440×900
+- Verified: dark mode shows #1e1e1e editor bg, light mode shows white — all UI areas (header, sidebar, tabs, editor, scaffold prompt) properly themed
+- Clean screenshots: /tmp/build-dark.png and /tmp/build-light.png — no wizard overlay, no modals
