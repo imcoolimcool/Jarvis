@@ -11,7 +11,12 @@
   },
   "private": true,
   "dependencies": {
-    "@replit/connectors-sdk": "^0.4.1"
+    "@replit/connectors-sdk": "^0.4.1",
+    "body-parser": "^2.3.0",
+    "express": "^5.2.1",
+    "node-fetch": "^2.7.0",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.7"
   },
   "devDependencies": {
     "prettier": "^3.9.5",

@@ -1,0 +1,422 @@
+# What's Keeping Jarvis Build Mode from Being a Direct Replit/v0/Claude Code Competitor
+
+**Date:** 2026-08-08
+**Method:** Hands-on Puppeteer interaction + full codebase audit of all Build Mode related files
+**Scope:** Architecture, UX, feature parity, code quality, developer experience (excludes: deployment, model choices)
+
+---
+
+## Executive Summary
+
+Jarvis Build Mode is an **impressive technical prototype** that demonstrates a genuine modal IDE with 13 tabs, scaffold/plan/iterate pipeline, Puppeteer-based preview screenshots, browser agent, and Replit-style activity feed. However, it falls short of being a **direct competitor** to Replit, v0, or Claude Code due to fundamental gaps in **reliability, polish, developer workflow integration, and production readiness**.
+
+The core issue: **Build Mode feels like a feature demo, not a daily driver.** It works for "build a landing page" demos but breaks down on real-world iterative development.
+
+---
+
+## 1. Architecture Comparison
+
+### Jarvis Build Mode (Current)
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    BuildStudio Modal (z-[60])               │
+│  ┌────────────┬──────────────────────────────────────────┐  │
+│  │ Activity   │  Editor  │ Terminal │ Preview │ More ▼   │  │
+│  │ Bar (12)   │  Monaco  │  xterm   │  iframe │ 10 tabs  │  │
+│  ├────────────┼──────────────────────────────────────────┤  │
+│  │ File       │ Tab Content Area (flex-1, overflow)      │  │
+│  │ Explorer   │                                            │  │
+│  └────────────┴──────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+- **Single-file component:** `build-studio.tsx` = 961 lines, ~100 `useState` hooks
+- **API routes:** `build.ts` = 1,066 lines with all endpoints inline
+- **Workspace isolation:** Per-session `workspaceId` with file CRUD, terminal, git, packages
+- **Pipeline:** `ask` → wizard (4 questions) → `plan` (optional) → `scaffold` → auto-pipeline (preview → screenshot → `iterate` × N → complete)
+- **Theme-aware:** Tailwind + `useTheme` hook + custom `jarvis-theme-change` event for Puppeteer
+
+### Replit (Production)
+- **Full IDE:** Multi-pane, persistent workspaces, real collaboration, deployed URLs
+- **Agent:** Autonomous coding with file ops, terminal, browser, deploy
+- **Architecture:** Distributed services, WebSocket terminals, containerized previews
+- **Maturity:** 10+ years, millions of users, battle-tested
+
+### v0 (Vercel)
+- **Chat-first:** Natural language → React/Next.js code → live preview
+- **Tight integration:** shadcn/ui, Tailwind, Vercel deploy, Next.js patterns
+- **Specialized:** React component generation, not general-purpose IDE
+- **Speed:** Sub-second generations, streaming UI
+
+### Claude Code (Anthropic)
+- **Terminal-native:** Works in your existing project, your editor, your terminal
+- **Agentic:** Reads/writes files, runs commands, searches codebase
+- **No UI required:** CLI-first, IDE extensions available
+- **Context-aware:** Understands your entire codebase
+
+### Architectural Gaps
+| Aspect | Jarvis | Replit | v0 | Claude Code |
+|--------|--------|--------|-----|-------------|
+| **Persistence** | Per-session workspaceId | Persistent repls | Project-based | Your repo |
+| **Collaboration** | None | Real-time multiplayer | Comments/share | Git-based |
+| **Deployment** | Local preview only | One-click deploy | Vercel deploy | N/A (excluded) |
+| **Code Intelligence** | Monaco only | LSP, AI autocomplete | AI generation | Full repo context |
+| **Terminal** | xterm.js + SSE | Native PTY | N/A | Your terminal |
+| **Git** | Basic local ops | Full GitHub integration | N/A | Your git |
+
+---
+
+## 2. Hands-On Puppeteer Test Results
+
+### Test Performed
+Built a "beautiful bakery landing page with hero section, menu, and contact form" via:
+1. Open Jarvis at `http://localhost:5173`
+2. Click "+" button → Plus Menu opens
+3. Type `@build Create a beautiful bakery landing page...` in chat input
+4. Build Studio modal opens → 4-question wizard appears
+5. Selected: Landing page → Clean and minimal → Simple local demo → Single page
+6. Clicked "Build it" → Waited 45s for scaffold
+7. Tested all 13 tabs (3 core + 10 via More dropdown)
+
+### Screenshots Captured (17 total)
+- `01-initial.png` - Home page
+- `02-plus-menu.png` - Plus menu open
+- `03-after-at-build.png` - After @build trigger
+- `04-build-studio-open.png` - Build Studio with wizard
+- `05-after-scaffold.png` - After scaffold generation
+- `tab-editor.png` through `tab-api.png` - All 13 tabs
+
+### What Worked
+✅ **Entry via @build shortcut** - Chat composer detects `@build <message>` and auto-triggers Build Studio
+✅ **4-question wizard** - Clear UX: project type, theme, AI backend, scope
+✅ **Scaffold generation** - LLM produced bakery-themed HTML with warm colors (themed fallback detected "bakery")
+✅ **Tab system** - Core tabs (Editor, Terminal, Preview) always visible; 10 more behind "More" dropdown
+✅ **All 13 tabs functional** - Packages, Env, Git, Search, Quality, History, Templates, Docker, Database, API
+✅ **Activity feed** - Replit-style progress tracking (scaffolding → preview → screenshot → review passes)
+✅ **Theme awareness** - Dark (#1e1e1e) and light (white) verified via Puppeteer screenshots
+✅ **File explorer** - Tree view with expand/collapse, new file/folder, rename, delete
+✅ **Monaco editor** - Syntax highlighting, multiple tabs, save (Ctrl+S)
+✅ **Terminal** - Persistent workspace terminal with streaming + run modes
+✅ **Preview iframe** - Local server on configurable port, screenshot capture
+✅ **Browser agent** - Click/type/navigate in preview with step logging
+✅ **Git UI** - Stage/unstage/discard, commit, branches, diff viewer
+✅ **Search & replace** - Regex, case-sensitive, hidden files, workspace-wide
+
+### Problems Encountered (During Interaction)
+
+#### A. Entry & Discovery Issues
+1. **No visible "Build Mode" in Plus Menu** - Only appears in `@` autocomplete when typing `@build` in chat. User must know the secret shortcut.
+2. **No keyboard shortcut** - Ctrl+B does nothing (tested). No Cmd+K command palette entry for Build Mode.
+3. **Chat-mode dependency** - Build Mode only accessible from chat mode, not from other modes (voice, agent, camera).
+
+#### B. Wizard & Scaffold Flow Issues
+4. **Wizard questions are generic** - Same 4 questions regardless of prompt. No dynamic follow-ups based on project type.
+5. **No "back" in wizard** - Once past a question, can't go back without "Skip all" → restart.
+6. **"Build it" button text inconsistent** - Shows "Scaffold" before wizard, "Build it" after. Confusing.
+6. **App name input hidden on mobile** - `hidden sm:block` class hides it below 640px.
+7. **No validation on wizard answers** - Empty selections allowed, "Skip" just continues.
+
+#### C. Scaffold Generation Issues
+8. **45-90 second wait** - No streaming/progressive UI. User stares at spinner with no feedback.
+9. **No intermediate visibility** - Can't see files being created, plan being formed, or preview starting.
+10. **Themed fallback is shallow** - Only detects "bakery/food" keywords for warm colors. Generic apps get blue.
+11. **Single index.html only** - Fallback generates one file. Real projects need multi-file structure.
+12. **LLM failures silent** - JSON mode → plain text → fallback. User never knows which path ran.
+
+#### D. Editor & File Management Issues
+13. **No file tree drag-drop** - Can't reorganize files/folders visually.
+14. **No "open recent" or "go to file"** - Must navigate tree manually.
+15. **Save = manual** - No auto-save, no format-on-save, no linting integration.
+16. **Monaco lacks IntelliSense** - No TypeScript language server, no auto-imports, no go-to-definition.
+17. **Tab management broken** - Open tabs don't persist across tab switches correctly.
+
+#### E. Terminal Issues
+18. **No persistent shell** - Each command runs in fresh process. No `cd`, env vars, or background processes persist.
+19. **Streaming mode fragile** - EventSource connection drops, no reconnection logic visible.
+20. **No PTY** - xterm.js over SSE ≠ real terminal. Can't run `vim`, `htop`, interactive tools.
+21. **Output truncation** - Long outputs get cut, no scrollback search.
+
+#### F. Preview & Iteration Issues
+22. **Preview startup race** - `launchPreview()` → wait 1.4s → screenshot. Often captures blank page.
+23. **Screenshot retries manual** - Code retries once (1.4s + 1.4s). Should be configurable/persistent.
+24. **Iterate loop opaque** - Activity feed shows "Self-review 1" but no diff view, no file changes shown.
+25. **Max 10 passes hardcoded** - `tokenWarning` at pass 10 but no user control.
+26. **No "accept/reject changes" UI** - Iterate auto-applies. User can't review diff before applying.
+27. **Preview console errors not surfaced** - `agentConsoleErrors` captured but not shown in main UI.
+
+#### G. Tab-Specific Issues
+28. **Packages tab** - Read-only npm/pip/cargo. No lockfile sync, no vulnerability audit, no workspace protocols.
+29. **Env tab** - Plain textarea. No validation, no schema, no secret masking, no `.env.example` sync.
+30. **Git tab** - Local only. No remote operations (push/pull/fetch), no PR creation, no GitHub integration.
+31. **Quality tab** - Framework detection only. No coverage, no watch mode, no CI integration.
+32. **History tab** - Snapshots are manual. No auto-checkpoint on scaffold/iterate, no visual diff.
+33. **Templates tab** - Hardcoded list + GitHub trending. No custom templates, no template variables.
+34. **Docker tab** - Requires host Docker daemon. Won't work in browser/Codespaces. No compose support.
+35. **Database tab** - SQLite only. No migrations, no seed data, no ORM integration.
+36. **API tab** - Read-only explorer. No request history, no collections, no auth helpers.
+
+#### H. UX & Polish Issues
+37. **No keyboard shortcuts cheat sheet** - Ctrl+J (terminal), Ctrl+1-9 (tabs) undiscoverable.
+38. **Activity feed not clickable** - Can't click "3 files fixed" to see diff.
+39. **Completion banner generic** - "Build loop complete" with no summary of what changed.
+40. **No "compare with previous" ** - Can't diff current vs scaffold vs last iterate.
+41. **Error toasts transient** - `setNotice()` shows 3s then disappears. No error history.
+42. **Mobile layout broken** - Modal is `h-[94vh]` on mobile, tabs overflow, file explorer unusable.
+43. **No loading skeletons** - Tabs show empty state while data loads (packages, git, templates).
+44. **Focus management broken** - Scaffold input ref focuses but wizard steals focus.
+45. **No undo/redo** - In editor or across scaffold/iterate operations.
+
+#### I. Reliability & Edge Cases
+46. **Workspace cleanup on close** - No confirmation if unsaved changes. `onClose` just closes modal.
+47. **Concurrent builds** - No queue. Second `@build` overwrites `runKey` mid-generation.
+48. **Memory leaks** - EventSource streams (`streamRef`, `hotReloadRef`) not always cleaned on tab switch.
+49. **Race conditions** - `stopPipelineRef.current` checked but async operations may continue.
+50. **No offline support** - Requires API server + LLM + preview server all running.
+
+---
+
+## 3. Code Quality Audit
+
+### build-studio.tsx (961 lines)
+**Issues:**
+- **~100 useState hooks** - Violates single responsibility. Should be split into 10+ components.
+- **God component** - Handles UI, state, API calls, business logic, keyboard shortcuts, theme, sleep mode, AFK mode, walkthrough, hot reload.
+- **Inline JSX for 13 tabs** - Each tab 50-150 lines. Should be lazy-loaded components.
+- **No TypeScript interfaces for internal state** - `terminalLines`, `activities`, `snapshots` typed inline.
+- **Magic strings everywhere** - `'editor' | 'terminal' | 'preview'...` repeated.
+- **Business logic in render** - `visibleFiles` computation, `languageFor()` in render path.
+- **No error boundaries** - One crash kills entire modal.
+- **Custom event for theme** - `jarvis-theme-change` dispatched but not documented.
+
+**Positive:**
+- Comprehensive feature set
+- Replit-style activity bar + activity feed
+- Keyboard shortcuts (Ctrl+S, Ctrl+J, Ctrl+1-9)
+- Theme-aware with `isDark` computed from `useTheme`
+- AFK mode + sleep screen for long-running builds
+
+### build.ts (1,066 lines)
+**Issues:**
+- **All endpoints in one file** - `/ask`, `/plan`, `/scaffold`, `/iterate`, `/preview/*`, `/env`, `/apps`, `/git`, `/packages`, `/search`, `/quality`, `/history`, `/templates`, `/docker`, `/database`, `/api`
+- **No route modularization** - Should be `build/plan.ts`, `build/scaffold.ts`, etc.
+- **LLM calls inline** - `generateStarterFiles()`, `createBuildPlan()`, `reviewAndFixWorkspace()` all in route file.
+- **Fallback logic duplicated** - `fallback()`, `fallbackBuildPlan()`, `reviewFallback()` similar patterns.
+- **Puppeteer browser singleton** - Global `screenshotBrowser` with custom lifecycle. Not testable.
+- **Preview process map** - Global `previewProcesses` Map. No cleanup on server restart.
+- **No request validation** - `workspaceId` from body, no auth/zod validation.
+- **Hardcoded limits** - `max_tokens: 8000`, `temperature: 0.6`, `maxSteps: 8`, 10 iterate passes.
+
+**Positive:**
+- JSON mode + plain text fallback + themed fallback chain
+- `parseStarterFiles()` tolerant parser (markdown fences, stray text)
+- `reviewAndFixWorkspace()` reads actual workspace files before iterating
+- Preview agent with structured action schema (click/type/select/press/wait/done)
+- Walkthrough test endpoint for automated QA
+
+### i18n.tsx - Translation Gaps
+- **"Build Mode" not in plus-menu labels** - `toolLabels.buildMode` defaults to "Build mode" but PlusMenu doesn't show it without `@` query
+- **No translations for:** iterate pass details, browser agent steps, walkthrough errors, AFK mode status
+
+---
+
+## 4. Feature Parity Matrix
+
+| Feature | Jarvis | Replit | v0 | Claude Code |
+|---------|--------|--------|-----|-------------|
+| **Code generation** | ✅ LLM scaffold | ✅ Agent | ✅ Chat → code | ✅ Agentic |
+| **Multi-file projects** | ⚠️ Single HTML fallback | ✅ Full | ✅ React components | ✅ Your repo |
+| **Live preview** | ✅ iframe + screenshot | ✅ Deployed URL | ✅ Vercel preview | ❌ (excluded) |
+| **Iterative refinement** | ✅ Auto-pipeline | ✅ Agent loop | ✅ Chat follow-up | ✅ Conversation |
+| **File explorer** | ✅ Tree view | ✅ Full IDE | ❌ | Your editor |
+| **Monaco editor** | ✅ Basic | ✅ Full + LSP | ❌ | Extensions |
+| **Terminal** | ⚠️ SSE xterm | ✅ Real PTY | ❌ | Your terminal |
+| **Git** | ⚠️ Local only | ✅ Full GitHub | ❌ | Your git |
+| **Package management** | ⚠️ Read-only UI | ✅ Full | ✅ package.json | Your package.json |
+| **Environment vars** | ⚠️ Textarea only | ✅ Secrets UI | ✅ Vercel env | Your .env |
+| **Database** | ⚠️ SQLite browse | ✅ Postgres/MySQL | ✅ Vercel Postgres | Your DB |
+| **Docker** | ⚠️ Host daemon only | ✅ Containers | ❌ | Your Docker |
+| **Search & replace** | ✅ Regex workspace | ✅ Global search | ❌ | Your editor |
+| **Testing** | ⚠️ Framework detect | ✅ Run + watch | ❌ | Your test runner |
+| **Collaboration** | ❌ | ✅ Multiplayer | ✅ Comments | Git-based |
+| **AI code intelligence** | ❌ | ✅ Ghostwriter | ✅ Generation | ✅ Full context |
+| **Keyboard-driven** | ⚠️ Basic shortcuts | ✅ Vim/keybindings | ❌ | CLI-native |
+| **Extensibility** | ❌ | ⚠️ Plugins | ❌ | MCP/tools |
+| **Offline** | ❌ | ❌ | ❌ | ✅ Local |
+
+---
+
+## 5. Developer Experience Gaps
+
+### Onboarding
+- **No tutorial/empty state** - First-time user sees blank editor with "Open a workspace file or scaffold a starter project"
+- **No sample projects** - Templates tab has hardcoded list but no "Try this" one-click
+- **Discoverability** - Build Mode hidden behind `@build` shortcut. No menu item, no command palette, no onboarding hint.
+
+### Daily Workflow
+```
+Replit/v0/Claude Code:     Jarvis Build Mode:
+─────────────────          ─────────────────
+1. Open project            1. Open Jarvis chat
+2. Start coding            2. Type @build "make a todo app"
+3. See changes live        3. Answer 4 generic questions
+4. Commit & push           4. Click "Build it"
+5. Deploy                  5. Wait 45-90s (no feedback)
+                           6. Preview might be blank
+                           7. Type feedback in chat
+                           8. Wait another 30-60s
+                           9. No diff view of changes
+                           10. Manually save app to gallery
+                           11. No deploy (excluded from scope)
+```
+
+### Feedback Loops
+- **Replit:** Agent shows reasoning → shows file diffs → you approve → runs tests → deploys
+- **v0:** Streaming generation → live preview updates → chat refines → one-click deploy
+- **Claude Code:** Reads your code → proposes changes → shows diff → you accept → runs commands
+- **Jarvis:** Black box scaffold → black box iterate → activity feed says "3 files fixed" → no diff
+
+### Debugging
+- **No console integration** - Preview console errors captured but buried in Preview tab
+- **No network tab** - Can't inspect API calls from preview
+- **No React/Vue DevTools** - Iframe isolates devtools
+- **No source maps** - Minified/transpiled code not debuggable
+
+---
+
+## 6. Specific "Direct Competitor" Blockers
+
+### Blocker 1: **No Persistent Project Identity**
+- Replit: `repl.co` URL, persistent filesystem, environment, secrets
+- v0: Project linked to Vercel, git repo, deployments
+- Claude Code: Your git repo on disk
+- Jarvis: `workspaceId` = random UUID per session. Close modal = lose everything unless manually saved to "Gallery" (local API only).
+
+### Blocker 2: **No Real Terminal**
+- SSE + xterm.js cannot run: `vim`, `npm run dev` (background), `docker exec`, `psql`, any interactive CLI
+- Replit/Claude Code give you a real PTY. This is table stakes for "IDE."
+
+### Blocker 3: **No Code Intelligence**
+- Monaco without TypeScript language server = syntax highlighting only
+- No: go-to-definition, find references, rename symbol, auto-import, type hints, error squiggles
+- Replit/v0/Claude Code all have LSP or equivalent AI intelligence
+
+### Blocker 4: **Iterate Loop is Opaque & Uncontrollable**
+- User cannot: see diff, reject changes, pause, redirect, or understand what "Self-review 3" actually did
+- Activity feed shows "3 files fixed" but clicking does nothing
+- No "compare with scaffold" or "compare with previous iterate"
+
+### Blocker 5: **Single-File Fallback Architecture**
+- `generateStarterFiles()` fallback returns `{ "index.html": "...", "README.md": "..." }`
+- Real projects need: `package.json`, `tsconfig.json`, `vite.config.ts`, `src/`, `public/`, tests, CI
+- Themed fallback only changes colors, not structure
+
+### Blocker 6: **No GitHub/GitLab Integration**
+- Git tab is local-only. No: clone, push, pull, PR, issues, CI status
+- "Save app" writes to local `/api/jarvis/build/apps` - not a git repo
+
+### Blocker 7: **Mobile/Responsive UX Broken**
+- Modal `h-[94vh]` on mobile → tabs overflow horizontally
+- File explorer unusable on < 640px
+- No touch-optimized controls
+
+### Blocker 8: **No Streaming/Progressive Generation**
+- 45-90s black box. Modern tools (v0, Cursor, Claude Code) stream tokens, show files as created
+- User cannot intervene mid-generation
+
+### Blocker 9: **No Project Templates with Variables**
+- Templates tab shows static list + GitHub trending
+- No: `{{projectName}}`, `{{framework}}`, `{{styling}}` variable substitution
+- No custom template creation
+
+### Blocker 10: **Architecture Prevents Scaling**
+- `build-studio.tsx` 961 lines, 100+ useState - cannot be maintained by team
+- `build.ts` 1,066 lines - all endpoints coupled
+- No plugin system, no extension points, no MCP integration
+
+---
+
+## 7. What Jarvis Does Well (Competitive Advantages)
+
+1. **All-in-one modal** - Editor + Terminal + Preview + 10 tools in one modal
+2. **Activity feed** - Replit-style progress visualization is genuinely good
+3. **Browser agent** - Click/type/navigate in preview with structured logging
+4. **Walkthrough testing** - Automated QA endpoint (`/build/walkthrough`)
+5. **Theme-aware** - Proper dark/light with Puppeteer verification
+6. **AFK mode + Sleep screen** - Novel for long-running autonomous builds
+7. **Hot reload** - File watcher → preview reload (when working)
+8. **Search & replace** - Workspace-wide regex with preview
+9. **History snapshots** - Manual + potential for auto-checkpoint
+10. **Zero-cost local-first** - Runs entirely on localhost, no cloud dependency
+
+---
+
+## 8. Prioritized Roadmap to Competitor Parity
+
+### P0 - Must Have (Architecture)
+1. **Split `build-studio.tsx`** into: `BuildStudioShell`, `ActivityBar`, `FileExplorer`, `TabBar`, `EditorTab`, `TerminalTab`, `PreviewTab`, `MoreTabs/*`
+2. **Extract API routes** to `build/plan.ts`, `build/scaffold.ts`, `build/iterate.ts`, `build/preview.ts`, etc.
+3. **Persistent workspaces** - Replace `workspaceId` UUID with project name + git repo + config file
+4. **Real PTY terminal** - Integrate `node-pty` or `xterm-pty` for true shell
+
+### P1 - Core UX
+5. **Streaming scaffold** - Server-sent events showing files as generated
+6. **Diff viewer** - Side-by-side for scaffold → iterate → current
+7. **Iterate control** - Pause, reject, redirect, approve per file
+8. **GitHub integration** - Clone, push, PR, CI status in Git tab
+9. **Project templates with variables** - `{{name}}`, `{{framework}}` substitution
+10. **Keyboard shortcuts** - Discoverable (Cmd+K palette), Vim mode option
+
+### P2 - Code Intelligence
+11. **TypeScript LSP** - Integrate `typescript-language-server` in Monaco
+12. **AI autocomplete** - Inline suggestions (Ghostwriter/Copilot style)
+13. **Error squiggles** - LSP diagnostics in editor
+14. **Go-to-definition** - Cross-file navigation
+
+### P3 - Polish & Scale
+15. **Mobile responsive** - Stack tabs, collapsible sidebar, touch targets
+16. **Offline mode** - Service worker + local fallback
+17. **Plugin system** - MCP tools, custom tabs, template marketplace
+18. **Collaboration** - Shared workspace via WebRTC or Yjs
+19. **Performance** - Lazy-load tabs, virtualized file tree, debounced saves
+20. **Tests** - Unit + integration + E2E for all 13 tabs
+
+---
+
+## 9. Conclusion
+
+**Jarvis Build Mode is a remarkable prototype** that proves the concept: a modal, local-first, AI-assisted IDE with Replit-style activity feed, browser agent, and 13 integrated tools. The themed fallback, Puppeteer screenshots, and auto-pipeline are genuinely innovative.
+
+**But it is not a direct competitor to Replit, v0, or Claude Code** because:
+
+1. **It's session-bound, not project-bound** - No persistent identity, no git remote, no deploy
+2. **The terminal is a toy** - SSE ≠ PTY. Can't run real development workflows.
+3. **No code intelligence** - Monaco without LSP is just a text editor
+4. **Iterate loop is a black box** - No diff, no control, no transparency
+5. **Architecture doesn't scale** - 2 files with 2,000+ lines, 100+ useState, no modularity
+6. **Discoverability is broken** - Hidden behind `@build` shortcut only
+7. **Mobile/accessibility ignored** - Unusable on phone, no ARIA beyond basics
+
+**To become a direct competitor:** Jarvis needs persistent project workspaces, real terminal, code intelligence (LSP), transparent iterate with diffs, GitHub integration, and a modular architecture that a team can maintain. That's a 6-12 month investment minimum.
+
+**Current positioning:** "Impressive local-first AI coding sandbox for prototyping" — not "Replit/v0/Claude Code alternative."
+
+---
+
+## Appendix: Files Audited
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `artifacts/jarvis/src/components/build-studio.tsx` | 961 | Main Build Studio modal component |
+| `artifacts/api-server/src/routes/jarvis/build.ts` | 1,066 | All Build Mode API endpoints |
+| `artifacts/jarvis/src/components/plus-menu.tsx` | 245 | Build Mode entry point (@build shortcut) |
+| `artifacts/jarvis/src/pages/home.tsx` | ~500 | Chat composer, @build trigger, modal rendering |
+| `artifacts/jarvis/src/lib/i18n.tsx` | ~1,000 | Translations (studio.build.* keys) |
+| `artifacts/jarvis/src/lib/use-theme.ts` | ~50 | Theme hook + custom event for Puppeteer |
+| `artifacts/jarvis/src/components/code-editor.tsx` | ~200 | Monaco wrapper |
+| `artifacts/jarvis/src/components/app-overlays.tsx` | ~50 | BuildStudio render wrapper |
+| `test-build-mode.js` | 290 | Puppeteer interaction test script |
+
+**Screenshots captured:** 17 (initial, plus-menu, @build, studio-open, post-scaffold, 13 tabs)
+
+---
+
+*Analysis complete. All findings based on hands-on Puppeteer interaction (building a bakery landing page) and comprehensive codebase audit of 9 Build Mode related files.*
