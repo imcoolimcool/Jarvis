@@ -160,7 +160,10 @@ export function PlusMenu({ open, onClose, onAction, coords, labels, query = '' }
   // Hooks must run on every render, including while the menu has no anchor
   // coordinates. Keep the null render below all hooks to avoid changing the
   // hook count when @ autocomplete opens or closes.
-  if (!effectiveCoords) return null;
+  if (!effectiveCoords) {
+    // Return a null portal to keep hook count stable
+    return createPortal(null, document.body);
+  }
 
   return createPortal(
     <AnimatePresence>
