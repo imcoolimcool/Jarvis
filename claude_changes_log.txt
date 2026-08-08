@@ -23,3 +23,19 @@
 - Jarvis and API-server typechecks pass.
 - Remaining Build Studio polish is present in the working tree from the preserved continuation: CodeMirror editor, screenshots, browser agent, plan mode, history handlers, walkthrough backend, particle preview component, AFK/sleep handlers, and file download affordances.
 - No credentials were read or modified, and no Git delivery commands were run.
+
+## 2026-08-07 — @Build shortcut implementation + API key verification
+- Configured all API keys in /workspaces/Jarvis/.env (gitignored; never committed)
+  - OpenRouter (first choice, model: openrouter_auto)
+  - NVIDIA NIM llama-3.2-11b-vision-instruct (failover, priority 99)
+  - Whisper, Flux, ElevenLabs, Tavily, Spotify, Google, Figma, Neon DB
+- Verified LLM key pool via /api/jarvis/llm-keys: OpenRouter first, NVIDIA failover
+- Updated jarvis config: llmModel changed from "openai/gpt-oss-120b" to "meta/llama-3.2-11b-vision-instruct"
+- Wired @Build <message> chat shortcut:
+  - home.tsx: detect "^@build\b" → set buildInitialPrompt + buildRunKey, open build panel
+  - app-overlays.tsx: pass initialPrompt/runKey props through to BuildStudio
+  - build-studio.tsx: useEffect triggers beginScaffold(initialPrompt) on new runKey
+- Created walkthrough/test-build-shortcut.mjs puppeteer test
+- Installed Chrome system libs (libatk1.0-0, libgbm1, libnss3, etc.)
+- Verified end-to-end: 6/6 puppeteer checks passed — build opens, task prefilled, wizard shows, Scaffold button works
+- Both typechecks (frontend + api-server) pass clean

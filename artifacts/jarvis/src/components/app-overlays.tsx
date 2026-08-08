@@ -54,6 +54,9 @@ interface AppOverlaysProps {
   onRefreshBuildFiles?: () => void;
   sessionCommands?: TerminalResult[];
   buildTitle: string;
+  /** "@Build <message>" shortcut: prefill + auto-run the build prompt. */
+  buildInitialPrompt?: string | null;
+  buildRunKey?: number;
   /** Legacy Build Mode props kept for callers during the Studio migration. */
   buildTab?: string;
   setBuildTab?: (tab: string) => void;
@@ -86,7 +89,7 @@ function CloneForm({ onClone }: { onClone: (url: string) => void }) {
 export function AppOverlays(props: AppOverlaysProps) {
   return (
     <>
-      <BuildStudio open={props.buildPanelOpen} onClose={props.onCloseBuild} title={props.buildTitle} initialCommands={props.sessionCommands ?? []} onRefreshFiles={props.onRefreshBuildFiles} />
+      <BuildStudio open={props.buildPanelOpen} onClose={props.onCloseBuild} title={props.buildTitle} initialCommands={props.sessionCommands ?? []} onRefreshFiles={props.onRefreshBuildFiles} initialPrompt={props.buildInitialPrompt} runKey={props.buildRunKey} />
 
       {/* ── Research pulse chip ── */}
       <AnimatePresence>

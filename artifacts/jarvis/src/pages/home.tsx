@@ -148,6 +148,9 @@ export default function Home() {
   const [buildTab, setBuildTab] = useState<string>('terminal');
   const [commandInput, setCommandInput] = useState('');
   const [commandBusy, setCommandBusy] = useState(false);
+  // "@Build <message>" chat shortcut: prefills + auto-runs the build prompt.
+  const [buildInitialPrompt, setBuildInitialPrompt] = useState<string | null>(null);
+  const [buildRunKey, setBuildRunKey] = useState(0);
   const [studiosOpen, setStudiosOpen] = useState(false);
   const [designStudioOpen, setDesignStudioOpen] = useState(false);
   const [designImage, setDesignImage] = useState<string | null>(null);
@@ -851,6 +854,19 @@ export default function Home() {
     const file = attachedFile;
     setChatInput('');
     setAttachedFile(null);
+
+    // "@Build <message>" shortcut → auto-switch to Build Mode with the task.
+    // Runs before the agent-mode branch so @build always opens the studio.
+    const buildMatch = text.match(/^@build\b\s*(.*)$/i);
+    if (buildMatch) {
+      const task = (buildMatch[1] ?? '').trim();
+      setBuildInitialPrompt(task || null);
+      setBuildRunKey((k) => k + 1);
+      setBuildPanelOpen(true);
+      refreshBuildFiles();
+      if (task) toast({ title: t('build.title'), description: task });
+      return;
+    }
 
     // Agent mode: research-style answer with live web search (no browser theater)
     if (agentModeActive) {
@@ -1862,6 +1878,7 @@ export default function Home() {
                       camera: t('header.mode.camera'),
                       newGem: t('gem.menuItem'),
                       generateImage: t('input.generateImage'),
+                      buildMode: t('build.menuItem'),
                     }}
                   />
 
@@ -1972,6 +1989,7 @@ export default function Home() {
         onCloseBuild={() => setBuildPanelOpen(false)} buildFiles={buildFiles} onRefreshBuildFiles={refreshBuildFiles}
         sessionCommands={sessionCommands} commandInput={commandInput} setCommandInput={setCommandInput}
         commandBusy={commandBusy} buildTitle={t('build.title')}
+        buildInitialPrompt={buildInitialPrompt} buildRunKey={buildRunKey}
         studiosOpen={studiosOpen} onCloseStudios={() => setStudiosOpen(false)} onSelectStudio={handleStudioSelect}
         designStudioOpen={designStudioOpen} onCloseDesign={() => setDesignStudioOpen(false)} designInitialImage={designImage}
         musicStudioOpen={musicStudioOpen} onCloseMusic={() => setMusicStudioOpen(false)}

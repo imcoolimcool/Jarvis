@@ -4,12 +4,13 @@
  */
 export const jarvisConfig = {
   /**
-   * LLM model used for conversation (via NVIDIA NIM).
-   * gpt-oss-120b is ChatGPT-class and vision-capable (camera mode keeps
-   * working), a huge quality jump over the old 11B default.
+   * Fallback LLM model for the NVIDIA NIM env key (OPENAI_LLM_API_KEY).
+   * Primary chat is served by the OpenRouter key (OPENROUTER_API_KEY +
+   * OPENROUTER_MODEL=openrouter_auto) which is tried first; this is the
+   * last-option failover model when every OpenRouter attempt fails.
    * Options: "openai/gpt-oss-120b", "meta/llama-3.2-11b-vision-instruct", "openai/gpt-oss-20b", "meta/llama-3.3-70b-instruct"
    */
-  llmModel: "openai/gpt-oss-120b",
+  llmModel: "meta/llama-3.2-11b-vision-instruct",
 
   /**
    * Image generation model via NVIDIA NIM.

@@ -54,6 +54,10 @@ interface BuildStudioProps {
   title: string;
   initialCommands: TerminalResult[];
   onRefreshFiles?: () => void;
+  /** Set via the "@Build <message>" chat shortcut: pre-fills the build prompt. */
+  initialPrompt?: string | null;
+  /** Increments each time the parent wants initialPrompt to auto-run a build. */
+  runKey?: number;
 }
 
 const languageFor = (path: string) => {
@@ -79,7 +83,7 @@ const apiJson = async <T,>(url: string, init?: RequestInit): Promise<{ response:
   return { response, data };
 };
 
-export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFiles }: BuildStudioProps) {
+export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFiles, initialPrompt, runKey }: BuildStudioProps) {
   const { t } = useI18n();
   const [workspaceId] = useState(() => `build-${crypto.randomUUID()}`);
   const [tab, setTab] = useState<StudioTab>('editor');
@@ -570,8 +574,8 @@ export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFi
     setNotice('Plan ready for review');
   };
 
-  const beginScaffold = async () => {
-    const prompt = scaffoldPrompt.trim();
+  const beginScaffold = async (promptOverride?: string) => {
+    const prompt = (promptOverride ?? scaffoldPrompt).trim();
     if (!prompt) return;
     setWizardBusy(true);
     const { response, data } = await apiJson<{ questions?: WizardQuestion[]; inventory?: FeatureInventoryItem[] }>('/api/jarvis/build/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
@@ -586,6 +590,19 @@ export function BuildStudio({ open, onClose, title, initialCommands, onRefreshFi
     setWizardAnswers({});
     setWizardOpen(true);
   };
+
+  // Auto-start a build from the "@Build <message>" chat shortcut. Each new
+  // runKey from the parent triggers one scaffold run, prefilled with the prompt.
+  const beginScaffoldRef = useRef(beginScaffold);
+  beginScaffoldRef.current = beginScaffold;
+  const lastInitialRunRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!open || !initialPrompt || !runKey) return;
+    if (lastInitialRunRef.current === runKey) return;
+    lastInitialRunRef.current = runKey;
+    setScaffoldPrompt(initialPrompt);
+    void beginScaffoldRef.current(initialPrompt);
+  }, [open, initialPrompt, runKey]);
 
   const acceptPlan = async () => {
     if (!plan || busy || planBusy) return;
