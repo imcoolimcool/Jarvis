@@ -28,12 +28,12 @@ exactly:
   verified; treat it as a gate to preserve, not a task to redo.
 - IF A PHASE IS IMPOSSIBLE OR A REQUIREMENT CONFLICTS WITH REALITY, STOP and report it with
   evidence. Do not quietly rewrite the spec.
-- COMMIT AND PUSH TO GITHUB AFTER EVERY COMMIT. The repo is https://github.com/imcoolimcool/Jarvis
+- COMMIT AND PUSH TO GITHUB AFTER EVERY COMMIT. The repo is https://github.com/kasper-kal/Jarvis
   and the branch is main. After every commit, push immediately so the work is always on
   GitHub. Authenticate with a GitHub personal access token supplied via the environment
   variable GITHUB_TOKEN (NEVER hardcode or commit a token; GitHub blocks commits that contain
   secrets, so tokens must stay out of the repo). Concretely:
-  `git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/imcoolimcool/Jarvis.git"`
+  `git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/kasper-kal/Jarvis.git"`
   then `git push origin main`, then restore the remote URL to plain https so the token is
   never stored in the repo config. If GITHUB_TOKEN is not set, read it from a local,
   UNCOMMITTED file (for example ~/.git-credentials or a .env that is gitignored), or ask the

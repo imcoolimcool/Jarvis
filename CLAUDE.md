@@ -34,4 +34,4 @@ AUTO-RESUME SYSTEM:
 - .session_state.md → 106-step checklist → resume from last unchecked box
 - 9999 restart cycles on crash
 User is rebooting Chromebook. Full plan: memory file pending-redesign
-GitHub: imcoolimcool/Jarvis — user is Kasper Kal (kasperkal1970@gmail.com)
+GitHub: kasper-kal/Jarvis — user is Kasper Kal (kasperkal1970@gmail.com)
